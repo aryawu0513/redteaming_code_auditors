@@ -55,7 +55,7 @@ for lang, bug, Lang, Bug, ext in configs:
 PYEOF
 
 echo
-echo "=== Running gen_attacks.py to generate DPI + context-aware files ==="
+echo "=== Running gen_attacks.py to generate context-aware attack files ==="
 cd "$REPO_ROOT"
 python automatic/gen_attacks.py --bug-type npd --language c
 python automatic/gen_attacks.py --bug-type uaf --language c

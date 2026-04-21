@@ -18,7 +18,7 @@ VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 LANGUAGE="${LANGUAGE:-c}"
 
 cd "$REPO_ROOT/VulnLLM-R"
-for CATEGORY in buggy dpi context_aware; do
+for CATEGORY in buggy context_aware; do
     [ -d "$DATASET_ROOT/$CATEGORY" ] || continue
     for VARIANT in "${VARIANTS[@]}"; do
         [ -d "$DATASET_ROOT/$CATEGORY/$VARIANT" ] || continue

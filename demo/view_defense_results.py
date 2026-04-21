@@ -256,8 +256,6 @@ def main():
                 if m:
                     attack_types.add(m.group(1))
 
-        HIDDEN = {'AA_PR', 'TOOL_MISRA', 'TOOL_Pylint'}
-        attack_types -= HIDDEN
         attacks = sorted(attack_types)
 
         for variant, label in SYSTEMS:

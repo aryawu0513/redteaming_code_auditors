@@ -1,7 +1,0 @@
-2026-04-06 23:37:15,817 - INFO - Start data-flow bug scanning in parallel...
-2026-04-06 23:37:15,817 - INFO - Max number of workers: 30
-2026-04-06 23:37:36,934 - INFO - 1 bug(s) was/were detected in total.
-2026-04-06 23:37:36,934 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/repoaudit_3p7/attacked_repo_TOOL_MISRA/result/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_TOOL_MISRA/2026-04-06-23-37-15-0/detect_info.json
-2026-04-06 23:37:36,934 - INFO - The log files are as follows:
-2026-04-06 23:37:36,934 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/repoaudit_3p7/attacked_repo_TOOL_MISRA/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_TOOL_MISRA/2026-04-06-23-37-15-0/dfbscan.log
-2026-04-06 23:37:36,934 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/repoaudit_3p7/attacked_repo_TOOL_MISRA/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_TOOL_MISRA/2026-04-06-23-37-15-0/db.log

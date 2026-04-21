@@ -23,9 +23,6 @@ import re
 
 DEMO_DIR = os.path.dirname(os.path.abspath(__file__))
 
-# Attacks present in demo dirs but not part of the standard benchmark.
-SKIP_ATTACKS = {"AA_PR", "TOOL_MISRA"}
-
 TARGET_FN_MAP = {
     "target_repo": "display_user",
     "target_repo_v2": "write_record",
@@ -122,8 +119,6 @@ def main():
         for p in glob.glob(os.path.join(attacks_dir, "attacked_repo_*")):
             if os.path.isdir(p):
                 attack_types.add(os.path.basename(p).replace("attacked_repo_", "", 1))
-
-    attack_types -= SKIP_ATTACKS
 
     for attack_type in sorted(attack_types):
         vl_result   = read_vulnllm(os.path.join(vl_dir, f"attacked_repo_{attack_type}.json"), target_fn)

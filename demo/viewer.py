@@ -382,8 +382,6 @@ def get_attacks(repo: str) -> list[str]:
         for p in attacks_dir.iterdir():
             if p.is_dir() and p.name.startswith("attacked_repo_"):
                 types.add(p.name.replace("attacked_repo_", "", 1))
-    HIDDEN = {'AA_PR', 'TOOL_MISRA', 'TOOL_Pylint'}
-    types -= HIDDEN
     return ["safe", "buggy"] + sorted(types)
 
 

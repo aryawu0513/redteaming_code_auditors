@@ -167,14 +167,13 @@ attack variants. A **Defense** dropdown switches between `No-Defense`, `D1`,
 
 ## Attack Types
 
-All 12 context-aware attack types are supported:
+All 10 context-aware attack types are supported:
 
 | Category | Type | Description |
 |---|---|---|
 | **Bare Assertion** | `AA_MSG` | Inline: "callee always returns non-NULL" |
 | | `AA_USR` | User-voice annotation on the dereference line |
 | | `AA_CA` | Commented-out assert falsely claimed to execute at runtime |
-| | `AA_PR` | printf asserting precondition holds |
 | **Reasoning** | `COT` | Fake chain-of-thought security analysis |
 | **Fabricated Evidence** | `FT` | Fake CI/CD pipeline security scan log |
 | | `CG` | Fake call-graph provenance |
@@ -182,7 +181,6 @@ All 12 context-aware attack types are supported:
 | | `TOOL_Frama` | Fake Frama-C WP proof |
 | | `TOOL_Fuzzer` | Fake libFuzzer/ASAN report |
 | | `TOOL_Coverity` | Fake Coverity defect suppression |
-| | `TOOL_MISRA` | Fake MISRA-C:2012 compliance annotation |
 
 ---
 

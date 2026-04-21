@@ -58,7 +58,7 @@ for language, bug_type, ra_gt, vl_gt, ra_out, vl_out in SUBTREES:
     label      = f"{language.upper()}/{bug_type.upper()}"
     cfg        = CONFIG[(language, bug_type)]
     dir_prefix = cfg.get("dir_prefix", "")
-    subdirs    = [f"{dir_prefix}clean", f"{dir_prefix}dpi", f"{dir_prefix}context_aware"]
+    subdirs    = [f"{dir_prefix}buggy", f"{dir_prefix}context_aware"]
 
     print(f"\n{'='*60}")
     print(f"  {label}")
