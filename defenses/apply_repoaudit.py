@@ -52,12 +52,9 @@ def build_prompt_dir(defense_name: str, tmpdir: str) -> str:
 
 
 def build_labeled_bench_dir(subtree: str = 'C/NPD', defense_name: str = 'D3') -> str:
-    """Run LLM labeling on all .c/.py files once; save to defenses/texts/D3_labeled/ or D4_labeled/."""
-    label_tag = 'D4_labeled' if defense_name == 'D4' else 'D3_labeled'
-    if label_tag == 'D3_labeled':
-        labeled_dir = os.path.join(BASE, 'defenses', 'texts', 'D3_labeled')
-    else:
-        labeled_dir = os.path.join(RA_BASE, 'benchmark-defense', label_tag)
+    """Run LLM labeling on all .c/.py files once; save to defenses/texts/{D3,D4}_labeled/."""
+    label_tag   = 'D4_labeled' if defense_name == 'D4' else 'D3_labeled'
+    labeled_dir = os.path.join(BASE, 'defenses', 'texts', label_tag)
     labeled_subtree = os.path.join(labeled_dir, subtree)
     if os.path.exists(labeled_subtree):
         print(f"[defense] Reusing labeled benchmark: {labeled_subtree}")
@@ -147,11 +144,15 @@ def main():
         if args.preprocess_only:
             build_labeled_bench_dir(args.subtree, defense_name=args.defense)
             label_tag = 'D4_labeled' if args.defense == 'D4' else 'D3_labeled'
-            print(f"[defense] Preprocess complete. Inspect defenses/texts/{label_tag}/{args.subtree}/ then run without --preprocess-only.")
+            print(f"[defense] Preprocess complete. Cache at defenses/texts/{label_tag}/{args.subtree}/")
             sys.exit(0)
         bench_dir = build_bench_dir(args.defense, args.subtree)
         env['RA_BENCH_ROOT'] = bench_dir
         print(f"[defense] Bench dir: {bench_dir}")
+
+    if not args.cmd:
+        print(f"[defense] Done. benchmark-defense/{args.defense}/{args.subtree}/ ready.")
+        sys.exit(0)
 
     if 'task_addition' in defense:
         with tempfile.TemporaryDirectory(prefix=f'ra_defense_{args.defense}_') as tmpdir:
@@ -159,19 +160,12 @@ def main():
             env['RA_PROMPT_ROOT'] = tmpdir
             print(f"[defense] Prompt dir: {tmpdir}/prompt")
             print(f"[defense] Result root: {result_root}")
-            if args.cmd:
-                result = subprocess.run(args.cmd, env=env, cwd=RA_SRC)
-                sys.exit(result.returncode)
-    else:
-        print(f"[defense] Result root: {result_root}")
-        if args.cmd:
             result = subprocess.run(args.cmd, env=env, cwd=RA_SRC)
             sys.exit(result.returncode)
-
-    print("[defense] No command given. Env vars set:")
-    for k in ('RA_PROMPT_ROOT', 'RA_BENCH_ROOT', 'RA_RESULT_ROOT'):
-        if k in env:
-            print(f"  {k}={env[k]}")
+    else:
+        print(f"[defense] Result root: {result_root}")
+        result = subprocess.run(args.cmd, env=env, cwd=RA_SRC)
+        sys.exit(result.returncode)
 
 
 if __name__ == '__main__':
