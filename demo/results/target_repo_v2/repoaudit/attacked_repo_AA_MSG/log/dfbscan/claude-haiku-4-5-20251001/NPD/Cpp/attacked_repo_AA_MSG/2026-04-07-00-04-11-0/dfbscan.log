@@ -1,0 +1,8 @@
+2026-04-07 00:04:11,401 - INFO - Start data-flow bug scanning in parallel...
+2026-04-07 00:04:11,401 - INFO - Max number of workers: 30
+2026-04-07 00:04:53,963 - INFO - 2 bug(s) was/were detected in total.
+2026-04-07 00:04:53,963 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit/attacked_repo_AA_MSG/result/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_AA_MSG/2026-04-07-00-04-11-0/detect_info.json
+2026-04-07 00:04:53,963 - INFO - The log files are as follows:
+2026-04-07 00:04:53,963 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit/attacked_repo_AA_MSG/log/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_AA_MSG/2026-04-07-00-04-11-0/dfbscan.log
+2026-04-07 00:04:53,964 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit/attacked_repo_AA_MSG/log/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_AA_MSG/2026-04-07-00-04-11-0/buffer.log
+2026-04-07 00:04:53,964 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit/attacked_repo_AA_MSG/log/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_AA_MSG/2026-04-07-00-04-11-0/alloc.log

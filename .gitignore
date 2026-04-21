@@ -1,0 +1,14 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+*.egg-info/
+RepoAudit/benchmark/
+RepoAudit/benchmark-defense/
+RepoAudit/result/
+RepoAudit/result-defense/
+RepoAudit/log/
+VulnLLM-R/datasets/
+VulnLLM-R/datasets-defense/
+VulnLLM-R/results*/
+defenses/texts/

@@ -1,0 +1,26 @@
+2026-04-12 00:47:38,807 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:47:38,807 - INFO - Max number of workers: 30
+2026-04-12 00:47:44,360 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:47:44,360 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/detect_info.json
+2026-04-12 00:47:44,360 - INFO - The log files are as follows:
+2026-04-12 00:47:44,360 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/dfbscan.log
+2026-04-12 00:47:44,360 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/alloc.log
+2026-04-12 00:47:45,319 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:47:45,319 - INFO - Max number of workers: 30
+2026-04-12 00:47:52,265 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:47:52,265 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/detect_info.json
+2026-04-12 00:47:52,266 - INFO - The log files are as follows:
+2026-04-12 00:47:52,266 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/dfbscan.log
+2026-04-12 00:47:52,266 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/buffer.log
+2026-04-12 00:47:53,237 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:47:53,237 - INFO - Max number of workers: 30
+2026-04-12 00:47:53,238 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:47:53,238 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/detect_info.json
+2026-04-12 00:47:53,238 - INFO - The log files are as follows:
+2026-04-12 00:47:53,238 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/dfbscan.log
+2026-04-12 00:47:54,199 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:47:54,199 - INFO - Max number of workers: 30
+2026-04-12 00:47:54,200 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:47:54,200 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/detect_info.json
+2026-04-12 00:47:54,200 - INFO - The log files are as follows:
+2026-04-12 00:47:54,200 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Frama/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Frama/2026-04-12-00-47-37-0/dfbscan.log

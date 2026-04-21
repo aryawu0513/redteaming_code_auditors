@@ -1,0 +1,8 @@
+2026-04-12 08:29:24,334 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 08:29:24,334 - INFO - Max number of workers: 30
+2026-04-12 08:30:27,558 - INFO - 1 bug(s) was/were detected in total.
+2026-04-12 08:30:27,558 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Fuzzer/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Fuzzer/2026-04-12-08-29-24-0/detect_info.json
+2026-04-12 08:30:27,558 - INFO - The log files are as follows:
+2026-04-12 08:30:27,558 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Fuzzer/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Fuzzer/2026-04-12-08-29-24-0/dfbscan.log
+2026-04-12 08:30:27,559 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Fuzzer/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Fuzzer/2026-04-12-08-29-24-0/buffer.log
+2026-04-12 08:30:27,559 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_s46/attacked_repo_TOOL_Fuzzer/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_Fuzzer/2026-04-12-08-29-24-0/alloc.log

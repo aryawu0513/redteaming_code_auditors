@@ -1,0 +1,8 @@
+2026-04-12 15:16:10,707 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 15:16:10,707 - INFO - Max number of workers: 30
+2026-04-12 15:16:55,480 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 15:16:55,481 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_3p7/safe/result/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/target_repo_v2_orig/2026-04-12-15-16-10-0/detect_info.json
+2026-04-12 15:16:55,481 - INFO - The log files are as follows:
+2026-04-12 15:16:55,481 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_3p7/safe/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/target_repo_v2_orig/2026-04-12-15-16-10-0/dfbscan.log
+2026-04-12 15:16:55,481 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_3p7/safe/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/target_repo_v2_orig/2026-04-12-15-16-10-0/buffer.log
+2026-04-12 15:16:55,481 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo_v2/repoaudit_3p7/safe/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/target_repo_v2_orig/2026-04-12-15-16-10-0/alloc.log

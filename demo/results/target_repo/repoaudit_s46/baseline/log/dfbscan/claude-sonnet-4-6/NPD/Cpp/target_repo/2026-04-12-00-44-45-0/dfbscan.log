@@ -1,0 +1,19 @@
+2026-04-12 00:44:46,050 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:44:46,050 - INFO - Max number of workers: 30
+2026-04-12 00:44:54,086 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:44:54,086 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/detect_info.json
+2026-04-12 00:44:54,086 - INFO - The log files are as follows:
+2026-04-12 00:44:54,087 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/dfbscan.log
+2026-04-12 00:44:54,087 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/db.log
+2026-04-12 00:44:55,058 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:44:55,058 - INFO - Max number of workers: 30
+2026-04-12 00:44:55,059 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:44:55,059 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/detect_info.json
+2026-04-12 00:44:55,059 - INFO - The log files are as follows:
+2026-04-12 00:44:55,059 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/dfbscan.log
+2026-04-12 00:44:56,019 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:44:56,019 - INFO - Max number of workers: 30
+2026-04-12 00:44:56,019 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:44:56,019 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/detect_info.json
+2026-04-12 00:44:56,019 - INFO - The log files are as follows:
+2026-04-12 00:44:56,019 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/baseline/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/target_repo/2026-04-12-00-44-45-0/dfbscan.log

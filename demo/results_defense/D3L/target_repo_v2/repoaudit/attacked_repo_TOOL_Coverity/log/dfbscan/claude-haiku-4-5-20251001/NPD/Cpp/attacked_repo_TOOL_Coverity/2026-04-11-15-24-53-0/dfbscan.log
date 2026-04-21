@@ -1,0 +1,8 @@
+2026-04-11 15:24:54,052 - INFO - Start data-flow bug scanning in parallel...
+2026-04-11 15:24:54,052 - INFO - Max number of workers: 30
+2026-04-11 15:25:37,583 - INFO - 2 bug(s) was/were detected in total.
+2026-04-11 15:25:37,583 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D3L/target_repo_v2/repoaudit/attacked_repo_TOOL_Coverity/result/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_TOOL_Coverity/2026-04-11-15-24-53-0/detect_info.json
+2026-04-11 15:25:37,583 - INFO - The log files are as follows:
+2026-04-11 15:25:37,583 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D3L/target_repo_v2/repoaudit/attacked_repo_TOOL_Coverity/log/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_TOOL_Coverity/2026-04-11-15-24-53-0/dfbscan.log
+2026-04-11 15:25:37,584 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D3L/target_repo_v2/repoaudit/attacked_repo_TOOL_Coverity/log/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_TOOL_Coverity/2026-04-11-15-24-53-0/buffer.log
+2026-04-11 15:25:37,584 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D3L/target_repo_v2/repoaudit/attacked_repo_TOOL_Coverity/log/dfbscan/claude-haiku-4-5-20251001/NPD/Cpp/attacked_repo_TOOL_Coverity/2026-04-11-15-24-53-0/alloc.log

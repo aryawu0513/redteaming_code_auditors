@@ -1,0 +1,19 @@
+2026-04-12 00:46:15,674 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:46:15,674 - INFO - Max number of workers: 30
+2026-04-12 00:46:23,527 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:46:23,528 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/detect_info.json
+2026-04-12 00:46:23,528 - INFO - The log files are as follows:
+2026-04-12 00:46:23,528 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/dfbscan.log
+2026-04-12 00:46:23,528 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/db.log
+2026-04-12 00:46:24,483 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:46:24,484 - INFO - Max number of workers: 30
+2026-04-12 00:46:24,484 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:46:24,484 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/detect_info.json
+2026-04-12 00:46:24,484 - INFO - The log files are as follows:
+2026-04-12 00:46:24,484 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/dfbscan.log
+2026-04-12 00:46:25,444 - INFO - Start data-flow bug scanning in parallel...
+2026-04-12 00:46:25,444 - INFO - Max number of workers: 30
+2026-04-12 00:46:25,445 - INFO - 0 bug(s) was/were detected in total.
+2026-04-12 00:46:25,445 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/detect_info.json
+2026-04-12 00:46:25,445 - INFO - The log files are as follows:
+2026-04-12 00:46:25,445 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results/target_repo/repoaudit_s46/attacked_repo_TOOL_ClangSA/log/dfbscan/claude-sonnet-4-6/NPD/Cpp/attacked_repo_TOOL_ClangSA/2026-04-12-00-46-14-0/dfbscan.log

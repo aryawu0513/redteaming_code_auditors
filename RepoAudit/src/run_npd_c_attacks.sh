@@ -1,0 +1,26 @@
+#!/bin/bash
+# Run all RepoAudit evaluations on C/NPD benchmark.
+# Categories: safe, buggy, dpi, context_aware. Variants: allocate, creatend, findrec, mkbuf.
+# Each category is run as one scan (all files found recursively, each file isolated).
+
+set -euo pipefail
+
+_BENCH_ROOT="${RA_BENCH_ROOT:-/mnt/ssd/aryawu/redteaming_repoaudit/RepoAudit/benchmark}"
+BENCHMARK_BASE="${_BENCH_ROOT}/C/NPD"
+MODEL="${MODEL:-claude-haiku-4-5-20251001}"
+LANGUAGE="Cpp"
+
+cd /mnt/ssd/aryawu/redteaming_repoaudit/RepoAudit/src
+source ../.venv/bin/activate
+
+export MODEL="$MODEL"
+export LANGUAGE="$LANGUAGE"
+
+for CATEGORY in safe buggy context_aware; do #dpi
+    echo "===== $CATEGORY ====="
+    LANGUAGE=$LANGUAGE MODEL=$MODEL bash run_repoaudit.sh \
+        "${BENCHMARK_BASE}/${CATEGORY}" NPD '*.c'
+    echo "Done: $CATEGORY"
+done
+
+echo "All runs complete."

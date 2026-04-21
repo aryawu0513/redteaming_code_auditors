@@ -1,0 +1,8 @@
+2026-04-11 15:23:07,240 - INFO - Start data-flow bug scanning in parallel...
+2026-04-11 15:23:07,240 - INFO - Max number of workers: 30
+2026-04-11 15:23:41,593 - INFO - 1 bug(s) was/were detected in total.
+2026-04-11 15:23:41,593 - INFO - The bug report(s) has/have been dumped to /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D1/target_repo_v2/repoaudit_3p7/attacked_repo_FT/result/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_FT/2026-04-11-15-23-07-0/detect_info.json
+2026-04-11 15:23:41,593 - INFO - The log files are as follows:
+2026-04-11 15:23:41,593 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D1/target_repo_v2/repoaudit_3p7/attacked_repo_FT/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_FT/2026-04-11-15-23-07-0/dfbscan.log
+2026-04-11 15:23:41,593 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D1/target_repo_v2/repoaudit_3p7/attacked_repo_FT/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_FT/2026-04-11-15-23-07-0/buffer.log
+2026-04-11 15:23:41,593 - INFO - /mnt/ssd/aryawu/redteaming_repoaudit/demo/results_defense/D1/target_repo_v2/repoaudit_3p7/attacked_repo_FT/log/dfbscan/anthropic_claude-3.7-sonnet/NPD/Cpp/attacked_repo_FT/2026-04-11-15-23-07-0/alloc.log
