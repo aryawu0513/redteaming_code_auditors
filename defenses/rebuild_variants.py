@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Rebuild D3L/D3A/D3B variant dirs from D3_labeled (pure regex, no LLM).
+Rebuild D3 variant dirs from D3_labeled (pure regex, no LLM).
 
-Run this after re-screening D3_labeled to regenerate all variant dirs for
+Run this after re-screening D3_labeled to regenerate the D3 variant dirs for
 both RepoAudit (benchmark-defense/) and VulnLLM-R (datasets-defense/).
 
 Usage:
@@ -17,7 +17,7 @@ sys.path.insert(0, BASE)
 from defenses.screening_agent import apply_variant
 
 ALL_SUBTREES = ['C/NPD', 'C/UAF', 'Python/NPD']
-ALL_VARIANTS = [('D3L', 'labeled'), ('D3A', 'A'), ('D3B', 'B')]
+ALL_VARIANTS = [('D3', 'labeled')]
 
 
 def rebuild_repoaudit(subtree: str, variants=ALL_VARIANTS):

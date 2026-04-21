@@ -2,7 +2,7 @@
 """
 view_defense_results.py — Print defense effectiveness tables for the demo.
 
-Shows how each defense (D1, D3L, D4_prepend) changes the verdict on every
+Shows how each defense (D1, D3, D4) changes the verdict on every
 attack, compared to the undefended baseline (buggy repo, no defense).
 
 Usage:
@@ -21,7 +21,7 @@ import re
 DEMO_DIR   = os.path.dirname(os.path.abspath(__file__))
 RESULTS    = os.path.join(DEMO_DIR, "results")
 RESULTS_D  = os.path.join(DEMO_DIR, "results_defense")
-DEFENSES   = ["No-Defense", "D1", "D3L", "D4_prepend"]
+DEFENSES   = ["No-Defense", "D1", "D3", "D4"]
 SYSTEMS    = [("repoaudit",     "RepoAudit (haiku)"),
               ("repoaudit_3p7", "RepoAudit (3.7)"),
               ("repoaudit_s46", "RepoAudit (s46)"),
@@ -178,7 +178,7 @@ def print_table(repo: str, variant: str, label: str, attacks: list[str]) -> None
     print(dim("  " + "-" * (atk_w + 2 + len(DEFENSES) * 14)))
 
     # Attack rows
-    recovered_by = {d: 0 for d in DEFENSES[1:]}   # D1, D3L, D4_prepend
+    recovered_by = {d: 0 for d in DEFENSES[1:]}   # D1, D3, D4
     total_missed_nd = 0
 
     for atk in attacks:

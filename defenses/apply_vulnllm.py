@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """
 Apply a defense to VulnLLM-R:
-  D1/D2  — set VL_TASK_ADDITION env var (injected as preamble in user prompt via sys_prompts.py)
-  D3A/D3B/D4/D4_prepend — sanitize dataset JSON code fields via screening agent,
-                           redirect VL_DATASET_PREFIX
+  D1/D2 — set VL_TASK_ADDITION env var (injected as preamble in user prompt via sys_prompts.py)
+  D3/D4 — sanitize dataset JSON code fields via screening agent, redirect VL_DATASET_PREFIX
 
 Usage:
     python defenses/apply_vulnllm.py --defense D1 --run-script run_npd_c_attacks.sh
-    python defenses/apply_vulnllm.py --defense D3B --run-script run_npd_c_attacks.sh
-    python defenses/apply_vulnllm.py --defense D3A --subtree C/UAF --preprocess-only
-    python defenses/apply_vulnllm.py --defense D3L --subtree Python/NPD --run-script run_npd_python_attacks.sh
+    python defenses/apply_vulnllm.py --defense D3 --run-script run_npd_c_attacks.sh
+    python defenses/apply_vulnllm.py --defense D3 --subtree C/UAF --preprocess-only
     python defenses/apply_vulnllm.py --defense D4 --subtree C/NPD --preprocess-only
+    python defenses/apply_vulnllm.py --defense D4 --subtree Python/NPD --run-script run_npd_python_attacks.sh
 """
 import argparse, os, subprocess, sys
 
@@ -22,60 +21,11 @@ sys.path.insert(0, BASE)
 from defenses.registry import DEFENSES
 
 
-
 def rewrite_output_dir(output_dir: str, defense_name: str) -> str:
     """Redirect results/... to results-defense/{defense}/{...}"""
     if output_dir.startswith('results/'):
         return output_dir.replace('results/', f'results-defense/{defense_name}/', 1)
     return os.path.join(f'results-defense/{defense_name}', output_dir)
-
-
-def migrate_d4_labeled(subtree: str = 'C/NPD') -> None:
-    """Extract audit blocks from D4_prepend_labeled and write separator format to D4_labeled.
-    Also produces the final D4 (append) and D4_prepend (prepend) datasets as a side effect.
-    Overwrites existing files; does not delete directories.
-    """
-    import json as _json, glob as _glob, shutil as _shutil
-    from defenses.screening_agent import AUDIT_SEPARATOR, extract_from_prepend_labeled, apply_variant
-
-    src_dir = os.path.join(VL_BASE, 'datasets-defense', 'D4_prepend_labeled', subtree)
-    if not os.path.exists(src_dir):
-        raise FileNotFoundError(f"[migrate] Source not found: {src_dir}")
-
-    lang = 'python' if subtree.startswith('Python') else 'c'
-    labeled_dir = os.path.join(VL_BASE, 'datasets-defense', 'D4_labeled', subtree)
-    append_dir  = os.path.join(VL_BASE, 'datasets-defense', 'D4_append',  subtree)
-    prepend_dir = os.path.join(VL_BASE, 'datasets-defense', 'D4_prepend', subtree)
-
-    json_files = _glob.glob(os.path.join(src_dir, '**', '*.json'), recursive=True)
-    print(f"[migrate] {len(json_files)} JSON files from {src_dir}")
-
-    for src_fpath in json_files:
-        rel = os.path.relpath(src_fpath, src_dir)
-        with open(src_fpath) as f:
-            data = _json.load(f)
-
-        labeled_data = [dict(item) for item in data]
-        append_data  = [dict(item) for item in data]
-        prepend_data = [dict(item) for item in data]
-
-        for i, item in enumerate(data):
-            if not isinstance(item, dict) or 'code' not in item:
-                continue
-            sep_code = extract_from_prepend_labeled(item['code'])
-            labeled_data[i]['code'] = sep_code
-            append_data[i]['code']  = apply_variant(sep_code, 'D4_append',  lang=lang)
-            prepend_data[i]['code'] = apply_variant(sep_code, 'D4_prepend', lang=lang)
-
-        for dst_dir, out_data in [(labeled_dir, labeled_data),
-                                   (append_dir,  append_data),
-                                   (prepend_dir, prepend_data)]:
-            dst_fpath = os.path.join(dst_dir, rel)
-            os.makedirs(os.path.dirname(dst_fpath), exist_ok=True)
-            with open(dst_fpath, 'w') as f:
-                _json.dump(out_data, f, indent=2)
-
-    print(f"[migrate] Done: D4_labeled, D4, D4_prepend for {subtree}")
 
 
 def build_vl_datasets(defense_name: str, variant: str, subtree: str = 'C/NPD',
@@ -89,46 +39,39 @@ def build_vl_datasets(defense_name: str, variant: str, subtree: str = 'C/NPD',
     import json as _json, shutil as _shutil, glob as _glob
     from defenses.screening_agent import label_files, apply_variant, AUDIT_SEPARATOR
 
-    is_d4     = defense_name in ('D4_append', 'D4_prepend')
+    is_d4    = defense_name == 'D4'
     label_tag = 'D4_labeled' if is_d4 else 'D3_labeled'
-    lang      = 'python' if subtree.startswith('Python') else 'c'
+    lang     = 'python' if subtree.startswith('Python') else 'c'
 
     labeled_datasets = os.path.join(VL_BASE, 'datasets-defense', label_tag)
     labeled_subtree  = os.path.join(labeled_datasets, subtree)
     dst_datasets     = os.path.join(VL_BASE, 'datasets-defense', defense_name)
     dst_subtree      = os.path.join(dst_datasets, subtree)
 
-    # Stage 1: label once per subtree (D3 only; D4 has its own flow unchanged below)
+    # Stage 1: label once per subtree
     if os.path.exists(labeled_subtree):
         print(f"[defense] Reusing labeled datasets: {labeled_subtree}")
     elif is_d4:
-        # D4: prefer extraction from D4_prepend_labeled (no LLM cost)
-        prepend_src = os.path.join(VL_BASE, 'datasets-defense', 'D4_prepend_labeled', subtree)
-        if os.path.exists(prepend_src):
-            print(f"[defense] Extracting D4_labeled from D4_prepend_labeled (no LLM)...")
-            migrate_d4_labeled(subtree)
-            print(f"[defense] Extraction done: {labeled_subtree}")
-        else:
-            _shutil.copytree(os.path.join(VL_DATASETS, subtree), labeled_subtree)
-            json_files = _glob.glob(os.path.join(labeled_subtree, '**', '*.json'), recursive=True)
-            file_map, json_data = {}, {}
-            for fpath in json_files:
-                with open(fpath) as f:
-                    data = _json.load(f)
-                json_data[fpath] = data
-                for i, item in enumerate(data):
-                    if isinstance(item, dict) and 'code' in item:
-                        file_map[f"{fpath}::{i}"] = item['code']
-            print(f"[defense] Labeling {len(file_map)} JSON code entries (LLM call)...")
-            from defenses.screening_agent import label_files_d4
-            results = label_files_d4(file_map)
-            for key, (labeled, _) in results.items():
-                fpath, idx = key.rsplit('::', 1)
-                json_data[fpath][int(idx)]['code'] = labeled
-            for fpath, data in json_data.items():
-                with open(fpath, 'w') as f:
-                    _json.dump(data, f, indent=2)
-            print(f"[defense] Labeling done: {labeled_datasets}")
+        _shutil.copytree(os.path.join(VL_DATASETS, subtree), labeled_subtree)
+        json_files = _glob.glob(os.path.join(labeled_subtree, '**', '*.json'), recursive=True)
+        file_map, json_data = {}, {}
+        for fpath in json_files:
+            with open(fpath) as f:
+                data = _json.load(f)
+            json_data[fpath] = data
+            for i, item in enumerate(data):
+                if isinstance(item, dict) and 'code' in item:
+                    file_map[f"{fpath}::{i}"] = item['code']
+        print(f"[defense] Labeling {len(file_map)} JSON code entries (LLM call)...")
+        from defenses.screening_agent import label_files_d4
+        results = label_files_d4(file_map)
+        for key, (labeled, _) in results.items():
+            fpath, idx = key.rsplit('::', 1)
+            json_data[fpath][int(idx)]['code'] = labeled
+        for fpath, data in json_data.items():
+            with open(fpath, 'w') as f:
+                _json.dump(data, f, indent=2)
+        print(f"[defense] Labeling done: {labeled_datasets}")
     else:
         # D3: check if RA already screened the same source files
         texts_labeled_subtree = os.path.join(TEXTS_D3, subtree)
@@ -139,8 +82,6 @@ def build_vl_datasets(defense_name: str, variant: str, subtree: str = 'C/NPD',
             json_files = _glob.glob(os.path.join(VL_DATASETS, subtree, '**', '*.json'), recursive=True)
             for jpath in json_files:
                 rel  = os.path.relpath(jpath, os.path.join(VL_DATASETS, subtree))
-                # Corresponding labeled .c: remove /c/ subdir from rel path, change ext
-                # e.g. context_aware/creatend/c/creatend_COT.json → context_aware/creatend/creatend_COT.c
                 rel_parts = rel.replace(os.sep, '/').split('/')
                 rel_no_lang = '/'.join(p for p in rel_parts if p not in ('c', 'python'))
                 c_rel = os.path.splitext(rel_no_lang)[0] + ext
@@ -204,10 +145,7 @@ def build_vl_datasets(defense_name: str, variant: str, subtree: str = 'C/NPD',
         print(f"[defense] Preprocess complete. Inspect datasets-defense/{label_tag}/{subtree}/ then run without --preprocess-only.")
         sys.exit(0)
 
-    # Stage 2: apply variant placement per subtree
-    # D4 uses defense_name ('D4_append'/'D4_prepend') to determine placement;
-    # D3 uses screening_variant ('labeled'/'A'/'B'), not the defense name.
-    apply_key = defense_name if is_d4 else variant
+    # Stage 2: apply variant placement
     if os.path.exists(dst_subtree):
         print(f"[defense] Reusing sanitized datasets: {dst_subtree}")
     else:
@@ -218,10 +156,10 @@ def build_vl_datasets(defense_name: str, variant: str, subtree: str = 'C/NPD',
                 data = _json.load(f)
             for item in data:
                 if isinstance(item, dict) and 'code' in item:
-                    item['code'] = apply_variant(item['code'], apply_key, lang=lang)
+                    item['code'] = apply_variant(item['code'], variant, lang=lang)
             with open(fpath, 'w') as f:
                 _json.dump(data, f, indent=2)
-        print(f"[defense] Variant {apply_key} applied: {dst_subtree}")
+        print(f"[defense] Variant {variant} applied: {dst_subtree}")
 
     return dst_datasets
 
@@ -231,7 +169,7 @@ def main():
     parser.add_argument('--defense', required=True, choices=list(DEFENSES.keys()))
     parser.add_argument('--run-script', help='Run a shell script from VulnLLM-R dir with defense env')
     parser.add_argument('--preprocess-only', action='store_true',
-                        help='For D3A/D3B: run LLM labeling only, do not launch benchmark')
+                        help='For D3/D4: run LLM labeling only, do not launch benchmark')
     parser.add_argument('--subtree', default='C/NPD',
                         help='Dataset subtree to process, e.g. C/NPD (default), C/UAF, Python/NPD')
     parser.add_argument('rest', nargs=argparse.REMAINDER)
@@ -281,7 +219,6 @@ def main():
             new_args.append(rewrite_output_dir(rest[i+1], args.defense))
             i += 2
         elif rest[i] == '--dataset_path' and i + 1 < len(rest) and 'VL_DATASET_PREFIX' in os.environ:
-            # Remap dataset_path to sanitized dir
             orig = rest[i+1]
             rel = os.path.relpath(orig, VL_DATASETS)
             new_args.append('--dataset_path')

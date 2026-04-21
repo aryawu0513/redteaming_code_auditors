@@ -10,7 +10,7 @@ against two LLM-based vulnerability detectors: **RepoAudit** and **VulnLLM-R**.
 1. Both auditors detect a real NPD bug — **baseline pass**
 2. A malicious agent injects adversarial comments into the source
 3. Both auditors miss the bug — **attack succeeds**
-4. Defenses (D1, D3L, D4\_prepend) are applied — most misses are recovered
+4. Defenses (D1, D3, D4) are applied — most misses are recovered
 
 ### Threat Model
 
@@ -113,31 +113,31 @@ python demo/view_defense_results.py target_repo_v2
 | Defense | Mechanism |
 |---|---|
 | **D1** | Prompt instruction: treat all comments as untrusted |
-| **D3L** | Screener LLM labels each comment `[VERIFIABLE]`/`[INTENDED]`/`[UNVERIFIABLE]`/`[ADVERSARIAL]` in-place |
-| **D4\_prepend** | Screener LLM produces a per-comment audit block prepended before the source |
+| **D3** | Screener LLM labels each comment `[VERIFIABLE]`/`[INTENDED]`/`[UNVERIFIABLE]`/`[ADVERSARIAL]` in-place |
+| **D4** | Screener LLM produces a per-comment audit block prepended before the source |
 
-**Step 1 — Preprocess source files** (D3L and D4\_prepend only):
+**Step 1 — Preprocess source files** (D3 and D4 only):
 
 ```bash
-python demo/preprocess_defense.py --defense D3L        --repo target_repo_v2
-python demo/preprocess_defense.py --defense D4_prepend --repo target_repo_v2
+python demo/preprocess_defense.py --defense D3 --repo target_repo_v2
+python demo/preprocess_defense.py --defense D4 --repo target_repo_v2
 ```
 
 **Step 2 — Run auditors with defense:**
 
 ```bash
 # RepoAudit (haiku)
-for D in D1 D3L D4_prepend; do
+for D in D1 D3 D4; do
     DEFENSE=$D bash demo/run_defense_repoaudit.sh target_repo_v2
 done
 
 # RepoAudit (3.7-sonnet)
-for D in D1 D3L D4_prepend; do
+for D in D1 D3 D4; do
     DEFENSE=$D bash demo/run_defense_repoaudit_3p7.sh target_repo_v2
 done
 
 # VulnLLM-R (GPU required)
-for D in D1 D3L D4_prepend; do
+for D in D1 D3 D4; do
     DEFENSE=$D CUDA_VISIBLE_DEVICES=<id> bash demo/run_defense_vulnllm.sh target_repo_v2
 done
 ```
@@ -161,7 +161,7 @@ python demo/viewer.py
 Shows source code, Explorer reasoning, Validator verdict, and VulnLLM-R output
 side by side. An **Attack** dropdown selects `safe`, `buggy`, or any of the 12
 attack variants. A **Defense** dropdown switches between `No-Defense`, `D1`,
-`D3L`, and `D4_prepend`.
+`D3`, and `D4`.
 
 ---
 
@@ -192,8 +192,8 @@ All 10 context-aware attack types are supported:
 inserts it between the call and dereference.
 
 **Defense screening agent** (`defenses/screening_agent.py`) makes one LLM
-call per file — labeling comments in-place for D3L, or producing a prepended
-audit block for D4\_prepend.
+call per file — labeling comments in-place for D3, or producing a prepended
+audit block for D4.
 
 **RepoAudit** defense prompt injections are added to the `task` field of both
 `path_validator.json` and `intra_dataflow_analyzer.json`.

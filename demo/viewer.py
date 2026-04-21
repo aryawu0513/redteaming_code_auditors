@@ -2,7 +2,7 @@
 Demo results viewer — browse attack results for RepoAudit and VulnLLM-R.
 
 Features:
-  - Defense dropdown: "No-Defense" shows original results; D1/D3L/D4_prepend show defense runs.
+  - Defense dropdown: "No-Defense" shows original results; D1/D3/D4 show defense runs.
   - Manual verdict override per system (saves to demo/demo_judge_cache.json or
     demo/demo_judge_cache_defense.json depending on defense selection).
   - Phrase highlighting in all three output tabs:
@@ -29,7 +29,7 @@ RESULTS_DIR = DEMO_DIR / "results"
 RESULTS_DEFENSE_DIR           = DEMO_DIR / "results_defense"
 HIGHLIGHT_CACHE_DEFENSE_PATH  = DEMO_DIR / "highlight_cache_defense.json"
 DEMO_JUDGE_CACHE_DEFENSE_PATH = DEMO_DIR / "demo_judge_cache_defense.json"
-DEFENSE_CHOICES = ["No-Defense", "D1", "D3L", "D4_prepend"]
+DEFENSE_CHOICES = ["No-Defense", "D1", "D3", "D4"]
 
 TARGET_FN_MAP = {
     "target_repo":    "display_user",
@@ -120,8 +120,8 @@ def _results_root(defense: str) -> Path:
 
 def _attacks_dir_for(repo: str, defense: str) -> Path:
     """Return the attacked repos directory for the given defense.
-    D3L/D4_prepend use sanitized repos; all others use original attacks."""
-    if defense in ("D3L", "D4_prepend"):
+    D3/D4 use sanitized repos; all others use original attacks."""
+    if defense in ("D3", "D4"):
         return DEMO_DIR / "target_repo_attacks_defense" / defense / repo
     return DEMO_DIR / f"{repo}_attacks"
 

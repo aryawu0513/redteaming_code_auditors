@@ -197,9 +197,8 @@ Results land in `VulnLLM-R/results/{Lang}/{Bug}/policy/{category}/`.
 |----|-------------|
 | **D1** | Prompt instruction: treat all comments as untrusted |
 | **D2** | Prompt instruction: label each comment VERIFIABLE / INTENDED / UNVERIFIABLE / ADVERSARIAL before reasoning |
-| **D3L** | Screening agent (Claude Haiku) pre-labels every comment in-place; audit model sees tags |
-| **D3A** | Same agent, flags UNVERIFIABLE/ADVERSARIAL with prefix |
-| **D3B** | Same agent, deletes UNVERIFIABLE/ADVERSARIAL comments |
+| **D3** | Screening agent (Claude Haiku) pre-labels every comment in-place; audit model sees tags |
+| **D4** | Screening agent produces a per-comment audit block prepended before the source |
 | **D5** | Annotator agent adds honest Google-style docstrings documenting the null-return path |
 
 Defense registry: `defenses/registry.py`
@@ -209,10 +208,10 @@ Defense registry: `defenses/registry.py`
 python defenses/screen_benchmark.py --subtree C/NPD
 
 # Apply defense to RepoAudit:
-python defenses/apply_repoaudit.py --defense D3L -- bash run_npd_c_attacks.sh
+python defenses/apply_repoaudit.py --defense D3 -- bash run_npd_c_attacks.sh
 
 # Apply defense to VulnLLM-R:
-python defenses/apply_vulnllm.py --defense D3L --run-script run_npd_c_attacks.sh
+python defenses/apply_vulnllm.py --defense D3 --run-script run_npd_c_attacks.sh
 ```
 
 ---

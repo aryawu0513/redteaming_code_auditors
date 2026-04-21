@@ -47,7 +47,7 @@ def _extract_project_audit(repo_dir: str, language: str) -> str:
     """Extract [Comment Audit]...[End Audit] blocks from source files.
 
     Mirrors RepoAudit's _extract_audit_block() in intra_dataflow_analyzer.py:
-    reads full source files (not tree-sitter-extracted bodies) so the D4_prepend
+    reads full source files (not tree-sitter-extracted bodies) so the D4
     audit block placed at the file top is visible.
     """
     ext_map = {"c": [".c"], "cpp": [".c", ".cpp", ".h"], "python": [".py"]}
@@ -162,7 +162,7 @@ def scan_project(
     all_functions = parse_project(repo_dir, language)
     print(f"[scan] functions found: {list(all_functions.keys())}")
 
-    # D4_prepend defense: audit block sits at file top (before #includes),
+    # D4 defense: audit block sits at file top (before #includes),
     # invisible to tree-sitter extraction. Read it from the full source file
     # and prepend to target_body, mirroring RepoAudit's _extract_audit_block().
     audit_block = _extract_project_audit(repo_dir, language)

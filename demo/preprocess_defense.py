@@ -1,22 +1,22 @@
 #!/usr/bin/env python3
 """
-Pre-process attacked demo repos for D3L / D4_prepend defense evaluation.
+Pre-process attacked demo repos for D3 / D4 defense evaluation.
 
-For D3L: labels every comment (VERIFIABLE/INTENDED/UNVERIFIABLE/ADVERSARIAL),
-         keeping all labels in-place so the auditor can reason about them.
-For D4_prepend: builds a per-comment audit block with reasoning, prepended to the code.
+For D3: labels every comment (VERIFIABLE/INTENDED/UNVERIFIABLE/ADVERSARIAL),
+        keeping all labels in-place so the auditor can reason about them.
+For D4: builds a per-comment audit block with reasoning, prepended to the code.
 
 Output: demo/target_repo_attacks_defense/{defense}/{repo}/attacked_repo_XX/
 
-Usage (from repo root, with RepoAudit venv active):
-    python demo/preprocess_defense.py --defense D3L --repo target_repo
-    python demo/preprocess_defense.py --defense D4_prepend --repo target_repo
-    python demo/preprocess_defense.py --defense D3L --defense D4_prepend --repo target_repo target_repo_v2
+Usage (from repo root, with .venv active):
+    python demo/preprocess_defense.py --defense D3 --repo target_repo
+    python demo/preprocess_defense.py --defense D4 --repo target_repo
+    python demo/preprocess_defense.py --defense D3 --defense D4 --repo target_repo target_repo_v2
 
 Notes:
   - Idempotent: skips repo dirs that already exist.
   - LLM call required (uses SCREENING_MODEL env var, defaults to claude-haiku-4-5-20251001).
-  - set ANTHROPIC_API_KEY before running.
+  - Set ANTHROPIC_API_KEY before running.
 """
 import argparse
 import shutil
@@ -63,17 +63,17 @@ def process_repo(defense: str, repo: str) -> None:
         print(f"[preprocess] {defense}/{repo}/{repo_dir.name} "
               f"— calling screening agent on {len(c_files)} file(s)…")
 
-        if defense == "D4_prepend":
+        if defense == "D4":
             results = label_files_d4(c_files)
-            apply_key = "D4_prepend"
-        else:  # D3L
+            apply_key = "D4"
+        else:  # D3
             results = label_files(c_files)
             apply_key = "labeled"
 
         # Copy whole dir first (preserves .h files etc.) then overwrite .c files.
         shutil.copytree(repo_dir, dst_dir)
         for src_path, (labeled, unchanged) in results.items():
-            if defense != "D4_prepend" and not unchanged:
+            if defense != "D4" and not unchanged:
                 print(f"[preprocess]   WARNING: screener modified executable code in {src_path}")
             transformed = apply_variant(labeled, apply_key, lang="c")
             dst_path = Path(src_path.replace(str(repo_dir), str(dst_dir)))
@@ -86,11 +86,11 @@ def process_repo(defense: str, repo: str) -> None:
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Sanitize demo attacked repos for D3L / D4_prepend defense runs."
+        description="Sanitize demo attacked repos for D3 / D4 defense runs."
     )
     parser.add_argument(
-        "--defense", required=True, nargs="+", choices=["D3L", "D4_prepend"],
-        help="Defense(es) to preprocess (D3L and/or D4_prepend)",
+        "--defense", required=True, nargs="+", choices=["D3", "D4"],
+        help="Defense(es) to preprocess (D3 and/or D4)",
     )
     parser.add_argument(
         "--repo", nargs="+", default=["target_repo"],

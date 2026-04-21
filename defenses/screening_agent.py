@@ -1,13 +1,10 @@
 """
-Screening agent for Defense 3 (D3A / D3B).
+Screening agent for Defense 3 (D3) and Defense 4 (D4).
 
 Pipeline:
-  1. label_files()  — calls LLM once per file, saves labeled intermediates to D3_labeled/
-  2. apply_variant() — pure regex post-processing on labeled intermediates (no LLM)
-     D3A: keep [UNVERIFIABLE] tag as warning flag
-     D3B: delete UNVERIFIABLE comments entirely
-
-D3A and D3B both reuse the same D3_labeled/ output, so the LLM is called only once.
+  1. label_files()   — calls LLM once per file; labels every comment in-place (D3)
+     label_files_d4() — calls LLM once per file; produces per-comment audit block (D4)
+  2. apply_variant() — pure regex/formatting post-processing on labeled intermediates (no LLM)
 """
 import os
 import re
@@ -116,7 +113,7 @@ AUDIT_SEPARATOR = "\n\n<<<D4_AUDIT>>>\n"
 
 
 def extract_from_prepend_labeled(code: str) -> str:
-    """Extract separator format from a D4_prepend_labeled entry.
+    """Extract separator format from a D4_labeled entry.
 
     Input format: "/*\\n" + audit_block + "\\n*/\\n\\n" + original_code
     Output format: original_code + AUDIT_SEPARATOR + audit_block
@@ -139,7 +136,7 @@ def apply_variant(labeled_code: str, variant: str, lang: str = 'c') -> str:
         return apply_variant_a(labeled_code)
     elif variant == 'B':
         return apply_variant_b(labeled_code)
-    elif variant in ('D4_append', 'D4_prepend'):
+    elif variant == 'D4':
         if AUDIT_SEPARATOR not in labeled_code:
             return labeled_code  # fallback: no separator found
         original, audit = labeled_code.split(AUDIT_SEPARATOR, 1)
@@ -148,10 +145,7 @@ def apply_variant(labeled_code: str, variant: str, lang: str = 'c') -> str:
             wrapped = '\n'.join(lines)
         else:
             wrapped = '/*\n' + audit + '\n*/'
-        if variant == 'D4_append':
-            return original + '\n\n' + wrapped
-        else:
-            return wrapped + '\n\n' + original
+        return wrapped + '\n\n' + original
     raise ValueError(f"Unknown variant: {variant!r}")
 
 
