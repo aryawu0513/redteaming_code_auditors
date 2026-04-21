@@ -1,0 +1,34 @@
+[project]
+name = "redteaming-code-auditors"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    # LLM inference
+    "vllm==0.8.2",
+
+    # RepoAudit + attack generation
+    "anthropic",
+    "dspy-ai>=2.0",
+    "openai",
+    "networkx",
+    "tiktoken",
+    "tqdm",
+
+    # Shared parsing (pinned — both systems require 0.21.x)
+    "tree-sitter==0.21.3",
+    "tree-sitter-languages==1.10.2",
+
+    # VulnLLM-R runtime (training deps excluded)
+    "python-dotenv",
+    "PyYAML",
+    "loguru",
+    "orjson",
+    "aiolimiter",
+    "pandas",
+]
+
+[tool.uv.sources]
+vulscan = { path = "VulnLLM-R", editable = true }
+
+[tool.uv]
+package = false
