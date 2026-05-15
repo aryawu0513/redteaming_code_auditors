@@ -1,0 +1,3 @@
+[submodule "attacker/mini-swe-agent"]
+	path = attacker/mini-swe-agent
+	url = https://github.com/SWE-agent/mini-swe-agent

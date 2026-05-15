@@ -378,6 +378,8 @@ if __name__ == "__main__":
                 name = f"{dataset_path}_eval_{name}"
                 wandb.init(project="patch_llm", name=name, entity="rucnyz")
 
+            print(f"[DEBUG] dataset_path={dataset_path}, language={language}")
+            print(f"[DEBUG] output_dir={args.output_dir!r} (cwd={os.getcwd()})")
             eval_examples, _, _ = load_reasoning_data(
                 dataset_path,
                 output_path,
@@ -394,6 +396,7 @@ if __name__ == "__main__":
                 ood=args.ood,
             )
 
+            print(f"[DEBUG] loaded {len(eval_examples)} eval examples")
             eval_examples = eval_examples[: args.test_samples_num]
             if args.ids:
                 eval_examples = [
@@ -408,6 +411,7 @@ if __name__ == "__main__":
                 eval_examples = [
                     item for item in eval_examples if str(item["idx"]) not in remove_idx
                 ]
+            print(f"[DEBUG] after filtering: {len(eval_examples)} eval examples")
             if eval_examples:
                 if args.multi_run_with_related_cwe:
                     # Step 1: Run args.multi_run_n times without policy to collect predicted CWEs
@@ -861,7 +865,9 @@ if __name__ == "__main__":
                 )
                 # save the output
                 if args.save:
-                    os.makedirs(args.output_dir, exist_ok=True)
+                    abs_output_dir = os.path.abspath(args.output_dir)
+                    print(f"[DEBUG] saving to abs path: {abs_output_dir}")
+                    os.makedirs(abs_output_dir, exist_ok=True)
                     rel_path = str(dataset_path.relative_to(PROJECT_PATH))
                     dataset_name = rel_path.replace("/", "_")
                     model_name_parts = args.model.split("/")
@@ -886,12 +892,10 @@ if __name__ == "__main__":
                         "__multi_run" if args.multi_run_with_related_cwe else ""
                     )
 
-                    save_results(
-                        os.path.join(
-                            args.output_dir,
-                            f"{args.max_tokens}__{args.n}__{dataset_name}__{'ood' if args.ood else 'full'}__{cot}__{language}__{'policy' if args.use_policy else 'no_policy'}__{model_shortname}{multi_run_suffix}.json",
-                        ),
-                        save_output,
-                        args.wandb,
+                    out_file = os.path.join(
+                        abs_output_dir,
+                        f"{args.max_tokens}__{args.n}__{dataset_name}__{'ood' if args.ood else 'full'}__{cot}__{language}__{'policy' if args.use_policy else 'no_policy'}__{model_shortname}{multi_run_suffix}.json",
                     )
-                    print(f"Results saved to {args.output_dir}")
+                    print(f"[DEBUG] writing results file: {out_file}")
+                    save_results(out_file, save_output, args.wandb)
+                    print(f"Results saved to {abs_output_dir}")

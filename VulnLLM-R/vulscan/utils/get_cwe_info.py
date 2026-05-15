@@ -12,10 +12,12 @@ def _init_cwe_descriptions():
     cwe_df = pd.read_csv(os.path.join(PROJECT_PATH, "datasets/cwe-details.csv"))
     cwe_descriptions = {}
     for _, row in cwe_df.iterrows():
+        name = str(row["Name"]) if not pd.isna(row["Name"]) else ""
         if pd.isna(row["Extended Description"]):
-            cwe_descriptions[row["CWE-ID"]] = row["Name"] + ". " + row['Description']
+            desc = str(row["Description"]) if not pd.isna(row["Description"]) else ""
+            cwe_descriptions[row["CWE-ID"]] = name + ". " + desc
         else:
-            cwe_descriptions[row["CWE-ID"]] = row["Name"] + ". " + row["Extended Description"]
+            cwe_descriptions[row["CWE-ID"]] = name + ". " + str(row["Extended Description"])
 
 
 def get_cwe_info(cwe_id: int) -> str:

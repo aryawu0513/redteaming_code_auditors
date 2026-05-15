@@ -1,7 +1,7 @@
 [project]
 name = "redteaming-code-auditors"
 version = "0.1.0"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 dependencies = [
     # LLM inference
     "vllm==0.8.2",
@@ -25,10 +25,18 @@ dependencies = [
     "orjson",
     "aiolimiter",
     "pandas",
+    "mini-swe-agent",
+    "datasets",
+    "vulscan",
+    "model-zoo",
+    "gradio",
+    "transformers==5.3.0",
 ]
 
 [tool.uv.sources]
 vulscan = { path = "VulnLLM-R", editable = true }
+model-zoo = { path = "VulnLLM-R/vulscan/model_zoo", editable = true }
+mini-swe-agent = { path = "attacker/mini-swe-agent", editable = true }
 
 [tool.uv]
 package = false

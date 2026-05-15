@@ -236,7 +236,9 @@ def load_reasoning_data(
                     data_num += 1
                 cwe_count += 1
             except Exception as e:
+                import traceback
                 print(f"process {json_file} wrong: {str(e)}")
+                traceback.print_exc()
         print(f"Total CWEs: {cwe_count}")
     reasoning_data.insert(0, {"acc_num": 0})
     with open(output_path, "wb") as f:
