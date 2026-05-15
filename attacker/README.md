@@ -16,11 +16,12 @@ TOOL_ClangSA, TOOL_Frama, TOOL_Fuzzer, TOOL_Coverity), producing one
 # Install dependencies (from repo root)
 uv sync
 
-# Install run_test / submit command-line tools
+# Install run_test / submit / run_crash command-line tools
 cd attacker/bin
 gcc -o run_test run_test.c
 gcc -o submit submit.c
-cp run_test submit ~/.local/bin/
+gcc -o run_crash run_crash.c
+cp run_test submit run_crash ~/.local/bin/
 cd ../..
 ```
 
@@ -89,6 +90,10 @@ export OPENAI_API_KEY=...
 Per (problem, attack_type) pair, writes:
 - `solution_{ATTACK_TYPE}.cpp` — agent's malicious C++ solution
 - `trajectory_{ATTACK_TYPE}.json` — full agent trajectory
+
+The agent is required to pass both `submit` (all public tests pass) AND
+`run_crash` (NPD is confirmed triggerable by a concrete input) before
+completing. Solutions with statically dead null dereferences are rejected.
 
 Runs are skipped if `trajectory_{ATTACK_TYPE}.json` already exists.
 
