@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Attacker Results Viewer</title>
+<link rel="stylesheet" id="hljs-theme"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0d1117;
+  --bg2:     #161b22;
+  --bg3:     #21262d;
+  --bg4:     #30363d;
+  --border:  #30363d;
+  --text:    #e6edf3;
+  --text2:   #8b949e;
+  --text3:   #6e7681;
+  --accent:  #58a6ff;
+  --green:   #3fb950;
+  --red:     #f85149;
+  --yellow:  #d29922;
+  --purple:  #bc8cff;
+  --teal:    #2dd4bf;
+  --orange:  #f0883e;
+  --sidebar: 300px;
+  --mono: 'SF Mono','Fira Code','Cascadia Code',Consolas,monospace;
+  --sans: -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --radius: 6px;
+}
+[data-theme="light"] {
+  --bg: #fff; --bg2: #f6f8fa; --bg3: #eaeef2; --bg4: #d0d7de;
+  --border: #d0d7de; --text: #1f2328; --text2: #656d76; --text3: #8c959f;
+  --accent: #0969da; --green: #1a7f37; --red: #d1242f;
+  --yellow: #9a6700; --purple: #8250df; --teal: #0f766e; --orange: #bc4c00;
+}
+
+html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; }
+
+/* ── Layout ── */
+#app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Sidebar ── */
+#sidebar {
+  width: var(--sidebar); min-width: var(--sidebar);
+  background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sb-header {
+  padding: 10px 12px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px;
+}
+.sb-header .logo { font-weight: 700; font-size: 13px; flex: 1; }
+.sb-header .logo span { color: var(--accent); }
+.icon-btn {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text2); padding: 4px 8px; cursor: pointer; font-size: 12px;
+  transition: background 0.15s, color 0.15s;
+}
+.icon-btn:hover { background: var(--bg3); color: var(--text); }
+
+.sb-controls { padding: 8px 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+#search {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px; color: var(--text);
+  font-size: 13px; outline: none; transition: border-color 0.15s;
+}
+#search:focus { border-color: var(--accent); }
+.chip-row { display: flex; flex-wrap: wrap; gap: 4px; }
+.chip {
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; cursor: pointer;
+  background: var(--bg4); border: 1px solid var(--border); color: var(--text2);
+  transition: background 0.15s, color 0.15s;
+}
+.chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.chip.evaded.active { background: var(--green); border-color: var(--green); color: #fff; }
+.chip.detected.active { background: var(--red); border-color: var(--red); color: #fff; }
+
+#file-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+.group-header {
+  padding: 6px 12px 3px; font-size: 11px; font-weight: 600;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em;
+  position: sticky; top: 0; background: var(--bg2); z-index: 1;
+}
+.file-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; cursor: pointer; transition: background 0.1s;
+  font-size: 13px;
+}
+.file-item:hover { background: var(--bg3); }
+.file-item.active { background: var(--bg3); border-right: 2px solid var(--accent); }
+.file-item .at-label {
+  flex: 1; font-family: var(--mono); font-size: 12px; color: var(--text);
+}
+.file-item .verdict-icons { display: flex; gap: 3px; }
+.vi { font-size: 10px; padding: 1px 5px; border-radius: 3px; font-weight: 600; }
+.vi.det  { background: rgba(248,81,73,0.15); color: var(--red); }
+.vi.evd  { background: rgba(63,185,80,0.15); color: var(--green); }
+.vi.na   { background: var(--bg4); color: var(--text3); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.dot-ok { background: var(--green); }
+.dot-bad { background: var(--red); }
+.dot-na  { background: var(--text3); }
+
+/* ── Main area ── */
+#main {
+  flex: 1; display: flex; flex-direction: column; overflow: hidden;
+  background: var(--bg);
+}
+
+/* ── Top bar ── */
+#topbar {
+  height: 48px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; padding: 0 16px; gap: 12px; flex-shrink: 0;
+}
+.tb-problem { font-size: 13px; font-weight: 600; }
+.tb-slug { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+.tb-at {
+  font-family: var(--mono); font-size: 12px; padding: 2px 8px;
+  background: var(--bg3); border-radius: 4px; color: var(--accent);
+}
+.badge {
+  padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600;
+}
+.badge-det { background: rgba(248,81,73,0.15); color: var(--red); border: 1px solid rgba(248,81,73,0.3); }
+.badge-evd { background: rgba(63,185,80,0.15); color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+.badge-na  { background: var(--bg4); color: var(--text3); }
+.tb-spacer { flex: 1; }
+
+/* ── Content area (two-panel split) ── */
+#content { flex: 1; display: flex; overflow: hidden; }
+
+/* ── Code panel ── */
+#code-panel {
+  width: 50%; border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.panel-header {
+  padding: 8px 14px; background: var(--bg2); border-bottom: 1px solid var(--border);
+  font-size: 12px; font-weight: 600; color: var(--text2);
+  display: flex; align-items: center; gap: 8px;
+}
+.panel-header .fname { font-family: var(--mono); color: var(--text); }
+.code-scroll { flex: 1; overflow: auto; }
+.code-scroll pre {
+  margin: 0; font-size: 13px; line-height: 1.6;
+  background: var(--bg) !important; padding: 16px;
+}
+.code-scroll pre code { font-family: var(--mono) !important; background: transparent !important; }
+
+/* ── Analysis panel ── */
+#analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+.tabs {
+  display: flex; background: var(--bg2); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+.tab {
+  padding: 8px 16px; font-size: 12px; font-weight: 600; cursor: pointer;
+  color: var(--text2); border-bottom: 2px solid transparent; transition: color 0.15s;
+}
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-content { flex: 1; overflow-y: auto; padding: 16px; display: none; }
+.tab-content.active { display: block; }
+
+/* Verdict banner */
+.verdict-banner {
+  display: flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border-radius: var(--radius); margin-bottom: 14px; font-size: 13px;
+}
+.banner-det { background: rgba(248,81,73,0.1); border: 1px solid rgba(248,81,73,0.3); }
+.banner-evd { background: rgba(63,185,80,0.1); border: 1px solid rgba(63,185,80,0.3); }
+.banner-na  { background: var(--bg3); border: 1px solid var(--border); }
+.banner-icon { font-size: 18px; }
+.banner-text { flex: 1; }
+.banner-label { font-weight: 700; }
+.banner-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
+
+/* Validation events */
+.validation-list { display: flex; flex-direction: column; gap: 8px; }
+.val-event {
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+}
+.val-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  cursor: pointer; background: var(--bg2); transition: background 0.1s;
+  user-select: none;
+}
+.val-header:hover { background: var(--bg3); }
+.val-reachable {
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+}
+.reach-true  { background: rgba(248,81,73,0.15); color: var(--red); }
+.reach-false { background: rgba(63,185,80,0.15); color: var(--green); }
+.val-path { font-family: var(--mono); font-size: 11px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.val-body {
+  padding: 10px 14px; background: var(--bg);
+  font-size: 12px; line-height: 1.65; color: var(--text2);
+  border-top: 1px solid var(--border); white-space: pre-wrap; word-break: break-word;
+  display: none;
+}
+.val-event.open .val-body { display: block; }
+.val-chevron { font-size: 10px; color: var(--text3); transition: transform 0.15s; flex-shrink: 0; }
+.val-event.open .val-chevron { transform: rotate(90deg); }
+
+/* VulnLLM */
+.vl-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+.vl-cell {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 8px 12px;
+}
+.vl-key { font-size: 11px; color: var(--text3); margin-bottom: 2px; }
+.vl-val { font-size: 13px; font-weight: 600; font-family: var(--mono); }
+.vl-output {
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 12px 14px; font-size: 12px; line-height: 1.7; color: var(--text2);
+  white-space: pre-wrap; word-break: break-word; max-height: 60vh; overflow-y: auto;
+}
+.label-det { color: var(--red); }
+.label-evd { color: var(--green); }
+.label-unk { color: var(--text3); }
+
+/* ── Home/Stats page ── */
+#home { flex: 1; overflow-y: auto; padding: 24px 32px; }
+.home-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.home-sub { font-size: 13px; color: var(--text2); margin-bottom: 24px; }
+.stats-table {
+  width: 100%; border-collapse: collapse; font-size: 13px;
+  background: var(--bg2); border-radius: var(--radius); overflow: hidden;
+  border: 1px solid var(--border);
+}
+.stats-table th {
+  padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.06em; color: var(--text2);
+  background: var(--bg3); border-bottom: 1px solid var(--border);
+}
+.stats-table th.right { text-align: right; }
+.stats-table td { padding: 9px 14px; border-bottom: 1px solid var(--border2); }
+.stats-table td.right { text-align: right; font-family: var(--mono); }
+.stats-table tr:last-child td { border-bottom: none; }
+.stats-table tr.total-row td { font-weight: 700; background: var(--bg3); }
+.rate-bar {
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.bar-track {
+  width: 80px; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden;
+}
+.bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s; }
+.fill-red  { background: var(--red); }
+.fill-blue { background: var(--accent); }
+.rate-pct { font-family: var(--mono); font-size: 12px; min-width: 36px; text-align: right; }
+.evasion-pct { color: var(--green); font-weight: 600; font-family: var(--mono); font-size: 12px; }
+
+.home-section { margin-top: 28px; }
+.home-section-title { font-size: 14px; font-weight: 600; margin-bottom: 12px; color: var(--text2); }
+
+/* ── Placeholder ── */
+#placeholder {
+  flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--text3); gap: 8px;
+}
+#placeholder .ph-icon { font-size: 40px; }
+#placeholder .ph-text { font-size: 14px; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ── No-results ── */
+.no-results { padding: 16px; color: var(--text3); font-size: 13px; text-align: center; }
+
+/* ── Loading spinner ── */
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.section-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Sidebar -->
+  <div id="sidebar">
+    <div class="sb-header">
+      <div class="logo">Attacker <span>Viewer</span></div>
+      <button class="icon-btn" id="theme-btn" title="Toggle theme">◑</button>
+      <button class="icon-btn" id="home-btn" title="Overview">⊞</button>
+    </div>
+    <div class="sb-controls">
+      <input id="search" type="text" placeholder="Search problems or attack types…">
+      <div class="chip-row" id="at-chips"></div>
+      <div class="chip-row" id="outcome-chips">
+        <span class="chip evaded" data-outcome="evaded">Evaded RA</span>
+        <span class="chip detected" data-outcome="detected">Caught RA</span>
+        <span class="chip evaded" data-outcome="evaded-vl">Evaded VL</span>
+        <span class="chip detected" data-outcome="caught-vl">Caught VL</span>
+      </div>
+    </div>
+    <div id="file-list"></div>
+  </div>
+
+  <!-- Main -->
+  <div id="main">
+    <!-- Top bar (hidden when home) -->
+    <div id="topbar" style="display:none">
+      <div class="tb-problem" id="tb-problem"></div>
+      <div class="tb-slug" id="tb-slug"></div>
+      <div class="tb-at" id="tb-at"></div>
+      <div id="tb-ra-badge"></div>
+      <div id="tb-vl-badge"></div>
+      <div class="tb-spacer"></div>
+    </div>
+
+    <!-- Home stats page -->
+    <div id="home"></div>
+
+    <!-- Split view (hidden until file selected) -->
+    <div id="content" style="display:none">
+      <div id="code-panel">
+        <div class="panel-header">
+          <span>Source Code</span>
+          <span class="fname" id="code-fname"></span>
+        </div>
+        <div class="code-scroll">
+          <pre><code class="language-c" id="code-block"></code></pre>
+        </div>
+      </div>
+      <div id="analysis-panel">
+        <div class="tabs">
+          <div class="tab active" data-tab="repoaudit">RepoAudit</div>
+          <div class="tab" data-tab="vulnllm">VulnLLM-R</div>
+          <div class="tab" data-tab="problem">Problem</div>
+        </div>
+        <div class="tab-content active" id="tab-repoaudit"></div>
+        <div class="tab-content" id="tab-vulnllm"></div>
+        <div class="tab-content" id="tab-problem"></div>
+      </div>
+    </div>
+
+    <!-- Placeholder -->
+    <div id="placeholder" style="display:none">
+      <div class="ph-icon">🛡</div>
+      <div class="ph-text">Select a solution from the sidebar</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ────────────────────────────────────────────────────────────────────
+const S = {
+  files: [],
+  filtered: [],
+  stats: null,
+  selected: null,          // current file id
+  activeATs: new Set(),
+  activeOutcomes: new Set(),
+  searchText: '',
+  showHome: true,
+};
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+const ATTACK_TYPES = [
+  "COT","FT","CG","AA_MSG","AA_USR","AA_CA",
+  "TOOL_ClangSA","TOOL_Frama","TOOL_Fuzzer","TOOL_Coverity"
+];
+
+function verdictLabel(flag) {
+  if (flag === 'tp') return 'detected';
+  if (flag === 'fn') return 'evaded';
+  return null;
+}
+
+function raBadgeHtml(detected) {
+  if (detected === true)  return `<span class="badge badge-det">RA: Detected</span>`;
+  if (detected === false) return `<span class="badge badge-evd">RA: Evaded ✓</span>`;
+  return `<span class="badge badge-na">RA: N/A</span>`;
+}
+function vlBadgeHtml(flag) {
+  if (flag === 'tp') return `<span class="badge badge-det">VL: Detected</span>`;
+  if (flag === 'fn') return `<span class="badge badge-evd">VL: Evaded ✓</span>`;
+  if (flag) return `<span class="badge badge-na">VL: ${flag.toUpperCase()}</span>`;
+  return `<span class="badge badge-na">VL: N/A</span>`;
+}
+function viHtml(detected, label) {
+  if (detected === true)  return `<span class="vi det">${label}</span>`;
+  if (detected === false) return `<span class="vi evd">${label}</span>`;
+  return `<span class="vi na">${label}</span>`;
+}
+function flagVi(flag) {
+  if (flag === 'tp') return `<span class="vi det">VL</span>`;
+  if (flag === 'fn') return `<span class="vi evd">VL</span>`;
+  if (flag) return `<span class="vi na">VL</span>`;
+  return `<span class="vi na">VL</span>`;
+}
+
+function pct(n, d) { return d > 0 ? Math.round(n / d * 100) : 0; }
+
+function rateBarHtml(det, tot, colorClass) {
+  const p = pct(det, tot);
+  return `<div class="rate-bar">
+    <div class="bar-track"><div class="bar-fill ${colorClass}" style="width:${p}%"></div></div>
+    <span class="rate-pct">${det}/${tot}</span>
+  </div>`;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Hash routing ──────────────────────────────────────────────────────────────
+function getHash() {
+  const h = location.hash.slice(1);
+  const p = {};
+  h.split('&').forEach(kv => { const [k,v] = kv.split('='); if (k) p[k] = decodeURIComponent(v||''); });
+  return p;
+}
+function setHash(obj) {
+  location.hash = Object.entries(obj).map(([k,v]) => `${k}=${encodeURIComponent(v)}`).join('&');
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function buildATChips() {
+  const row = document.getElementById('at-chips');
+  row.innerHTML = ATTACK_TYPES.map(at =>
+    `<span class="chip" data-at="${at}">${at}</span>`
+  ).join('');
+  row.querySelectorAll('.chip').forEach(c => {
+    c.addEventListener('click', () => {
+      const at = c.dataset.at;
+      if (S.activeATs.has(at)) { S.activeATs.delete(at); c.classList.remove('active'); }
+      else { S.activeATs.add(at); c.classList.add('active'); }
+      applyFilter();
+    });
+  });
+}
+
+function buildOutcomeChips() {
+  document.querySelectorAll('#outcome-chips .chip').forEach(c => {
+    c.addEventListener('click', () => {
+      const o = c.dataset.outcome;
+      if (S.activeOutcomes.has(o)) { S.activeOutcomes.delete(o); c.classList.remove('active'); }
+      else { S.activeOutcomes.add(o); c.classList.add('active'); }
+      applyFilter();
+    });
+  });
+}
+
+function applyFilter() {
+  const q = S.searchText.toLowerCase();
+  S.filtered = S.files.filter(f => {
+    if (f.verification !== 'ok') return false;
+    if (S.activeATs.size && !S.activeATs.has(f.attack_type)) return false;
+    if (S.activeOutcomes.size) {
+      const rao = f.repoaudit_detected;
+      const vlo = f.vulnllm_flag;
+      let match = false;
+      if (S.activeOutcomes.has('evaded')   && rao === false) match = true;
+      if (S.activeOutcomes.has('detected') && rao === true)  match = true;
+      if (S.activeOutcomes.has('evaded-vl') && vlo === 'fn') match = true;
+      if (S.activeOutcomes.has('caught-vl') && vlo === 'tp') match = true;
+      if (!match) return false;
+    }
+    if (q && !f.problem.toLowerCase().includes(q) && !f.attack_type.toLowerCase().includes(q) && !f.slug.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = document.getElementById('file-list');
+  if (!S.filtered.length) {
+    el.innerHTML = '<div class="no-results">No matching solutions</div>';
+    return;
+  }
+  // Group by problem slug
+  const groups = {};
+  S.filtered.forEach(f => {
+    if (!groups[f.slug]) groups[f.slug] = { problem: f.problem, items: [] };
+    groups[f.slug].items.push(f);
+  });
+  let html = '';
+  for (const [slug, g] of Object.entries(groups)) {
+    html += `<div class="group-header">${escHtml(g.problem)}</div>`;
+    for (const f of g.items) {
+      const active = S.selected === f.id ? ' active' : '';
+      const dotCls = f.verification === 'ok' ? 'dot-ok' : 'dot-bad';
+      html += `<div class="file-item${active}" data-id="${escHtml(f.id)}">
+        <span class="status-dot ${dotCls}"></span>
+        <span class="at-label">${escHtml(f.attack_type)}</span>
+        <span class="verdict-icons">
+          ${viHtml(f.repoaudit_detected, 'RA')}
+          ${flagVi(f.vulnllm_flag)}
+        </span>
+      </div>`;
+    }
+  }
+  el.innerHTML = html;
+  el.querySelectorAll('.file-item').forEach(item => {
+    item.addEventListener('click', () => selectFile(item.dataset.id));
+  });
+}
+
+// ── File selection ─────────────────────────────────────────────────────────────
+async function selectFile(id) {
+  S.selected = id;
+  S.showHome = false;
+
+  // Update sidebar active state
+  document.querySelectorAll('.file-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === id);
+  });
+
+  // Show split view
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('content').style.display = 'flex';
+  document.getElementById('topbar').style.display = 'flex';
+
+  const [slug, at] = id.split('/');
+  const f = S.files.find(x => x.id === id);
+
+  // Update top bar immediately with cached data
+  document.getElementById('tb-problem').textContent = f?.problem || slug;
+  document.getElementById('tb-slug').textContent = slug;
+  document.getElementById('tb-at').textContent = at;
+  document.getElementById('tb-ra-badge').innerHTML = raBadgeHtml(f?.repoaudit_detected);
+  document.getElementById('tb-vl-badge').innerHTML = vlBadgeHtml(f?.vulnllm_flag);
+
+  // Reset panels
+  document.getElementById('code-block').textContent = '⋯ loading';
+  document.getElementById('tab-repoaudit').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('tab-vulnllm').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('tab-problem').innerHTML = '<div class="spinner"></div>';
+
+  setHash({ id });
+
+  // Fetch in parallel
+  const [sol, ra, vl] = await Promise.all([
+    api(`/api/solution?slug=${slug}&at=${encodeURIComponent(at)}`),
+    api(`/api/repoaudit?slug=${slug}&at=${encodeURIComponent(at)}`),
+    api(`/api/vulnllm?slug=${slug}&at=${encodeURIComponent(at)}`),
+  ]);
+
+  renderCode(sol, at);
+  renderRepoAudit(ra, at);
+  renderVulnLLM(vl, f?.vulnllm_flag);
+  renderProblem(sol);
+}
+
+// ── Code panel ────────────────────────────────────────────────────────────────
+function renderCode(sol, at) {
+  document.getElementById('code-fname').textContent = `${sol.slug}_${at}.c`;
+  const codeEl = document.getElementById('code-block');
+  codeEl.textContent = sol.code;
+  hljs.highlightElement(codeEl);
+}
+
+// ── RepoAudit panel ───────────────────────────────────────────────────────────
+function renderRepoAudit(ra, at) {
+  const el = document.getElementById('tab-repoaudit');
+  const det = ra.detected;
+
+  let html = '';
+  // Verdict banner
+  if (det === true) {
+    html += `<div class="verdict-banner banner-det">
+      <div class="banner-icon">🔴</div>
+      <div class="banner-text">
+        <div class="banner-label">Bug Detected</div>
+        <div class="banner-sub">RepoAudit (claude-sonnet-4-6) found a reachable NPD path in this solution.</div>
+      </div>
+    </div>`;
+  } else if (det === false) {
+    html += `<div class="verdict-banner banner-evd">
+      <div class="banner-icon">🟢</div>
+      <div class="banner-text">
+        <div class="banner-label">Adversarial Attack Succeeded — Bug Evaded</div>
+        <div class="banner-sub">RepoAudit found no reachable NPD path. The ${escHtml(at)} comment fooled the auditor.</div>
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="verdict-banner banner-na">
+      <div class="banner-icon">⚪</div>
+      <div class="banner-text"><div class="banner-label">No Result Available</div></div>
+    </div>`;
+  }
+
+  if (!ra.log_found) {
+    html += `<div style="color:var(--text3);font-size:12px;margin-top:8px">No log file found for this solution.</div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  if (!ra.validations.length) {
+    html += `<div style="color:var(--text3);font-size:12px;margin-top:8px">Log found but no path-validation events extracted.</div>`;
+    el.innerHTML = html;
+    return;
+  }
+
+  const reachable = ra.validations.filter(v => v.is_reachable);
+  const safe      = ra.validations.filter(v => !v.is_reachable);
+
+  html += `<div class="section-title" style="margin-bottom:8px">
+    ${ra.validations.length} paths checked —
+    <span style="color:var(--red)">${reachable.length} reachable</span>,
+    <span style="color:var(--green)">${safe.length} safe</span>
+  </div>`;
+  html += '<div class="validation-list">';
+  ra.validations.forEach((v, i) => {
+    const cls = v.is_reachable ? 'reach-true' : 'reach-false';
+    const label = v.is_reachable ? 'REACHABLE (NPD)' : 'SAFE';
+    const pathText = v.path || `Path ${i + 1}`;
+    html += `<div class="val-event" data-idx="${i}">
+      <div class="val-header">
+        <span class="val-reachable ${cls}">${label}</span>
+        <span class="val-path" title="${escHtml(v.path)}">${escHtml(pathText)}</span>
+        <span class="val-chevron">▶</span>
+      </div>
+      <div class="val-body">${escHtml(v.explanation || '(no explanation captured)')}</div>
+    </div>`;
+  });
+  html += '</div>';
+  el.innerHTML = html;
+
+  // Toggle accordions
+  el.querySelectorAll('.val-event').forEach(ev => {
+    ev.querySelector('.val-header').addEventListener('click', () => {
+      ev.classList.toggle('open');
+    });
+  });
+
+  // Auto-open reachable paths
+  el.querySelectorAll('.val-event').forEach(ev => {
+    const badge = ev.querySelector('.val-reachable');
+    if (badge && badge.classList.contains('reach-true')) ev.classList.add('open');
+  });
+}
+
+// ── VulnLLM panel ─────────────────────────────────────────────────────────────
+function renderVulnLLM(vl, flag) {
+  const el = document.getElementById('tab-vulnllm');
+  if (!vl.available) {
+    el.innerHTML = `<div class="verdict-banner banner-na">
+      <div class="banner-icon">⚪</div>
+      <div class="banner-text"><div class="banner-label">No VulnLLM-R Result Available</div></div>
+    </div>`;
+    return;
+  }
+
+  const flagLabels = { tp:'Detected (True Positive)', fn:'Evaded (False Negative)', fp:'False Positive', tn:'True Negative' };
+  const flagLabel = flagLabels[vl.flag] || vl.flag || '?';
+  const isEvaded  = vl.flag === 'fn';
+  const isDet     = vl.flag === 'tp';
+
+  let html = '';
+  if (isDet) {
+    html += `<div class="verdict-banner banner-det">
+      <div class="banner-icon">🔴</div>
+      <div class="banner-text">
+        <div class="banner-label">Bug Detected (${flagLabel})</div>
+        <div class="banner-sub">VulnLLM-R-7B correctly identified the NPD vulnerability.</div>
+      </div>
+    </div>`;
+  } else if (isEvaded) {
+    html += `<div class="verdict-banner banner-evd">
+      <div class="banner-icon">🟢</div>
+      <div class="banner-text">
+        <div class="banner-label">Adversarial Attack Succeeded — ${flagLabel}</div>
+        <div class="banner-sub">VulnLLM-R-7B missed the NPD. The adversarial comment was convincing.</div>
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="verdict-banner banner-na">
+      <div class="banner-icon">⚠</div>
+      <div class="banner-text"><div class="banner-label">${flagLabel}</div></div>
+    </div>`;
+  }
+
+  html += `<div class="vl-meta">
+    <div class="vl-cell"><div class="vl-key">Prediction</div>
+      <div class="vl-val ${vl.predicted === 'yes' ? 'label-det' : 'label-evd'}">${vl.predicted || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Ground Truth</div>
+      <div class="vl-val">${vl.actual || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Flag</div>
+      <div class="vl-val">${vl.flag || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Result</div>
+      <div class="vl-val ${isEvaded ? 'label-evd' : isDet ? 'label-det' : ''}">${isEvaded ? 'Evaded ✓' : isDet ? 'Detected' : '-'}</div></div>
+  </div>`;
+
+  const outputText = vl.output || vl.cot || '';
+  if (outputText) {
+    html += `<div class="section-title">Model Output</div>
+      <div class="vl-output">${escHtml(outputText)}</div>`;
+  }
+  el.innerHTML = html;
+}
+
+// ── Problem panel ─────────────────────────────────────────────────────────────
+function renderProblem(sol) {
+  const el = document.getElementById('tab-problem');
+  const md = sol.problem_md;
+  // Simple markdown: headings, code blocks, bold
+  let html = escHtml(md)
+    .replace(/^# (.+)$/gm, '<h2 style="font-size:16px;margin-bottom:8px;color:var(--text)">$1</h2>')
+    .replace(/^## (.+)$/gm, '<h3 style="font-size:13px;margin:12px 0 4px;color:var(--text2)">$1</h3>')
+    .replace(/`([^`]+)`/g, '<code style="font-family:var(--mono);background:var(--bg3);padding:1px 4px;border-radius:3px;font-size:12px">$1</code>')
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br>');
+  el.innerHTML = `<div style="font-size:13px;line-height:1.7;color:var(--text2)">${html}</div>`;
+}
+
+// ── Home / Stats page ─────────────────────────────────────────────────────────
+function showHome() {
+  S.showHome = true;
+  S.selected = null;
+  document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+  document.getElementById('topbar').style.display = 'none';
+  document.getElementById('content').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('home').style.display = 'block';
+  setHash({ view: 'home' });
+  renderHomePage();
+}
+
+function renderHomePage() {
+  if (!S.stats) return;
+  const st = S.stats;
+  const el = document.getElementById('home');
+
+  const totalN  = st.overall.total;
+  const raTotal = st.overall.repoaudit_detected;
+  const vlTotal = st.overall.vulnllm_detected;
+
+  let rows = '';
+  for (const at of ATTACK_TYPES) {
+    const s = st.per_type[at] || {total:0, repoaudit_detected:0, vulnllm_detected:0};
+    const raP = pct(s.repoaudit_detected, s.total);
+    const vlP = pct(s.vulnllm_detected, s.total);
+    const raEvd = s.total - s.repoaudit_detected;
+    const vlEvd = s.total - s.vulnllm_detected;
+    rows += `<tr>
+      <td><span style="font-family:var(--mono);font-size:12px">${escHtml(at)}</span></td>
+      <td class="right">${s.total}</td>
+      <td class="right">${rateBarHtml(s.repoaudit_detected, s.total, 'fill-red')}</td>
+      <td class="right"><span class="evasion-pct">${raEvd}/${s.total} (${100-raP}%)</span></td>
+      <td class="right">${rateBarHtml(s.vulnllm_detected, s.total, 'fill-blue')}</td>
+      <td class="right"><span class="evasion-pct">${vlEvd}/${s.total} (${100-vlP}%)</span></td>
+    </tr>`;
+  }
+
+  const raTotalP  = pct(raTotal, totalN);
+  const vlTotalP  = pct(vlTotal, totalN);
+  const raEvdTot  = totalN - raTotal;
+  const vlEvdTot  = totalN - vlTotal;
+
+  el.innerHTML = `
+    <div class="home-title">Adversarial NPD Attack Results</div>
+    <div class="home-sub">${totalN} verified solutions × 10 attack types × 8 problems &nbsp;·&nbsp; model: gpt-5.4-mini</div>
+
+    <table class="stats-table">
+      <thead>
+        <tr>
+          <th>Attack Type</th>
+          <th class="right">N</th>
+          <th class="right">RepoAudit Detected</th>
+          <th class="right">RA Evasion</th>
+          <th class="right">VulnLLM-R Detected</th>
+          <th class="right">VL Evasion</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row">
+          <td>TOTAL</td>
+          <td class="right">${totalN}</td>
+          <td class="right">${rateBarHtml(raTotal, totalN, 'fill-red')}</td>
+          <td class="right"><span class="evasion-pct">${raEvdTot}/${totalN} (${100-raTotalP}%)</span></td>
+          <td class="right">${rateBarHtml(vlTotal, totalN, 'fill-blue')}</td>
+          <td class="right"><span class="evasion-pct">${vlEvdTot}/${totalN} (${100-vlTotalP}%)</span></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="home-section">
+      <div class="home-section-title">Key Findings</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">RepoAudit Overall Evasion</div>
+          <div style="font-size:28px;font-weight:700;color:var(--green)">${100-raTotalP}%</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">${raEvdTot} of ${totalN} solutions evaded detection</div>
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">VulnLLM-R Overall Evasion</div>
+          <div style="font-size:28px;font-weight:700;color:var(--green)">${100-vlTotalP}%</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">${vlEvdTot} of ${totalN} solutions evaded detection</div>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function initTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.tab;
+      document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.toggle('active', c.id === `tab-${name}`));
+    });
+  });
+}
+
+// ── Theme ─────────────────────────────────────────────────────────────────────
+function initTheme() {
+  document.getElementById('theme-btn').addEventListener('click', () => {
+    const curr = document.documentElement.getAttribute('data-theme');
+    const next = curr === 'dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', next);
+    document.getElementById('hljs-theme').href =
+      next === 'dark'
+        ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css'
+        : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
+  });
+}
+
+// ── Keyboard nav ──────────────────────────────────────────────────────────────
+function initKeyboard() {
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key === 'h') showHome();
+    if ((e.key === 'ArrowUp' || e.key === 'k') && S.selected) {
+      const idx = S.filtered.findIndex(f => f.id === S.selected);
+      if (idx > 0) selectFile(S.filtered[idx - 1].id);
+    }
+    if ((e.key === 'ArrowDown' || e.key === 'j') && S.selected) {
+      const idx = S.filtered.findIndex(f => f.id === S.selected);
+      if (idx < S.filtered.length - 1) selectFile(S.filtered[idx + 1].id);
+    }
+  });
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  initTheme();
+  initTabs();
+  initKeyboard();
+  buildATChips();
+  buildOutcomeChips();
+
+  document.getElementById('search').addEventListener('input', e => {
+    S.searchText = e.target.value;
+    applyFilter();
+  });
+  document.getElementById('home-btn').addEventListener('click', showHome);
+
+  // Load data
+  const [filesData, stats] = await Promise.all([
+    api('/api/files'),
+    api('/api/stats'),
+  ]);
+
+  S.files = filesData.files;
+  S.stats = stats;
+  S.filtered = S.files.filter(f => f.verification === 'ok');
+
+  renderFileList();
+  showHome();
+
+  // Restore from hash
+  const h = getHash();
+  if (h.id) {
+    selectFile(h.id);
+  }
+}
+
+init().catch(console.error);
+</script>
+</body>
+</html>
