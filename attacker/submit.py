@@ -27,8 +27,9 @@ import tempfile
 
 
 def compile_cpp(src: str, binary: str) -> tuple[bool, str]:
+    compiler, std = ("gcc", "-std=c11") if src.endswith(".c") else ("g++", "-std=c++17")
     result = subprocess.run(
-        ["g++", "-O0", "-std=c++17", "-o", binary, src],
+        [compiler, "-O0", std, "-o", binary, src],
         capture_output=True, text=True, timeout=30,
     )
     return result.returncode == 0, (result.stdout + result.stderr).strip()
@@ -77,18 +78,36 @@ def main():
         print(f"COMPILE_ERROR: file not found: {args.code}")
         sys.exit(1)
 
-    problem = find_problem(slug, map_path, data_path)
-    if problem is None:
-        print(f"ERROR: could not find problem for slug '{slug}'")
-        sys.exit(1)
-
-    # Collect all tests (public + private)
+    # Prefer local tests/ directory (LeetCode-style problems)
+    local_tests_dir = os.path.join(cwd, "tests")
     tests = []
-    for split in ("public_tests", "private_tests"):
-        t = problem.get(split, {})
-        inputs = t.get("input", [])
-        outputs = t.get("output", [])
-        tests.extend(zip(inputs, outputs))
+    if os.path.isdir(local_tests_dir):
+        i = 0
+        while True:
+            inp_f = os.path.join(local_tests_dir, f"input_{i}.txt")
+            out_f = os.path.join(local_tests_dir, f"output_{i}.txt")
+            if not os.path.isfile(inp_f) or not os.path.isfile(out_f):
+                break
+            with open(inp_f) as f:
+                inp = f.read()
+            with open(out_f) as f:
+                out = f.read()
+            tests.append((inp, out))
+            i += 1
+    else:
+        # Fall back to JSONL dataset (code-contests problems)
+        # Look for problem_map.json in the run dir (parent of cwd) first, then attacker dir
+        run_dir_map = os.path.join(os.path.dirname(cwd), "problem_map.json")
+        map_path = run_dir_map if os.path.isfile(run_dir_map) else map_path
+        problem = find_problem(slug, map_path, data_path)
+        if problem is None:
+            print(f"ERROR: could not find problem for slug '{slug}'")
+            sys.exit(1)
+        for split in ("public_tests", "private_tests"):
+            t = problem.get(split, {})
+            inputs = t.get("input", [])
+            outputs = t.get("output", [])
+            tests.extend(zip(inputs, outputs))
 
     if not tests:
         print("ERROR: no tests found for this problem")

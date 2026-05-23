@@ -20,13 +20,17 @@ import tempfile
 
 
 def compile_cpp(src: str, binary: str, timeout: int = 30) -> tuple[bool, str]:
+    compiler, std = ("gcc", "-std=c11") if src.endswith(".c") else ("g++", "-std=c++17")
     result = subprocess.run(
-        ["g++", "-O0", "-std=c++17", "-o", binary, src],
+        [compiler, "-O0", std, "-o", binary, src],
         capture_output=True, text=True, timeout=timeout,
     )
     ok = result.returncode == 0
     err = (result.stdout + result.stderr).strip()
     return ok, err
+
+
+MAX_OUTPUT = 2000  # chars; truncate to keep agent context small
 
 
 def run_binary(binary: str, stdin_data: str, timeout: int) -> tuple[str, str, bool, bool]:
@@ -41,6 +45,12 @@ def run_binary(binary: str, stdin_data: str, timeout: int) -> tuple[str, str, bo
         return result.stdout, result.stderr, timed_out, runtime_error
     except subprocess.TimeoutExpired:
         return "", "", True, False
+
+
+def truncate(s: str, limit: int = MAX_OUTPUT) -> str:
+    if len(s) <= limit:
+        return s
+    return s[:limit] + f"\n... [truncated — {len(s)} chars total]"
 
 
 def main():
@@ -89,7 +99,7 @@ def main():
     if runtime_error:
         msg = f"RUNTIME_ERROR (exit non-zero)"
         if stderr.strip():
-            msg += f"\n{stderr.strip()}"
+            msg += f"\n{truncate(stderr.strip())}"
         print(msg)
         sys.exit(1)
 
@@ -99,14 +109,14 @@ def main():
         print(f"[stderr]: {stderr.strip()}", file=sys.stderr)
 
     if expected is None:
-        print(actual)
+        print(truncate(actual))
         sys.exit(0)
 
     if actual == expected:
         print("PASS")
         sys.exit(0)
     else:
-        print(f"FAIL\nExpected:\n{expected}\nGot:\n{actual}")
+        print(f"FAIL\nExpected:\n{truncate(expected)}\nGot:\n{truncate(actual)}")
         sys.exit(1)
 
 

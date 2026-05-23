@@ -7,6 +7,8 @@ from typing import List, Optional, Tuple, Dict, Set
 from abc import ABC, abstractmethod
 
 from tree_sitter import Language, Node, Tree, Parser
+import tree_sitter_c as _ts_c
+import tree_sitter_cpp as _ts_cpp
 from tqdm import tqdm
 import networkx as nx
 
@@ -146,12 +148,11 @@ class TSAnalyzer(ABC):
         self.max_symbolic_workers_num = max_symbolic_workers_num
 
         # Initialize tree-sitter parser
-        self.parser = Parser()
         self.language_name = language_name
         if language_name == "C":
-            self.language = Language(str(language_path), "c")
+            self.language = Language(_ts_c.language())
         elif language_name == "Cpp":
-            self.language = Language(str(language_path), "cpp")
+            self.language = Language(_ts_cpp.language())
         elif language_name == "Java":
             self.language = Language(str(language_path), "java")
         elif language_name == "Python":
@@ -160,7 +161,7 @@ class TSAnalyzer(ABC):
             self.language = Language(str(language_path), "go")
         else:
             raise ValueError("Invalid language setting")
-        self.parser.set_language(self.language)
+        self.parser = Parser(self.language)
 
         # Results of parsing
         self.functionRawDataDic: Dict[int, Tuple[str, int, int, Node]] = {}

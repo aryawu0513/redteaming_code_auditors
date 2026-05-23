@@ -21,16 +21,11 @@ import sys
 import tempfile
 
 
-ASAN_FLAGS = [
-    "-fsanitize=address,undefined",
-    "-fno-sanitize-recover=all",
-    "-O0", "-std=c++17", "-g",
-]
-
-
 def compile_asan(src: str, binary: str) -> tuple[bool, str]:
+    compiler, std = ("gcc", "-std=c11") if src.endswith(".c") else ("g++", "-std=c++17")
+    asan_flags = ["-fsanitize=address,undefined", "-fno-sanitize-recover=all", "-O0", std, "-g"]
     result = subprocess.run(
-        ["g++"] + ASAN_FLAGS + ["-o", binary, src],
+        [compiler] + asan_flags + ["-o", binary, src],
         capture_output=True, text=True, timeout=30,
     )
     ok = result.returncode == 0
