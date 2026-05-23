@@ -9,46 +9,66 @@
 
 import cpp
 
+// ---------------------------------------------------------------------------
+// Part 1 — Which functions can return NULL?
+// ---------------------------------------------------------------------------
+
 /**
- * A function that can return NULL. Covers three patterns:
- *   1. Local pointer var initialized to NULL appears in return stmt (return prev)
- *   2. Explicit return NULL / return 0 on a pointer path
- *   3. Returns a pointer struct field directly (return p->next) — field can be NULL
+ * True if `va` accesses a local pointer variable that was initialised to NULL
+ * and that appears in a return statement of `f`.  This is the key pattern for
+ * reverse/insert helpers that start with `Node *prev = NULL`.
  */
-predicate functionCanReturnNull(Function f) {
-  // Pattern 1: return a local pointer variable initialized to NULL
-  exists(LocalVariable lv, Stmt s, VariableAccess va |
+predicate returnsNullInitLocal(Function f) {
+  exists(LocalVariable lv, ReturnStmt ret, VariableAccess va |
     lv.getFunction() = f and
     lv.getType() instanceof PointerType and
     lv.getInitializer().getExpr().getValue() = "0" and
-    s.getEnclosingFunction() = f and
-    s.toString() = "return ..." and
+    ret.getEnclosingFunction() = f and
     va.getTarget() = lv and
-    va.getEnclosingStmt() = s
+    va.getEnclosingStmt() = ret
   )
-  or
-  // Pattern 2: explicit return NULL / return 0
-  exists(Stmt s, Expr e |
-    s.getEnclosingFunction() = f and
-    s.toString() = "return ..." and
-    e.getEnclosingStmt() = s and
+}
+
+/**
+ * True if `f` has an explicit `return NULL;` / `return 0;` (pointer context).
+ */
+predicate returnsExplicitNull(Function f) {
+  exists(ReturnStmt ret, Expr e |
+    ret.getEnclosingFunction() = f and
+    e.getEnclosingStmt() = ret and
     e.getValue() = "0" and
     e.getType() instanceof PointerType
   )
-  or
-  // Pattern 3: return a pointer struct field (return p->next / return p->child)
-  // The field is a pointer and can be NULL (e.g. last node's next field)
-  exists(Stmt s, PointerFieldAccess fa |
-    s.getEnclosingFunction() = f and
-    s.toString() = "return ..." and
-    fa.getEnclosingStmt() = s and
+}
+
+/**
+ * True if `f` returns a pointer-typed struct field (e.g. `return p->next`).
+ * Such fields can be NULL at the last node.
+ */
+predicate returnsPointerField(Function f) {
+  exists(ReturnStmt ret, PointerFieldAccess fa |
+    ret.getEnclosingFunction() = f and
+    fa.getEnclosingStmt() = ret and
     fa.getType() instanceof PointerType
   )
 }
 
 /**
- * ptr is a variable whose value comes from a call to callee —
- * either via initializer (Node *ptr = call;) or assignment (ptr = call;).
+ * A source-level function whose return value may be NULL on some path.
+ */
+predicate functionCanReturnNull(Function f) {
+  f.fromSource() and
+  f.getType() instanceof PointerType and
+  (returnsNullInitLocal(f) or returnsExplicitNull(f) or returnsPointerField(f))
+}
+
+// ---------------------------------------------------------------------------
+// Part 2 — How is the return value captured?
+// ---------------------------------------------------------------------------
+
+/**
+ * `ptr` receives its value from `call` — either as an initialiser
+ * (`Node *p = call(...)`) or via assignment (`p = call(...)`).
  */
 predicate assignedFromCall(Variable ptr, FunctionCall call) {
   ptr.getInitializer().getExpr() = call
@@ -59,19 +79,102 @@ predicate assignedFromCall(Variable ptr, FunctionCall call) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Part 3 — Comprehensive null-guard detection
+// ---------------------------------------------------------------------------
+
+/**
+ * `cond` is an expression that checks `ptr` against null.  Handles:
+ *   ptr                     bare non-null test
+ *   !ptr                    negation
+ *   ptr == NULL/0           equality  (either operand order)
+ *   ptr != NULL/0           inequality
+ */
+predicate isNullCheckExpr(Expr cond, Variable ptr) {
+  exists(VariableAccess va | va.getTarget() = ptr |
+    // bare: if (ptr) / while (ptr) / ternary condition
+    cond = va
+    or
+    // negation: !ptr
+    exists(NotExpr ne | ne.getOperand() = va and cond = ne)
+    or
+    // equality / inequality vs NULL or 0
+    exists(BinaryOperation cmp |
+      cond = cmp and
+      (cmp instanceof EqualityOperation or cmp instanceof NEExpr) and
+      (
+        (cmp.getLeftOperand() = va  and cmp.getRightOperand().getValue() = "0")
+        or
+        (cmp.getRightOperand() = va and cmp.getLeftOperand().getValue() = "0")
+      )
+    )
+  )
+}
+
+/**
+ * There exists some explicit null guard for `ptr` anywhere in the same
+ * function.  We are deliberately conservative: any syntactic check is
+ * treated as guarding all uses, so we never produce a false positive due
+ * to a missed guard pattern.
+ *
+ * Covered constructs:
+ *   if (ptr) / if (!ptr) / if (ptr == NULL) / if (ptr != NULL)
+ *   while (ptr) / for (; ptr; ...) / do { } while (ptr)     [Loop]
+ *   ptr ? a : b   (ternary)
+ *   ptr && expr   (short-circuit AND — left operand = ptr check)
+ *   !ptr || expr  (short-circuit OR  — left operand = !ptr)
+ *   assert(ptr) / assert(ptr != NULL)  (call whose argument checks ptr)
+ */
+predicate hasNullGuard(Variable ptr) {
+  // if-statement guard
+  exists(IfStmt s | isNullCheckExpr(s.getCondition(), ptr))
+  or
+  // loop-condition guard: while (ptr), for (; ptr; ...), do-while
+  exists(Loop lp | isNullCheckExpr(lp.getCondition(), ptr))
+  or
+  // ternary: ptr ? a : b
+  exists(ConditionalExpr ternary | isNullCheckExpr(ternary.getCondition(), ptr))
+  or
+  // logical AND short-circuit: ptr && use(ptr)
+  exists(LogicalAndExpr land, VariableAccess va |
+    va.getTarget() = ptr and
+    isNullCheckExpr(land.getLeftOperand(), ptr)
+  )
+  or
+  // logical OR short-circuit: !ptr || safe_default
+  exists(LogicalOrExpr lor |
+    isNullCheckExpr(lor.getLeftOperand(), ptr)
+  )
+  or
+  // assert-style call: assert(ptr), assert(ptr != NULL), __assert_fail, etc.
+  exists(FunctionCall fc, Expr arg |
+    fc.getAnArgument() = arg and
+    isNullCheckExpr(arg, ptr) and
+    fc.getTarget().getName().matches("%assert%")
+  )
+  or
+  // cast-and-check: if ((Type *)ptr) or similar — condition is a cast of ptr
+  exists(IfStmt s, Cast cast, VariableAccess va |
+    va.getTarget() = ptr and
+    cast.getExpr() = va and
+    s.getCondition() = cast
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Part 4 — Main query
+// ---------------------------------------------------------------------------
+
 from FunctionCall call, Function callee, Variable ptr, PointerFieldAccess fa
 where
   callee = call.getTarget() and
-  callee.fromSource() and
   functionCanReturnNull(callee) and
-  callee.getType() instanceof PointerType and
   assignedFromCall(ptr, call) and
+  // The dereference: ptr->field
   fa.getQualifier() = ptr.getAnAccess() and
-  not exists(IfStmt guard, VariableAccess va |
-    va.getTarget() = ptr and
-    (guard.getCondition() = va or
-     exists(NotExpr ne | ne.getOperand() = va and guard.getCondition() = ne))
-  )
-select fa, "Dereference of '" + ptr.getName() +
+  // No null guard exists anywhere for ptr
+  not hasNullGuard(ptr)
+select fa,
+  "Dereference of '" + ptr.getName() +
   "' without null check — returned by '" + callee.getName() +
   "' which can return NULL (interprocedural NPD)"
