@@ -20,7 +20,7 @@ import re
 import sys
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Request, Response
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
@@ -66,6 +66,37 @@ def _scan_runs(runs_dir: Path) -> list[dict]:
                 "verification": status or "missing",
             })
     return entries
+
+
+def _load_baseline_detectable(repo_root: Path) -> dict[str, bool]:
+    """Map slug -> bool (did VulnLLM-R detect bug in solution.c without attack comment)."""
+    return {slug: d["predicted"] == "yes"
+            for slug, d in _load_baseline_vulnllm(repo_root).items()}
+
+
+def _load_baseline_vulnllm(repo_root: Path) -> dict[str, dict]:
+    """Map slug -> {predicted, flag, output} for the unmodified solution.c baseline."""
+    result: dict[str, dict] = {}
+    pattern = str(repo_root / "VulnLLM-R/results/C/NPD/attacker/baseline/*.json")
+    for rpath in glob.glob(pattern):
+        m = re.search(r"baseline_([A-F0-9]+)__", rpath)
+        if not m:
+            continue
+        slug = m.group(1)
+        try:
+            data = json.loads(Path(rpath).read_text())
+        except Exception:
+            continue
+        for entry in data:
+            if "predicted_is_vulnerable" not in entry:
+                continue
+            result[slug] = {
+                "predicted": entry.get("predicted_is_vulnerable", ""),
+                "flag":      entry.get("flag", ""),
+                "output":    entry.get("output", ""),
+            }
+            break
+    return result
 
 
 def _load_repoaudit_detected(repo_root: Path) -> dict[str, bool]:
@@ -142,13 +173,59 @@ def _find_repoaudit_log(repo_root: Path, slug: str, at: str) -> Path | None:
     if not matches:
         return None
     # Pick the most recently modified log
-    return max(matches, key=lambda p: Path(p).stat().st_mtime)
+    return Path(max(matches, key=lambda p: Path(p).stat().st_mtime))
+
+
+def _parse_explorer_sections(text: str) -> list[dict]:
+    """
+    Extract explorer calls. Uses sequential pairing of [EXPLORER] Analyzing ↔
+    [EXPLORER] Output: (stable even for batched async calls), then attaches the
+    IntraDataFlowAnalyzer Response: that immediately precedes each output.
+    """
+    # Collect [EXPLORER] Analyzing entries in order
+    analyzing = []
+    for m in re.finditer(
+        r"\[EXPLORER\] Analyzing (\w+)\(\) for source '(.+?)' \(label=\w+\) at line (\d+)",
+        text,
+    ):
+        analyzing.append({"func": m.group(1), "src": m.group(2), "line": int(m.group(3)),
+                          "pos": m.start()})
+
+    # Split on [EXPLORER] Output: to get (preceding-block, output-text) pairs.
+    # The Response: for an intra-procedural call always sits between the
+    # "Output of intra-procedural data-flow analyzer:" log line and the
+    # [EXPLORER] Output: line in that same block.
+    parts = re.split(r"\[EXPLORER\] Output: (.+)", text)
+    blocks  = parts[0::2]   # text before each [EXPLORER] Output:
+    outputs = parts[1::2]   # the output payload
+
+    # For each block, find the IntraDataFlowAnalyzer Response: (identified by
+    # being followed by "Output of intra-procedural" rather than a validator line).
+    responses = []
+    for block in blocks:
+        resp_m = re.search(
+            r"- INFO - Response:\s*\n(.*?)(?=\n\d{4}-\d{2}-\d{2}.*?Output of intra-procedural)",
+            block,
+            re.DOTALL,
+        )
+        responses.append(resp_m.group(1).strip() if resp_m else "")
+
+    sections = []
+    for i, a in enumerate(analyzing):
+        sections.append({
+            "func":     a["func"],
+            "src":      a["src"],
+            "line":     a["line"],
+            "response": responses[i] if i < len(responses) else "",
+            "output":   outputs[i].strip() if i < len(outputs) else "",
+        })
+    return sections
 
 
 def _parse_repoaudit_log(log_path: Path) -> list[dict]:
     """
     Parse a RepoAudit log into a list of path-validation events.
-    Each event: {is_reachable, explanation, answer, path_desc}
+    Each event: {is_reachable, explanation, answer, path_steps}
     """
     try:
         text = log_path.read_text(errors="replace")
@@ -156,48 +233,70 @@ def _parse_repoaudit_log(log_path: Path) -> list[dict]:
         return []
 
     events = []
-    # Split on the "Output of path_validator:" marker — one block per validated path
     blocks = re.split(r"- INFO - Output of path_validator:\s*\n", text)
 
-    # Preceding-query regex: grab the last propagation-path description before the split
-    path_re = re.compile(
-        r"does the following data-flow propagation path cause.*?\n((?:\s*- \(.*?\n)+)",
-        re.DOTALL,
+    # Path step format: " - ((expr, file, line, offset), ValueLabel.TYPE) in the function FN at the line N"
+    step_re = re.compile(
+        r"^\s*-\s+\(\(([^,]+),\s*[^,]+,\s*(\d+),\s*[^)]+\),\s*(ValueLabel\.\w+)\)\s+in the function\s+(\w+)\s+at the line\s+(\d+)",
     )
 
+    def extract_path_steps(block_text: str) -> list[dict]:
+        """Extract path steps from the validator prompt block."""
+        steps = []
+        # Find the path section (after "does the following ... path cause" + backtick block)
+        path_section_m = re.search(
+            r"does the following (?:data-flow )?propagation path cause[^`\n]*\n```[^\n]*\n((?:\s*-\s+\(\(.*?\n)+)",
+            block_text,
+        )
+        if not path_section_m:
+            # Try without backtick wrapper
+            path_section_m = re.search(
+                r"does the following (?:data-flow )?propagation path cause[^\n]*\n((?:\s*-\s+\(\(.*?\n)+)",
+                block_text,
+            )
+        if not path_section_m:
+            return steps
+        for line in path_section_m.group(1).splitlines():
+            m = step_re.match(line)
+            if m:
+                steps.append({
+                    "expr":  m.group(1).strip(),
+                    "line":  int(m.group(2)),
+                    "label": m.group(3).replace("ValueLabel.", ""),
+                    "func":  m.group(4),
+                })
+        return steps
+
     for i, block in enumerate(blocks[1:], start=1):
-        # Reachable verdict
         reach_m = re.search(r"Is reachable:\s*(True|False)", block)
         is_reachable = reach_m.group(1) == "True" if reach_m else None
 
-        # Explanation (the model's reasoning in this block)
-        expl_m = re.search(
-            r"Explanation:\s*(.*?)(?:\nAnswer:|\Z)", block, re.DOTALL
-        )
+        expl_m = re.search(r"Explanation:\s*(.*?)(?:\nAnswer:|\Z)", block, re.DOTALL)
         explanation = expl_m.group(1).strip() if expl_m else ""
-        # Strip leading "Explanation:" if duplicated
         explanation = re.sub(r"^Explanation:\s*", "", explanation).strip()
 
         answer_m = re.search(r"\nAnswer:\s*(Yes|No)", block)
         answer = answer_m.group(1) if answer_m else ""
 
-        # Try to extract the path description from the preceding block
         prev_block = blocks[i - 1] if i - 1 < len(blocks) else ""
-        path_m = path_re.search(prev_block)
-        path_lines = []
-        if path_m:
-            for line in path_m.group(1).strip().splitlines():
-                # Extract just file:line — message from "(msg, file, line, ...)"
-                lm = re.search(r"\(([^,]+),\s*[^,]*,\s*(\d+),", line)
-                if lm:
-                    path_lines.append(f"line {lm.group(2)}: {lm.group(1).strip()}")
+        path_steps = extract_path_steps(prev_block)
+
+        # Build compact path summary for the accordion header
+        if path_steps:
+            path_str = " → ".join(
+                f"{s['func']}:{s['line']} {s['expr']} [{s['label']}]"
+                for s in path_steps
+            )
+        else:
+            path_str = ""
 
         if is_reachable is not None:
             events.append({
                 "is_reachable": is_reachable,
                 "explanation": explanation,
                 "answer": answer,
-                "path": " → ".join(path_lines) if path_lines else "",
+                "path": path_str,
+                "path_steps": path_steps,
             })
 
     return events
@@ -216,6 +315,8 @@ def build_app(runs_dir: str, repo_root: str) -> FastAPI:
         "files": None,
         "repoaudit": None,
         "vulnllm": None,
+        "baseline": None,
+        "baseline_vl": None,
     }
 
     def _get_data():
@@ -225,26 +326,32 @@ def build_app(runs_dir: str, repo_root: str) -> FastAPI:
             _cache["repoaudit"] = _load_repoaudit_detected(root_path)
         if _cache["vulnllm"] is None:
             _cache["vulnllm"] = _load_vulnllm_results(root_path)
-        return _cache["files"], _cache["repoaudit"], _cache["vulnllm"]
+        if _cache["baseline_vl"] is None:
+            _cache["baseline_vl"] = _load_baseline_vulnllm(root_path)
+        if _cache["baseline"] is None:
+            _cache["baseline"] = {s: d["predicted"] == "yes"
+                                   for s, d in _cache["baseline_vl"].items()}
+        return _cache["files"], _cache["repoaudit"], _cache["vulnllm"], _cache["baseline"]
 
     @app.get("/api/files")
     def list_files(refresh: bool = False):
         if refresh:
-            _cache["files"] = _cache["repoaudit"] = _cache["vulnllm"] = None
-        files, ra, vl = _get_data()
+            for k in _cache: _cache[k] = None
+        files, ra, vl, bl = _get_data()
         enriched = []
         for f in files:
             key = f["id"]
             enriched.append({
                 **f,
-                "repoaudit_detected": ra.get(key),   # True/None
+                "repoaudit_detected": ra.get(key),        # True/None
                 "vulnllm_flag": vl.get(key, {}).get("flag"),  # tp/fn/fp/tn/None
+                "baseline_detectable": bl.get(f["slug"]), # True/False/None
             })
         return {"files": enriched}
 
     @app.get("/api/stats")
     def get_stats():
-        files, ra, vl = _get_data()
+        files, ra, vl, bl = _get_data()
         # only count ok-verified solutions
         ok = [f for f in files if f["verification"] == "ok"]
 
@@ -299,28 +406,66 @@ def build_app(runs_dir: str, repo_root: str) -> FastAPI:
 
     @app.get("/api/repoaudit")
     def get_repoaudit(slug: str = Query(...), at: str = Query(...)):
-        _, ra, _ = _get_data()
+        _, ra, _, _bl = _get_data()
         log_path = _find_repoaudit_log(root_path, slug, at)
         if log_path is None:
-            return {"detected": ra.get(f"{slug}/{at}"), "validations": [], "log_found": False}
+            return {"detected": ra.get(f"{slug}/{at}"), "validations": [], "explorer": [], "log_found": False}
+        try:
+            text = log_path.read_text(errors="replace")
+        except Exception:
+            text = ""
         events = _parse_repoaudit_log(log_path)
+        explorer = _parse_explorer_sections(text)
         return {
             "detected": ra.get(f"{slug}/{at}", False),
             "validations": events,
+            "explorer": explorer,
             "log_found": True,
             "log_path": str(log_path.relative_to(root_path)),
         }
 
+    @app.get("/api/problem")
+    def get_problem_baseline(slug: str = Query(...)):
+        _get_data()  # ensure baseline_vl is populated
+        repo_dir = runs_path / f"repository_{slug}"
+        if not repo_dir.exists():
+            raise HTTPException(404, "Repo not found")
+
+        code_path = repo_dir / "solution.c"
+        code = code_path.read_text(errors="replace") if code_path.exists() else ""
+
+        problem_md = (repo_dir / "problem.md").read_text() if (repo_dir / "problem.md").exists() else ""
+
+        # VulnLLM-R baseline result
+        bvl = _cache.get("baseline_vl") or {}
+        vl_baseline = bvl.get(slug)
+
+        # RepoAudit baseline: not run on solution.c — always empty
+        return {
+            "slug": slug,
+            "code": code,
+            "problem_md": problem_md,
+            "vulnllm": vl_baseline,   # {predicted, flag, output} or None
+            "repoaudit": None,
+        }
+
     @app.get("/api/vulnllm")
     def get_vulnllm(slug: str = Query(...), at: str = Query(...)):
-        _, _, vl = _get_data()
+        _, _, vl, _bl = _get_data()
         key = f"{slug}/{at}"
         data = vl.get(key)
+        baseline = _cache["baseline_vl"].get(slug) if _cache.get("baseline_vl") else None
         if data is None:
-            return {"available": False}
-        return {"available": True, **data}
+            return {"available": False, "baseline": baseline}
+        return {"available": True, **data, "baseline": baseline}
 
-    # Serve frontend
+    # Serve index.html directly with no-cache so browser never uses stale HTML
+    @app.get("/")
+    async def serve_index():
+        resp = FileResponse(str(STATIC_DIR / "index.html"), media_type="text/html")
+        resp.headers["Cache-Control"] = "no-store"
+        return resp
+
     if STATIC_DIR.exists():
         app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
 

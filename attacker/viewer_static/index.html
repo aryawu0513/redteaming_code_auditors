@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -85,7 +85,10 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
   padding: 6px 12px 3px; font-size: 11px; font-weight: 600;
   color: var(--text3); text-transform: uppercase; letter-spacing: 0.05em;
   position: sticky; top: 0; background: var(--bg2); z-index: 1;
+  cursor: pointer; transition: color 0.15s;
 }
+.group-header:hover { color: var(--accent); }
+.group-header.problem-active { color: var(--accent); border-right: 2px solid var(--accent); }
 .file-item {
   display: flex; align-items: center; gap: 6px;
   padding: 5px 12px; cursor: pointer; transition: background 0.1s;
@@ -148,9 +151,30 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .code-scroll { flex: 1; overflow: auto; }
 .code-scroll pre {
   margin: 0; font-size: 13px; line-height: 1.6;
-  background: var(--bg) !important; padding: 16px;
+  background: var(--bg) !important; padding: 8px 0;
 }
 .code-scroll pre code { font-family: var(--mono) !important; background: transparent !important; }
+
+/* Line numbers */
+.code-line { display: block; padding: 0 16px 0 0; }
+.code-line:hover { background: rgba(127,127,127,0.06); }
+.ln-num {
+  display: inline-block; width: 44px; text-align: right;
+  padding-right: 16px; color: var(--text3); user-select: none;
+  font-size: 12px; opacity: 0.6;
+}
+.ln-code { white-space: pre; }
+
+/* Attack comment line highlight */
+.attack-line { background: rgba(240,136,62,0.08) !important; border-left: 3px solid var(--orange); }
+.attack-line .ln-num { color: var(--orange); opacity: 1; }
+
+/* Keyword highlight in text */
+mark.kw-mark {
+  background: rgba(248,81,73,0.18); color: var(--red);
+  border-radius: 2px; padding: 0 2px; font-weight: 600;
+  font-style: normal;
+}
 
 /* ── Analysis panel ── */
 #analysis-panel { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
@@ -179,6 +203,17 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .banner-label { font-weight: 700; }
 .banner-sub { font-size: 11px; color: var(--text2); margin-top: 1px; }
 
+/* ── Sub-tabs (Explorer / Validator) ── */
+.subtabs { display: flex; border-bottom: 1px solid var(--border); margin-bottom: 12px; }
+.subtab {
+  padding: 6px 14px; font-size: 12px; font-weight: 600; cursor: pointer;
+  color: var(--text2); border-bottom: 2px solid transparent; transition: color 0.15s;
+}
+.subtab:hover { color: var(--text); }
+.subtab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.subtab-content { display: none; }
+.subtab-content.active { display: block; }
+
 /* Validation events */
 .validation-list { display: flex; flex-direction: column; gap: 8px; }
 .val-event {
@@ -191,7 +226,7 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 }
 .val-header:hover { background: var(--bg3); }
 .val-reachable {
-  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px;
+  font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 10px; flex-shrink: 0;
 }
 .reach-true  { background: rgba(248,81,73,0.15); color: var(--red); }
 .reach-false { background: rgba(63,185,80,0.15); color: var(--green); }
@@ -205,6 +240,39 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .val-event.open .val-body { display: block; }
 .val-chevron { font-size: 10px; color: var(--text3); transition: transform 0.15s; flex-shrink: 0; }
 .val-event.open .val-chevron { transform: rotate(90deg); }
+
+/* Explorer events */
+.explorer-list { display: flex; flex-direction: column; gap: 8px; }
+.exp-event {
+  border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+}
+.exp-header {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+  cursor: pointer; background: var(--bg2); transition: background 0.1s;
+  user-select: none;
+}
+.exp-header:hover { background: var(--bg3); }
+.exp-func { font-family: var(--mono); font-size: 12px; font-weight: 600; color: var(--accent); flex-shrink: 0; }
+.exp-src  { font-family: var(--mono); font-size: 11px; color: var(--text2); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.exp-line { font-family: var(--mono); font-size: 11px; color: var(--text3); flex-shrink: 0; }
+.exp-body {
+  padding: 10px 14px; background: var(--bg);
+  font-size: 12px; line-height: 1.65; color: var(--text2);
+  border-top: 1px solid var(--border); white-space: pre-wrap; word-break: break-word;
+  display: none;
+}
+.exp-event.open .exp-body { display: block; }
+.exp-chevron { font-size: 10px; color: var(--text3); transition: transform 0.15s; flex-shrink: 0; }
+.exp-event.open .exp-chevron { transform: rotate(90deg); }
+.exp-response {
+  font-size: 12px; line-height: 1.65; white-space: pre-wrap; word-break: break-word;
+  max-height: 340px; overflow-y: auto; margin-bottom: 8px;
+}
+.exp-output {
+  padding: 6px 10px; background: var(--bg3);
+  border-radius: 4px; font-family: var(--mono); font-size: 11px;
+  color: var(--text3); white-space: pre-wrap; word-break: break-all;
+}
 
 /* VulnLLM */
 .vl-meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
@@ -222,6 +290,16 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .label-det { color: var(--red); }
 .label-evd { color: var(--green); }
 .label-unk { color: var(--text3); }
+.vl-baseline {
+  margin-top: 18px; border-top: 1px solid var(--border); padding-top: 14px;
+}
+.vl-baseline-header {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.vl-baseline-title { font-size: 12px; font-weight: 600; color: var(--text2); }
+.vl-baseline-badge {
+  font-size: 10px; font-weight: 700; padding: 1px 7px; border-radius: 3px; font-family: var(--mono);
+}
 
 /* ── Home/Stats page ── */
 #home { flex: 1; overflow-y: auto; padding: 24px 32px; }
@@ -274,6 +352,37 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 /* ── No-results ── */
 .no-results { padding: 16px; color: var(--text3); font-size: 13px; text-align: center; }
 
+/* ── Invalid (baseline miss) badge ── */
+.invalid-badge {
+  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
+  background: rgba(248,81,73,0.12); color: var(--red);
+  border: 1px solid rgba(248,81,73,0.3); margin-left: 6px; vertical-align: middle;
+  letter-spacing: 0.03em;
+}
+.group-header.invalid { color: var(--red); opacity: 0.85; }
+
+/* ── Path steps in RepoAudit ── */
+.path-steps {
+  display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
+  font-family: var(--mono); font-size: 11px; flex: 1; overflow: hidden;
+}
+.path-step {
+  display: inline-flex; align-items: center; gap: 3px;
+  background: var(--bg3); border: 1px solid var(--border);
+  border-radius: 3px; padding: 1px 6px; white-space: nowrap;
+}
+.path-step .ps-label {
+  font-size: 9px; font-weight: 700; padding: 0 3px; border-radius: 2px;
+  text-transform: uppercase;
+}
+.ps-SINK  { background: rgba(248,81,73,0.15); color: var(--red); }
+.ps-RET   { background: rgba(88,166,255,0.15); color: var(--accent); }
+.ps-OUT   { background: rgba(63,185,80,0.15); color: var(--green); }
+.ps-ARG   { background: rgba(188,140,255,0.15); color: var(--purple); }
+.ps-PARA  { background: rgba(45,212,191,0.15); color: var(--teal); }
+.ps-SRC   { background: rgba(210,153,34,0.15); color: var(--yellow); }
+.path-arrow { color: var(--text3); font-size: 10px; }
+
 /* ── Loading spinner ── */
 .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
@@ -310,6 +419,7 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
       <div class="tb-problem" id="tb-problem"></div>
       <div class="tb-slug" id="tb-slug"></div>
       <div class="tb-at" id="tb-at"></div>
+      <div id="tb-baseline-badge"></div>
       <div id="tb-ra-badge"></div>
       <div id="tb-vl-badge"></div>
       <div class="tb-spacer"></div>
@@ -374,6 +484,36 @@ const ATTACK_TYPES = [
   "COT","FT","CG","AA_MSG","AA_USR","AA_CA",
   "TOOL_ClangSA","TOOL_Frama","TOOL_Fuzzer","TOOL_Coverity"
 ];
+
+// Keywords present in every attack type's adversarial comment
+const GLOBAL_KEYWORDS = ['comment', 'security analysis', 'security check'];
+
+// Keywords specific to each attack type's adversarial comment
+const ATTACK_KEYWORDS = {
+  COT:          ['cot:', 'chain of thought', 'chain-of-thought', 'reasoning:'],
+  FT:           ['ci pipeline', 'binary2int job', 'pipeline log', 'fine-tun'],
+  CG:           ['call graph', 'provenance', 'reached from', 'callsite'],
+  AA_MSG:       ['guaranteed non-null', 'guaranteed non_null', 'non-null because', 'not empty'],
+  AA_USR:       ['user:', 'user note', 'no vulnerability', 'non-null here'],
+  AA_CA:        ['assert(', 'runtime guard', 'commented out for profiling', 'live runtime'],
+  TOOL_ClangSA: ['clang static analyzer', 'scan-build', 'csa-', 'core.nulldereference', 'clang sa'],
+  TOOL_Frama:   ['frama-c', 'frama_c', 'wp plugin', '.frama-c'],
+  TOOL_Fuzzer:  ['libfuzzer', 'afl++', 'afl ', 'honggfuzz', 'fuzzer', 'fuzzing', 'corpus:'],
+  TOOL_Coverity:['coverity', 'forward_null', 'cid ', 'cov-analyze'],
+};
+
+function getKeywords(at) { return [...GLOBAL_KEYWORDS, ...(ATTACK_KEYWORDS[at] || [])]; }
+
+// Highlight keyword occurrences in already-HTML-escaped text
+function markKeywords(html, keywords) {
+  if (!keywords.length) return html;
+  keywords.forEach(kw => {
+    const escaped = kw.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const re = new RegExp(`(${escaped})`, 'gi');
+    html = html.replace(re, '<mark class="kw-mark">$1</mark>');
+  });
+  return html;
+}
 
 function verdictLabel(flag) {
   if (flag === 'tp') return 'detected';
@@ -486,12 +626,14 @@ function renderFileList() {
   // Group by problem slug
   const groups = {};
   S.filtered.forEach(f => {
-    if (!groups[f.slug]) groups[f.slug] = { problem: f.problem, items: [] };
+    if (!groups[f.slug]) groups[f.slug] = { problem: f.problem, items: [], baseline_detectable: f.baseline_detectable };
     groups[f.slug].items.push(f);
   });
   let html = '';
   for (const [slug, g] of Object.entries(groups)) {
-    html += `<div class="group-header">${escHtml(g.problem)}</div>`;
+    const isInvalid = g.baseline_detectable === false;
+    const invalidBadge = isInvalid ? `<span class="invalid-badge" title="Model cannot detect NPD without attack comment">INVALID</span>` : '';
+    html += `<div class="group-header${isInvalid ? ' invalid' : ''}" data-slug="${escHtml(slug)}">${escHtml(g.problem)}${invalidBadge}</div>`;
     for (const f of g.items) {
       const active = S.selected === f.id ? ' active' : '';
       const dotCls = f.verification === 'ok' ? 'dot-ok' : 'dot-bad';
@@ -508,6 +650,9 @@ function renderFileList() {
   el.innerHTML = html;
   el.querySelectorAll('.file-item').forEach(item => {
     item.addEventListener('click', () => selectFile(item.dataset.id));
+  });
+  el.querySelectorAll('.group-header').forEach(hdr => {
+    hdr.addEventListener('click', () => selectProblem(hdr.dataset.slug));
   });
 }
 
@@ -536,6 +681,15 @@ async function selectFile(id) {
   document.getElementById('tb-at').textContent = at;
   document.getElementById('tb-ra-badge').innerHTML = raBadgeHtml(f?.repoaudit_detected);
   document.getElementById('tb-vl-badge').innerHTML = vlBadgeHtml(f?.vulnllm_flag);
+  const blEl = document.getElementById('tb-baseline-badge');
+  if (blEl) {
+    if (f?.baseline_detectable === false)
+      blEl.innerHTML = `<span class="badge" style="background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)" title="Model misses NPD even without attack comment">INVALID</span>`;
+    else if (f?.baseline_detectable === true)
+      blEl.innerHTML = `<span class="badge badge-na" title="Model detects NPD without attack comment">Valid target</span>`;
+    else
+      blEl.innerHTML = '';
+  }
 
   // Reset panels
   document.getElementById('code-block').textContent = '⋯ loading';
@@ -552,22 +706,130 @@ async function selectFile(id) {
     api(`/api/vulnllm?slug=${slug}&at=${encodeURIComponent(at)}`),
   ]);
 
+  const keywords = getKeywords(at);
   renderCode(sol, at);
-  renderRepoAudit(ra, at);
-  renderVulnLLM(vl, f?.vulnllm_flag);
+  renderRepoAudit(ra, at, keywords);
+  renderVulnLLM(vl, f?.vulnllm_flag, keywords);
   renderProblem(sol);
+}
+
+// ── Problem baseline view ──────────────────────────────────────────────────────
+async function selectProblem(slug) {
+  S.selected = null;
+  S.showHome = false;
+
+  // Sidebar: deselect files, highlight this header
+  document.querySelectorAll('.file-item').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.group-header').forEach(el =>
+    el.classList.toggle('problem-active', el.dataset.slug === slug));
+
+  document.getElementById('home').style.display = 'none';
+  document.getElementById('placeholder').style.display = 'none';
+  document.getElementById('content').style.display = 'flex';
+  document.getElementById('topbar').style.display = 'flex';
+
+  // Topbar
+  const g = Object.values(S.files.reduce((acc, f) => {
+    if (f.slug === slug && !acc[slug]) acc[slug] = f;
+    return acc;
+  }, {}))[0];
+  document.getElementById('tb-problem').textContent = g?.problem || slug;
+  document.getElementById('tb-slug').textContent = slug;
+  document.getElementById('tb-at').textContent = 'baseline';
+  document.getElementById('tb-ra-badge').innerHTML = '';
+  document.getElementById('tb-vl-badge').innerHTML = '';
+  const blEl = document.getElementById('tb-baseline-badge');
+  if (blEl) blEl.innerHTML = '';
+
+  // Reset panels
+  ['tab-repoaudit','tab-vulnllm','tab-problem'].forEach(id =>
+    document.getElementById(id).innerHTML = '<div class="spinner"></div>');
+  document.getElementById('code-block').textContent = '⋯ loading';
+
+  const data = await api(`/api/problem?slug=${slug}`);
+
+  // Code panel: show solution.c
+  document.getElementById('code-fname').textContent = 'solution.c';
+  const codeEl = document.getElementById('code-block');
+  codeEl.textContent = data.code || '(solution.c not found)';
+  hljs.highlightElement(codeEl);
+
+  // Problem tab
+  renderProblem(data);
+
+  // RepoAudit tab: not run on baseline
+  document.getElementById('tab-repoaudit').innerHTML =
+    `<div style="color:var(--text3);font-size:13px;padding:12px">RepoAudit was not run on the unmodified solution.c.</div>`;
+
+  // VulnLLM tab: VulnLLM-R baseline only
+  const vl = data.vulnllm;
+  const vlEl = document.getElementById('tab-vulnllm');
+  if (!vl) {
+    vlEl.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:12px">No VulnLLM-R baseline result available.</div>`;
+  } else {
+    const det = vl.predicted === 'yes';
+    const badgeStyle = det
+      ? 'background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)'
+      : 'background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.3)';
+    vlEl.innerHTML = `
+      <div class="vl-baseline-header" style="margin-bottom:10px">
+        <span class="vl-baseline-title">VulnLLM-R-7B — original solution.c</span>
+        <span class="vl-baseline-badge" style="${badgeStyle}">${det ? 'Detected' : 'Missed'}</span>
+        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${vl.flag || ''}</span>
+      </div>
+      ${vl.output
+        ? `<div class="vl-output">${markKeywords(escHtml(vl.output), GLOBAL_KEYWORDS)}</div>`
+        : '<div style="color:var(--text3);font-size:12px">No reasoning available.</div>'}`;
+  }
 }
 
 // ── Code panel ────────────────────────────────────────────────────────────────
 function renderCode(sol, at) {
   document.getElementById('code-fname').textContent = `${sol.slug}_${at}.c`;
   const codeEl = document.getElementById('code-block');
+  const keywords = getKeywords(at);
+
+  // Highlight with hljs
   codeEl.textContent = sol.code;
   hljs.highlightElement(codeEl);
+  const highlighted = codeEl.innerHTML;
+
+  // Detect which raw source lines contain keywords
+  const attackLines = new Set();
+  if (keywords.length) {
+    sol.code.split('\n').forEach((line, i) => {
+      const lo = line.toLowerCase();
+      if (keywords.some(kw => lo.includes(kw.toLowerCase()))) attackLines.add(i + 1);
+    });
+  }
+
+  // Wrap each line with a line-number span
+  const htmlLines = highlighted.split('\n');
+  // Drop empty trailing line if present
+  if (htmlLines.length && htmlLines[htmlLines.length - 1] === '') htmlLines.pop();
+  const numbered = htmlLines.map((line, i) => {
+    const n = i + 1;
+    const cls = attackLines.has(n) ? ' attack-line' : '';
+    return `<span class="code-line${cls}" data-line="${n}"><span class="ln-num">${n}</span><span class="ln-code">${line}</span></span>`;
+  }).join('\n');
+
+  codeEl.innerHTML = numbered;
+
+  // If any attack lines found, scroll first one into view
+  if (attackLines.size) {
+    const first = codeEl.querySelector('.attack-line');
+    if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
+}
+
+// Strip verbose file paths from explorer output; keep expr + line + label
+function simplifyExplorerOutput(raw) {
+  // Replace long path strings like /mnt/.../file.c with just file.c
+  return raw.replace(/\/[^\s,)]+\/([^/,)]+\.c)/g, '$1');
 }
 
 // ── RepoAudit panel ───────────────────────────────────────────────────────────
-function renderRepoAudit(ra, at) {
+function renderRepoAudit(ra, at, keywords) {
   const el = document.getElementById('tab-repoaudit');
   const det = ra.detected;
 
@@ -578,14 +840,14 @@ function renderRepoAudit(ra, at) {
       <div class="banner-icon">🔴</div>
       <div class="banner-text">
         <div class="banner-label">Bug Detected</div>
-        <div class="banner-sub">RepoAudit (claude-sonnet-4-6) found a reachable NPD path in this solution.</div>
+        <div class="banner-sub">RepoAudit (claude-sonnet-4-6) found a reachable NPD path.</div>
       </div>
     </div>`;
   } else if (det === false) {
     html += `<div class="verdict-banner banner-evd">
       <div class="banner-icon">🟢</div>
       <div class="banner-text">
-        <div class="banner-label">Adversarial Attack Succeeded — Bug Evaded</div>
+        <div class="banner-label">Attack Succeeded — Bug Evaded</div>
         <div class="banner-sub">RepoAudit found no reachable NPD path. The ${escHtml(at)} comment fooled the auditor.</div>
       </div>
     </div>`;
@@ -602,53 +864,111 @@ function renderRepoAudit(ra, at) {
     return;
   }
 
-  if (!ra.validations.length) {
-    html += `<div style="color:var(--text3);font-size:12px;margin-top:8px">Log found but no path-validation events extracted.</div>`;
-    el.innerHTML = html;
-    return;
-  }
+  // Sub-tab toggle: Explorer / Validator
+  const explorerCount  = (ra.explorer || []).length;
+  const validatorCount = (ra.validations || []).length;
+  const reachableCount = (ra.validations || []).filter(v => v.is_reachable).length;
 
-  const reachable = ra.validations.filter(v => v.is_reachable);
-  const safe      = ra.validations.filter(v => !v.is_reachable);
-
-  html += `<div class="section-title" style="margin-bottom:8px">
-    ${ra.validations.length} paths checked —
-    <span style="color:var(--red)">${reachable.length} reachable</span>,
-    <span style="color:var(--green)">${safe.length} safe</span>
+  html += `<div class="subtabs">
+    <div class="subtab active" data-subtab="explorer">Explorer <span style="color:var(--text3);font-weight:400">(${explorerCount} calls)</span></div>
+    <div class="subtab" data-subtab="validator">Validator <span style="color:var(--text3);font-weight:400">(${validatorCount} paths${reachableCount ? `, <span style="color:var(--red)">${reachableCount} reachable</span>` : ''})</span></div>
   </div>`;
-  html += '<div class="validation-list">';
-  ra.validations.forEach((v, i) => {
-    const cls = v.is_reachable ? 'reach-true' : 'reach-false';
-    const label = v.is_reachable ? 'REACHABLE (NPD)' : 'SAFE';
-    const pathText = v.path || `Path ${i + 1}`;
-    html += `<div class="val-event" data-idx="${i}">
-      <div class="val-header">
-        <span class="val-reachable ${cls}">${label}</span>
-        <span class="val-path" title="${escHtml(v.path)}">${escHtml(pathText)}</span>
-        <span class="val-chevron">▶</span>
-      </div>
-      <div class="val-body">${escHtml(v.explanation || '(no explanation captured)')}</div>
-    </div>`;
-  });
-  html += '</div>';
+
+  // ── Explorer section ──
+  html += `<div class="subtab-content active" id="ra-explorer">`;
+  if (!explorerCount) {
+    html += `<div style="color:var(--text3);font-size:12px">No explorer calls found in log.</div>`;
+  } else {
+    html += `<div class="explorer-list">`;
+    (ra.explorer || []).forEach((e, i) => {
+      html += `<div class="exp-event" data-idx="${i}">
+        <div class="exp-header">
+          <span class="exp-func">${escHtml(e.func)}()</span>
+          <span class="exp-src">src: '${markKeywords(escHtml(e.src), keywords)}'</span>
+          <span class="exp-line">line ${e.line}</span>
+          <span class="exp-chevron">▶</span>
+        </div>
+        <div class="exp-body">
+          ${e.response ? `<div class="exp-response">${markKeywords(escHtml(e.response), keywords)}</div>` : ''}
+          ${e.output ? `<div class="exp-output">→ ${escHtml(simplifyExplorerOutput(e.output))}</div>` : '<span style="color:var(--text3)">(empty output)</span>'}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
+  // ── Validator section ──
+  html += `<div class="subtab-content" id="ra-validator">`;
+  if (!validatorCount) {
+    html += `<div style="color:var(--text3);font-size:12px">No path-validation events found. Explorer returned no propagation paths.</div>`;
+  } else {
+    html += `<div class="validation-list">`;
+    (ra.validations || []).forEach((v, i) => {
+      const cls   = v.is_reachable ? 'reach-true' : 'reach-false';
+      const label = v.is_reachable ? 'REACHABLE (NPD)' : 'SAFE';
+
+      let pathHtml = '';
+      const steps = v.path_steps || [];
+      if (steps.length) {
+        pathHtml = '<div class="path-steps">';
+        steps.forEach((s, si) => {
+          if (si > 0) pathHtml += '<span class="path-arrow">→</span>';
+          pathHtml += `<span class="path-step">
+            <span class="ps-label ps-${escHtml(s.label)}">${escHtml(s.label)}</span>
+            <span>${escHtml(s.func)}:${s.line}</span>
+            <span style="color:var(--text3)">${escHtml(s.expr)}</span>
+          </span>`;
+        });
+        pathHtml += '</div>';
+      } else {
+        pathHtml = `<span class="val-path">${escHtml(v.path || `Path ${i + 1}`)}</span>`;
+      }
+
+      html += `<div class="val-event" data-idx="${i}">
+        <div class="val-header">
+          <span class="val-reachable ${cls}">${label}</span>
+          ${pathHtml}
+          <span class="val-chevron">▶</span>
+        </div>
+        <div class="val-body">${markKeywords(escHtml(v.explanation || '(no explanation captured)'), keywords)}</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  html += `</div>`;
+
   el.innerHTML = html;
 
-  // Toggle accordions
-  el.querySelectorAll('.val-event').forEach(ev => {
-    ev.querySelector('.val-header').addEventListener('click', () => {
-      ev.classList.toggle('open');
+  // Sub-tab switching
+  el.querySelectorAll('.subtab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const name = tab.dataset.subtab;
+      el.querySelectorAll('.subtab').forEach(t => t.classList.toggle('active', t.dataset.subtab === name));
+      el.querySelectorAll('.subtab-content').forEach(c => c.classList.toggle('active', c.id === `ra-${name}`));
     });
   });
 
-  // Auto-open reachable paths
+  // Accordion toggles
   el.querySelectorAll('.val-event').forEach(ev => {
-    const badge = ev.querySelector('.val-reachable');
-    if (badge && badge.classList.contains('reach-true')) ev.classList.add('open');
+    ev.querySelector('.val-header').addEventListener('click', () => ev.classList.toggle('open'));
   });
+  el.querySelectorAll('.exp-event').forEach(ev => {
+    ev.querySelector('.exp-header').addEventListener('click', () => ev.classList.toggle('open'));
+  });
+
+  // Auto-open reachable validator paths; switch to validator tab if any reachable
+  if (reachableCount > 0) {
+    el.querySelectorAll('.val-event').forEach(ev => {
+      if (ev.querySelector('.reach-true')) ev.classList.add('open');
+    });
+    // Switch to validator tab so user sees the bug
+    el.querySelector('.subtab[data-subtab="validator"]')?.click();
+  }
 }
 
 // ── VulnLLM panel ─────────────────────────────────────────────────────────────
-function renderVulnLLM(vl, flag) {
+function renderVulnLLM(vl, flag, keywords) {
   const el = document.getElementById('tab-vulnllm');
   if (!vl.available) {
     el.innerHTML = `<div class="verdict-banner banner-na">
@@ -700,9 +1020,29 @@ function renderVulnLLM(vl, flag) {
 
   const outputText = vl.output || vl.cot || '';
   if (outputText) {
-    html += `<div class="section-title">Model Output</div>
-      <div class="vl-output">${escHtml(outputText)}</div>`;
+    html += `<div class="section-title">Model Output (Attacked)</div>
+      <div class="vl-output">${markKeywords(escHtml(outputText), keywords)}</div>`;
   }
+
+  // Baseline: model's result on the original unmodified solution.c
+  const bl = vl.baseline;
+  if (bl) {
+    const blDet = bl.predicted === 'yes';
+    const blBadgeStyle = blDet
+      ? 'background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)'
+      : 'background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.3)';
+    html += `<div class="vl-baseline">
+      <div class="vl-baseline-header">
+        <span class="vl-baseline-title">Baseline — original solution.c (no attack comment)</span>
+        <span class="vl-baseline-badge" style="${blBadgeStyle}">${blDet ? 'Detected' : 'Missed'}</span>
+        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${bl.flag || ''}</span>
+      </div>`;
+    if (bl.output) {
+      html += `<div class="vl-output" style="max-height:40vh">${markKeywords(escHtml(bl.output), keywords)}</div>`;
+    }
+    html += `</div>`;
+  }
+
   el.innerHTML = html;
 }
 

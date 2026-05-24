@@ -5,18 +5,19 @@ Sample scripts to run the full pipeline. Adapt env vars to change bug type / lan
 ## Setup (run once after cloning)
 
 ```bash
-source RepoAudit/.venv/bin/activate
+uv sync
+source .venv/bin/activate
 bash scripts/setup_benchmark.sh
 ```
 
-Populates `RepoAudit/benchmark/` and `VulnLLM-R/datasets/` from:
+Populates `RepoAudit/benchmark/`, `VulnLLM-R/datasets/`, `VulTrial/datasets/`, and `OpenVul/datasets/` from:
 - `benchmark/` (safe source codes)
 - `automatic/texts/` (attack payloads)
 
 ## Run RepoAudit
 
 ```bash
-source RepoAudit/.venv/bin/activate
+source .venv/bin/activate
 export ANTHROPIC_API_KEY=...
 
 bash scripts/run_repoaudit_c_npd.sh         # C/NPD (default)
@@ -36,7 +37,7 @@ Results land in `RepoAudit/result/dfbscan/{model}/NPD/{lang}/{category}/{timesta
 ## Run VulnLLM-R
 
 ```bash
-source VulnLLM-R/.venv/bin/activate
+source .venv/bin/activate
 nvidia-smi                             # pick a free GPU
 export CUDA_VISIBLE_DEVICES=<id>
 
@@ -57,3 +58,33 @@ LANGUAGE=python \
 ```
 
 Results land in `VulnLLM-R/results/{lang}/{bug}/policy/{category}/`.
+
+## Run VulTrial
+
+```bash
+source .venv/bin/activate
+export OPENAI_API_KEY=...       # for gpt-4o (default)
+# or: export ANTHROPIC_API_KEY=... and set VT_MODEL=claude-sonnet-4-6
+
+bash scripts/run_vultrial_c_npd.sh          # C/NPD, both modes (default)
+
+# Single mode or model:
+VT_MODEL=claude-sonnet-4-6 MODES="npd" bash scripts/run_vultrial_c_npd.sh
+```
+
+Results land in `VulTrial/results/{model}/{mode}/C/NPD/{category}/`.
+
+## Run OpenVul
+
+```bash
+source .venv/bin/activate
+nvidia-smi                             # pick a free GPU
+export CUDA_VISIBLE_DEVICES=<id>
+
+bash scripts/run_openvul_c_npd.sh      # C/NPD (default)
+
+# Single mode:
+MODES="npd" bash scripts/run_openvul_c_npd.sh
+```
+
+Results land in `OpenVul/results/{mode}/C/NPD/{category}/`.

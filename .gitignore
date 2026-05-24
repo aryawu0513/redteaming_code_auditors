@@ -11,4 +11,16 @@ RepoAudit/log/
 VulnLLM-R/datasets/
 VulnLLM-R/datasets-defense/
 VulnLLM-R/results*/
+VulTrial/datasets/
+VulTrial/results/
+VulTrial/logs/
+VulTrial/agentverse/tasks/
+OpenVul/datasets/
+OpenVul/results/
 defenses/texts/
+attacker/results/
+attacker/scaffold_results/
+attacker/experiments/
+attacker/experiment_eyeball/
+attacker/runs/
+*.plist

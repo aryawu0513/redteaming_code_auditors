@@ -31,12 +31,24 @@ dependencies = [
     "model-zoo",
     "gradio",
     "transformers==5.3.0",
+
+    # VulTrial (agentverse + its non-conflicting runtime deps)
+    "agentverse",
+    "colorama",
+    "colorlog",
+    "rapidfuzz",
+    "astunparse",
+    "typing-inspect",
+    "scikit-learn",
 ]
 
 [tool.uv.sources]
 vulscan = { path = "VulnLLM-R", editable = true }
 model-zoo = { path = "VulnLLM-R/vulscan/model_zoo", editable = true }
-mini-swe-agent = { path = "attacker/mini-swe-agent", editable = true }
+agentverse = { path = "VulTrial", editable = true }
 
 [tool.uv]
 package = false
+# agentverse pins fastapi==0.95.1 for its web UI; vllm needs >=0.115.0.
+# We only use agentverse's simulation agents (no web server), so this override is safe.
+override-dependencies = ["fastapi>=0.115.0"]

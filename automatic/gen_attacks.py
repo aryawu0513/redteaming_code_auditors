@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Attack-file generator for RepoAudit and VulnLLM-R datasets.
+"""Attack-file generator for RepoAudit, VulnLLM-R, VulTrial, and OpenVul datasets.
 
 Reads variant metadata and attack texts from automatic/texts/{language}_{bug_type}.json
 and writes the attack dataset (buggy baseline + context-aware attacks) to the benchmark
-and dataset directories for both systems.
+and dataset directories for all four systems.
 
 Supported combinations:
     c / npd      — C Null Pointer Dereference (CWE-476)
@@ -44,6 +44,8 @@ CONFIG = {
         "tools":         _TOOLS_C,
         "ra_base":       f"{REPO}/RepoAudit/benchmark/C/NPD",
         "vl_base":       f"{REPO}/VulnLLM-R/datasets/C/NPD",
+        "vt_base":       f"{REPO}/VulTrial/datasets/C/NPD",
+        "ov_base":       f"{REPO}/OpenVul/datasets/C/NPD",
     },
     ("c", "uaf"): {
         "ext":           "c",
@@ -53,6 +55,8 @@ CONFIG = {
         "tools":         _TOOLS_C,
         "ra_base":       f"{REPO}/RepoAudit/benchmark/C/UAF",
         "vl_base":       f"{REPO}/VulnLLM-R/datasets/C/UAF",
+        "vt_base":       f"{REPO}/VulTrial/datasets/C/UAF",
+        "ov_base":       f"{REPO}/OpenVul/datasets/C/UAF",
     },
     ("python", "npd"): {
         "ext":           "py",
@@ -62,6 +66,8 @@ CONFIG = {
         "tools":         _TOOLS_PY,
         "ra_base":       f"{REPO}/RepoAudit/benchmark/Python/NPD",
         "vl_base":       f"{REPO}/VulnLLM-R/datasets/Python/NPD",
+        "vt_base":       f"{REPO}/VulTrial/datasets/Python/NPD",
+        "ov_base":       None,   # OpenVul is C-only
     },
 }
 
@@ -226,19 +232,56 @@ def write_vulnllm_json(path, code, language, bug_type):
         json.dump(data, f, indent=2)
 
 
+def write_openvul_json(path, code, caller, language, bug_type):
+    """Write OpenVul-format JSON: context and target_function as separate fields.
+
+    Splits the combined VulnLLM-R code string at the target-function separator.
+    """
+    cfg        = CONFIG[(language, bug_type)]
+    sep        = cfg["target_fn_sep"]                          # "// target function\n"
+    ctx_marker = sep.replace("target function", "context")    # "// context\n"
+    ext        = cfg["ext"]
+
+    if sep in code:
+        ctx_raw, target_function = code.split(sep, 1)
+        context = ctx_raw.removeprefix(ctx_marker).strip()
+        target_function = target_function.strip()
+    else:
+        context = ""
+        target_function = code.strip()
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    data = [{
+        "context":         context,
+        "target_function": target_function,
+        "function_name":   caller,
+        "file_name":       f"target.{ext}",
+        "CWE_ID":          [cfg["cwe"]],
+        "target":          1,
+        "language":        cfg["lang_str"],
+        "dataset":         "custom",
+        "idx":             1,
+    }]
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+
+
 # ---------------------------------------------------------------------------
 # Main generator
 # ---------------------------------------------------------------------------
 
-def generate_all(language, bug_type, ra_base=None, vl_base=None):
+def generate_all(language, bug_type, ra_base=None, vl_base=None, vt_base=None, ov_base=None):
     """Generate attack files for a given language/bug-type combination.
 
-    ra_base / vl_base: override output directories (default: config paths).
+    ra_base / vl_base / vt_base / ov_base: override output directories (default: config paths).
+    Pass ov_base=False to suppress OpenVul output even when config has a default.
     Variant clean files are always read from the ground-truth config paths.
     """
     cfg        = CONFIG[(language, bug_type)]
     ra_out     = ra_base or cfg["ra_base"]
     vl_out     = vl_base or cfg["vl_base"]
+    vt_out     = vt_base or cfg.get("vt_base")
+    ov_out     = ov_base or cfg.get("ov_base")   # None for Python (OpenVul is C-only)
     ext        = cfg["ext"]
     lang_str   = cfg["lang_str"]
     dir_prefix = cfg.get("dir_prefix", "")
@@ -248,6 +291,7 @@ def generate_all(language, bug_type, ra_base=None, vl_base=None):
     for vname, vdata in variants.items():
         clean      = vdata[f"clean_{ext}"]
         clean_code = vdata["clean_code"]
+        caller     = vdata.get("caller", vname)
 
         # --- Clean baseline ---
         write_repoaudit_file(
@@ -255,6 +299,14 @@ def generate_all(language, bug_type, ra_base=None, vl_base=None):
         write_vulnllm_json(
             f"{vl_out}/{dir_prefix}buggy/{vname}/{lang_str}/{vname}_clean.json",
             clean_code, language, bug_type)
+        if vt_out:
+            write_vulnllm_json(
+                f"{vt_out}/{dir_prefix}buggy/{vname}/{lang_str}/{vname}_clean.json",
+                clean_code, language, bug_type)
+        if ov_out:
+            write_openvul_json(
+                f"{ov_out}/{dir_prefix}buggy/{vname}/{lang_str}/{vname}_clean.json",
+                clean_code, caller, language, bug_type)
         print(f"  [{vname}] buggy")
 
         # --- Context-aware attacks ---
@@ -266,6 +318,14 @@ def generate_all(language, bug_type, ra_base=None, vl_base=None):
             write_vulnllm_json(
                 f"{vl_out}/{dir_prefix}context_aware/{vname}/{lang_str}/{vname}_{attack}.json",
                 code, language, bug_type)
+            if vt_out:
+                write_vulnllm_json(
+                    f"{vt_out}/{dir_prefix}context_aware/{vname}/{lang_str}/{vname}_{attack}.json",
+                    code, language, bug_type)
+            if ov_out:
+                write_openvul_json(
+                    f"{ov_out}/{dir_prefix}context_aware/{vname}/{lang_str}/{vname}_{attack}.json",
+                    code, caller, language, bug_type)
         print(f"  [{vname}] {len(ctx)} context-aware attacks")
 
 
@@ -280,6 +340,8 @@ def main():
     parser.add_argument("--language", required=True, choices=["c", "python"])
     parser.add_argument("--ra-base",  help="Override RepoAudit output directory")
     parser.add_argument("--vl-base",  help="Override VulnLLM-R output directory")
+    parser.add_argument("--vt-base",  help="Override VulTrial output directory")
+    parser.add_argument("--ov-base",  help="Override OpenVul output directory")
     args = parser.parse_args()
 
     key = (args.language, args.bug_type)
@@ -287,7 +349,8 @@ def main():
         parser.error(f"Unsupported combination: {key}")
 
     generate_all(args.language, args.bug_type,
-                 ra_base=args.ra_base, vl_base=args.vl_base)
+                 ra_base=args.ra_base, vl_base=args.vl_base,
+                 vt_base=args.vt_base, ov_base=args.ov_base)
     print(f"\nDone. All {args.language.upper()} {args.bug_type.upper()} attack files generated.")
 
 

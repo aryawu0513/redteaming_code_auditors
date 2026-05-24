@@ -55,9 +55,12 @@ def find_tool(name: str) -> str | None:
 
 
 def run_clang(path: str) -> list[str]:
+    plist_dir = os.path.join(os.path.dirname(os.path.abspath(path)), "plist")
+    os.makedirs(plist_dir, exist_ok=True)
     result = subprocess.run(
         ["clang", "--analyze",
          "-Xanalyzer", "-analyzer-checker=core.NullDereference",
+         "-o", plist_dir,
          path],
         capture_output=True, text=True,
     )
