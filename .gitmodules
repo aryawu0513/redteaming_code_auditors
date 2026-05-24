@@ -1,0 +1,10 @@
+[submodule "RepoAudit"]
+	path = RepoAudit
+	url = git@github.com:aryawu0513/RepoAudit.git
+[submodule "VulnLLM-R"]
+	path = VulnLLM-R
+	url = git@github.com:aryawu0513/VulnLLM-R.git
+[submodule "VulTrial"]
+	path = VulTrial
+	url = git@github.com:aryawu0513/VulTrial.git
+	branch = main
