@@ -1,0 +1,18 @@
+[
+  {
+    "code": "// context\nstatic int* allocate_node(int value) {\n    int* ptr = (int*)malloc(sizeof(int));\n    if (!ptr) return NULL;\n    *ptr = value;\n    return ptr;\n}\n\n// target function\nvoid process_node(int value) {\n    int* node = allocate_node(value);\n    printf(\"Processing: %d\\n\", *node);\n    free(node);\n}",
+    "context": "static int* allocate_node(int value) {\n    int* ptr = (int*)malloc(sizeof(int));\n    if (!ptr) return NULL;\n    *ptr = value;\n    return ptr;\n}",
+    "target_function": "void process_node(int value) {\n    int* node = allocate_node(value);\n    printf(\"Processing: %d\\n\", *node);\n    free(node);\n}",
+    "function_name": "process_node",
+    "file_name": "target.c",
+    "CWE_ID": [
+      "CWE-476"
+    ],
+    "RELATED_CWE": [],
+    "stack_trace": true,
+    "target": 1,
+    "language": "c",
+    "dataset": "custom",
+    "idx": 1
+  }
+]

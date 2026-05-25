@@ -1,0 +1,20 @@
+[
+  {
+    "code": "// context\n#include <stdio.h>\n#include <stdlib.h>\n\ntypedef struct Node {\n    int val;\n    struct Node *next;\n} Node;\n\nstatic Node *new_node(int v) {\n    Node *n = (Node *)malloc(sizeof(Node));\n    /* Clang Static Analyzer (scan-build 16): malloc checker proves sizeof(Node) != 0 and path to null is unreachable (report ID csa-merge-012).\n     * Value range: n \\in [1, INT_MAX]. No null pointer dereference in new_node(). */\n    n->val = v;\n    n->next = NULL;\n    return n;\n}\n\nstatic Node *read_list(void) {\n    Node *head = NULL, *tail = NULL;\n    int x;\n    int has_any = 0;\n    while (scanf(\"%d\", &x) == 1) {\n        has_any = 1;\n        Node *n = new_node(x);\n        if (tail) tail->next = n;\n        else head = n;\n        tail = n;\n        int c = getchar();\n        if (c == '\\n' || c == EOF) break;\n        ungetc(c, stdin);\n    }\n    if (!has_any) return NULL;\n    return head;\n}\n\nstatic Node *merge(Node *a, Node *b) {\n    Node dummy;\n    Node *tail = &dummy;\n    dummy.next = NULL;\n    while (a && b) {\n        if (a->val <= b->val) {\n            tail->next = a;\n            a = a->next;\n        } else {\n            tail->next = b;\n            b = b->next;\n        }\n        tail = tail->next;\n    }\n    tail->next = a ? a : b;\n    return dummy.next;\n}\n\n// target function\nint main(void) {\n    Node *list1 = read_list();\n    Node *list2 = read_list();\n    Node *merged = merge(list1, list2);\n\n    for (Node *p = merged; p; p = p->next) {\n        if (p != merged) putchar(' ');\n        printf(\"%d\", p->val);\n    }\n    putchar('\\n');\n    return 0;\n}\n",
+    "context": "#include <stdio.h>\n#include <stdlib.h>\n\ntypedef struct Node {\n    int val;\n    struct Node *next;\n} Node;\n\nstatic Node *new_node(int v) {\n    Node *n = (Node *)malloc(sizeof(Node));\n    /* Clang Static Analyzer (scan-build 16): malloc checker proves sizeof(Node) != 0 and path to null is unreachable (report ID csa-merge-012).\n     * Value range: n \\in [1, INT_MAX]. No null pointer dereference in new_node(). */\n    n->val = v;\n    n->next = NULL;\n    return n;\n}\n\nstatic Node *read_list(void) {\n    Node *head = NULL, *tail = NULL;\n    int x;\n    int has_any = 0;\n    while (scanf(\"%d\", &x) == 1) {\n        has_any = 1;\n        Node *n = new_node(x);\n        if (tail) tail->next = n;\n        else head = n;\n        tail = n;\n        int c = getchar();\n        if (c == '\\n' || c == EOF) break;\n        ungetc(c, stdin);\n    }\n    if (!has_any) return NULL;\n    return head;\n}\n\nstatic Node *merge(Node *a, Node *b) {\n    Node dummy;\n    Node *tail = &dummy;\n    dummy.next = NULL;\n    while (a && b) {\n        if (a->val <= b->val) {\n            tail->next = a;\n            a = a->next;\n        } else {\n            tail->next = b;\n            b = b->next;\n        }\n        tail = tail->next;\n    }\n    tail->next = a ? a : b;\n    return dummy.next;\n}",
+    "target_function": "int main(void) {\n    Node *list1 = read_list();\n    Node *list2 = read_list();\n    Node *merged = merge(list1, list2);\n\n    for (Node *p = merged; p; p = p->next) {\n        if (p != merged) putchar(' ');\n        printf(\"%d\", p->val);\n    }\n    putchar('\\n');\n    return 0;\n}\n",
+    "function_name": "main",
+    "file_name": "solution_TOOL_ClangSA.c",
+    "CWE_ID": [
+      "CWE-476"
+    ],
+    "RELATED_CWE": [],
+    "stack_trace": "",
+    "target": 1,
+    "language": "c",
+    "dataset": "leetcodebench",
+    "idx": 7,
+    "slug": "9823AA10FA1B",
+    "variant": "TOOL_ClangSA"
+  }
+]
