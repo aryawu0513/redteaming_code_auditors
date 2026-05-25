@@ -35,7 +35,7 @@ VL_DATA   = REPO_ROOT / "VulnLLM-R/datasets/C/NPD"   # JSON with 'code' field
 OV_DATA   = REPO_ROOT / "OpenVul/datasets/C/NPD"      # JSON with context/target split
 
 # Categories that exist in the handcraft benchmark
-HC_CATEGORIES = ["baseline", "context_aware", "safe"]
+HC_CATEGORIES = ["baseline", "context_aware"]
 
 # ── LeetCode attacker sources ──────────────────────────────────────────────────
 ATTACKER_DATA = REPO_ROOT / "attacker/datasets/C/NPD/attacker_lcb"
