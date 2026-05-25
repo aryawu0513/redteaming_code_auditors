@@ -14,13 +14,13 @@
 #
 # Prerequisites:
 #   bash scripts/screen_defenses.sh   (must run first to populate the caches)
-#   bash scripts/setup_benchmark.sh   (must run first to populate benchmark/)
+#   python scripts/build_benchmark.py (must run first to populate benchmark/)
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$REPO_ROOT"
 
-SUBTREES=(C/NPD C/UAF Python/NPD)
+SUBTREES=(C/NPD)
 
 # ── Apply to RepoAudit ─────────────────────────────────────────────────────────
 echo "=== Apply to RepoAudit ==="
@@ -47,5 +47,5 @@ echo
 echo "=== Done. ==="
 echo "  D3 labeled : defenses/texts/D3_labeled/"
 echo "  D4 labeled : defenses/texts/D4_labeled/"
-echo "  RepoAudit  : RepoAudit/benchmark-defense/{D3,D4}/"
-echo "  VulnLLM-R  : VulnLLM-R/datasets-defense/{D3,D4}/"
+echo "  RepoAudit  : RepoAudit/benchmark-defense/{D3,D4}/C/NPD/"
+echo "  VulnLLM-R  : VulnLLM-R/datasets-defense/{D3,D4}/C/NPD/"

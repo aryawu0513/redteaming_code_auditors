@@ -22,7 +22,7 @@ DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/handcraft}"
 VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 
 for MODE in $MODES; do
-    for CATEGORY in buggy context_aware; do
+    for CATEGORY in baseline context_aware; do
         [ -d "$DATASET_ROOT/$CATEGORY" ] || continue
         for VARIANT in "${VARIANTS[@]}"; do
             [ -d "$DATASET_ROOT/$CATEGORY/$VARIANT" ] || continue

@@ -20,7 +20,7 @@ BENCHMARK="${BENCHMARK:-$REPO_ROOT/benchmark/handcraft}"
 FILES="${FILES:-*.c}"
 
 cd "$REPO_ROOT/RepoAudit/src"
-for CATEGORY in buggy context_aware; do
+for CATEGORY in baseline context_aware; do
     [ -d "$BENCHMARK/$CATEGORY" ] || continue
     echo "=== RepoAudit C/NPD/$CATEGORY ==="
     LANGUAGE="$LANGUAGE" MODEL="$MODEL" \
