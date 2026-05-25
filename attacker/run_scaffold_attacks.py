@@ -32,8 +32,8 @@ SLUGS = [
     "9823AA10FA1B",
     "A3BC94AC32E5",
     "B1AC850C7E87",
-    "E9FB59F8273B",
-    "F4FB78BE2FBB",
+    # E9FB59F8273B excluded — wrong algorithm, no valid NPD
+    # F4FB78BE2FBB excluded — pure integer arithmetic, no pointers
 ]
 
 ATTACK_TYPES = [

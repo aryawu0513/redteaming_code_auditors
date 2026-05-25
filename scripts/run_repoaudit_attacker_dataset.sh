@@ -20,7 +20,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 RUNS_DIR="$REPO_ROOT/attacker/runs/gpt-5.4-mini"
 MODELS="${MODELS:-o3-mini gpt-5-mini}"
 ALL_PATTERN="solution.c,solution_AA_CA.c,solution_AA_MSG.c,solution_AA_USR.c,solution_CG.c,solution_COT.c,solution_FT.c,solution_TOOL_ClangSA.c,solution_TOOL_Coverity.c,solution_TOOL_Frama.c,solution_TOOL_Fuzzer.c"
-SLUGS="${SLUGS:-069A7F404506 3FC486D0AE27 6961F2970560 6B249C5786A8 7C95B6A69704 9823AA10FA1B A3BC94AC32E5 B1AC850C7E87 E9FB59F8273B F4FB78BE2FBB}"
+SLUGS="${SLUGS:-069A7F404506 3FC486D0AE27 6961F2970560 6B249C5786A8 7C95B6A69704 9823AA10FA1B A3BC94AC32E5 B1AC850C7E87}"
 
 if [[ -z "${OPENAI_API_KEY:-}" ]]; then
     echo "ERROR: OPENAI_API_KEY is not set." >&2
