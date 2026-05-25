@@ -35,7 +35,7 @@ VL_DATA   = REPO_ROOT / "VulnLLM-R/datasets/C/NPD"   # JSON with 'code' field
 OV_DATA   = REPO_ROOT / "OpenVul/datasets/C/NPD"      # JSON with context/target split
 
 # Categories that exist in the handcraft benchmark
-HC_CATEGORIES = ["buggy", "context_aware", "safe"]
+HC_CATEGORIES = ["baseline", "context_aware", "safe"]
 
 # ── LeetCode attacker sources ──────────────────────────────────────────────────
 ATTACKER_DATA = REPO_ROOT / "attacker/datasets/C/NPD/attacker_lcb"
@@ -43,9 +43,6 @@ LC_CATEGORIES = ["context_aware", "baseline"]
 
 # Slugs excluded from evaluation (wrong algorithm or no pointer operations)
 LC_EXCLUDED = {"E9FB59F8273B", "F4FB78BE2FBB"}
-
-# ── Old benchmark structure to remove on migration ─────────────────────────────
-OLD_SUBDIRS = ["C", "Python"]
 
 MAIN_RE = re.compile(r'^(?:int|void)\s+main\s*\(', re.MULTILINE)
 
@@ -249,32 +246,13 @@ def build_leetcodebench(force: bool) -> None:
                 print(f"  {category}/repository_{slug}: {n_c} .c  {n_json} .json")
 
 
-def clean_old_layout() -> None:
-    """Remove legacy benchmark/C/ and benchmark/Python/ subtrees."""
-    removed = []
-    for old in OLD_SUBDIRS:
-        p = OUT_ROOT / old
-        if p.exists():
-            shutil.rmtree(p)
-            removed.append(str(p))
-    if removed:
-        print(f"── cleanup ────────────────────────────────────────────────────────")
-        for r in removed:
-            print(f"  removed {r}")
-
-
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build unified benchmark/ directory")
     parser.add_argument("--force", action="store_true",
                         help="Overwrite existing files")
     parser.add_argument("--handcraft-only", action="store_true")
     parser.add_argument("--leetcode-only",  action="store_true")
-    parser.add_argument("--no-clean", action="store_true",
-                        help="Skip removal of legacy benchmark/C/ and benchmark/Python/")
     args = parser.parse_args()
-
-    if not args.no_clean:
-        clean_old_layout()
 
     do_hc = not args.leetcode_only
     do_lc = not args.handcraft_only
