@@ -128,7 +128,7 @@ def compute_summary(records):
 
 def load_dataset(dataset_path):
     """Load all per-attack JSON files from {dataset_path}/c/, sorted."""
-    ds_dir = os.path.join(dataset_path, "c")
+    ds_dir = dataset_path
     files = sorted(glob.glob(os.path.join(ds_dir, "*.json")))
     records = []
     for f in files:

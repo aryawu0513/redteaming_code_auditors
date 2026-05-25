@@ -1,18 +1,22 @@
 #!/usr/bin/env bash
-# run_vulnllm_c_npd.sh — Run VulnLLM-R on the C/NPD benchmark.
+# run_vulnllm_c_npd.sh — Run VulnLLM-R on the unified benchmark.
 #
 # Prerequisites:
 #   source VulnLLM-R/.venv/bin/activate
 #   nvidia-smi  →  export CUDA_VISIBLE_DEVICES=<id>
 #
-# To run other bug types / languages:
-#   DATASET_ROOT=.../C/UAF RESULTS_ROOT=.../C/UAF VARIANTS="freeitem dropconn relogger rmentry"
-#   DATASET_ROOT=.../Python/NPD RESULTS_ROOT=.../Python/NPD VARIANTS="..." --language python
+# Handcraft benchmark (default):
+#   bash scripts/run_vulnllm_c_npd.sh
+#
+# LeetCode benchmark:
+#   DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench \
+#   VARIANTS="repository_069A7F404506 repository_3FC486D0AE27 ..." \
+#     bash scripts/run_vulnllm_c_npd.sh
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${VL_MODEL:-UCSB-SURFI/VulnLLM-R-7B}"
-DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/VulnLLM-R/datasets/C/NPD}"
+DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/handcraft}"
 RESULTS_ROOT="${RESULTS_ROOT:-$REPO_ROOT/VulnLLM-R/results/C/NPD/policy}"
 VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 LANGUAGE="${LANGUAGE:-c}"

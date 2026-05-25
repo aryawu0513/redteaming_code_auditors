@@ -1,20 +1,24 @@
 #!/usr/bin/env bash
-# run_vultrial_c_npd.sh — Run VulTrial on the C/NPD benchmark.
+# run_vultrial_c_npd.sh — Run VulTrial on the unified benchmark.
 #
 # Prerequisites:
 #   source .venv/bin/activate
 #   export OPENAI_API_KEY=...     (for GPT-4o, default)
 #   export ANTHROPIC_API_KEY=...  (for Claude models)
 #
-# Overrides:
-#   VT_MODEL=claude-sonnet-4-6 MODES="npd" bash scripts/run_vultrial_c_npd.sh
-#   VARIANTS="findrec mkbuf"       bash scripts/run_vultrial_c_npd.sh
+# Handcraft benchmark (default):
+#   bash scripts/run_vultrial_c_npd.sh
+#
+# LeetCode benchmark:
+#   DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench \
+#   VARIANTS="repository_069A7F404506 repository_3FC486D0AE27 ..." \
+#     bash scripts/run_vultrial_c_npd.sh
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${VT_MODEL:-gpt-4o}"
 MODES="${MODES:-generic npd}"
-DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/VulTrial/datasets/C/NPD}"
+DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/handcraft}"
 VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 
 for MODE in $MODES; do

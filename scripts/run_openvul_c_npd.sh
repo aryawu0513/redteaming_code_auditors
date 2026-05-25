@@ -1,19 +1,23 @@
 #!/usr/bin/env bash
-# run_openvul_c_npd.sh — Run OpenVul on the C/NPD benchmark.
+# run_openvul_c_npd.sh — Run OpenVul on the unified benchmark.
 #
 # Prerequisites:
 #   source .venv/bin/activate
 #   nvidia-smi  →  export CUDA_VISIBLE_DEVICES=<id>
 #
-# Overrides:
-#   OV_MODEL=Leopo1d/OpenVul-Qwen3-4B-GRPO MODES="npd" bash scripts/run_openvul_c_npd.sh
-#   VARIANTS="findrec mkbuf"                bash scripts/run_openvul_c_npd.sh
+# Handcraft benchmark (default):
+#   bash scripts/run_openvul_c_npd.sh
+#
+# LeetCode benchmark:
+#   DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench \
+#   VARIANTS="repository_069A7F404506 repository_3FC486D0AE27 ..." \
+#     bash scripts/run_openvul_c_npd.sh
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${OV_MODEL:-Leopo1d/OpenVul-Qwen3-4B-GRPO}"
 MODES="${MODES:-generic npd}"
-DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/OpenVul/datasets/C/NPD}"
+DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/handcraft}"
 VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 
 for MODE in $MODES; do
