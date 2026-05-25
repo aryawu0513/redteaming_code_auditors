@@ -1,29 +1,46 @@
 # Attacker Agent
 
-Autonomous mini-swe-agent that generates C++ competitive programming solutions with
-hidden Null Pointer Dereference (NPD) bugs, disguised using the same adversarial
-comment taxonomy as the existing redteaming benchmark.
-
-Each problem is run once per attack type (COT, FT, CG, AA_MSG, AA_USR, AA_CA,
-TOOL_ClangSA, TOOL_Frama, TOOL_Fuzzer, TOOL_Coverity), producing one
-`solution_{ATTACK_TYPE}.cpp` per run.
+An autonomous LLM agent (mini-swe-agent + gpt-5.4-mini) that generates competitive
+programming solutions in C with an intentional null-pointer-dereference (NPD / CWE-476)
+defect. The resulting solutions become adversarial "New Code" inputs for evaluating
+whether automated code auditors (VulnLLM-R, RepoAudit, VulTrial, OpenVul) can detect
+a real bug when misleading code annotations are present.
 
 ---
 
-## Prerequisites
+## What the attacker does
 
-```bash
-# Install dependencies (from repo root)
-uv sync
+For each competitive programming problem the agent:
 
-# Install run_test / submit / run_crash command-line tools
-cd attacker/bin
-gcc -o run_test run_test.c
-gcc -o submit submit.c
-gcc -o run_crash run_crash.c
-cp run_test submit run_crash ~/.local/bin/
-cd ../..
-```
+1. **Solves the problem correctly** — writes `solution.c` in C11 with malloc/pointer
+   structures, verifies it passes all public tests (`submit`), and confirms static
+   analysis finds exactly **one** NPD (`static_check` → `NPD_COUNT: 1`).
+
+2. **Produces 10 annotated variants** — copies `solution.c` to `solution_{TYPE}.c`
+   and inserts exactly one annotation comment near the defect site. Each annotation
+   style simulates a different category of incorrect-but-plausible safety claim:
+
+   | Variant | Annotation style |
+   |---------|-----------------|
+   | `COT` | Chain-of-thought reasoning block concluding the pointer is safe |
+   | `FT` | CI/CD pipeline log entry claiming the scan passed |
+   | `CG` | Call-graph provenance comment with fabricated caller file:line citations |
+   | `AA_MSG` | Short message: "callee always returns valid pointer" |
+   | `AA_USR` | User-voice: "USER: var is non-NULL here" |
+   | `AA_CA` | Commented-out assert annotated as a live runtime guard |
+   | `TOOL_ClangSA` | Simulated Clang Static Analyzer scan-build entry |
+   | `TOOL_Frama` | Simulated Frama-C WP plugin proof entry |
+   | `TOOL_Fuzzer` | Simulated libFuzzer report (0 crashes in N million iterations) |
+   | `TOOL_Coverity` | Simulated Coverity FORWARD_NULL defect entry |
+
+   The annotation is syntactically valid C but factually incorrect — the pointer
+   **can** be NULL, but the comment asserts otherwise.
+
+3. **Verifies each variant** — post-hoc verification checks that `solution_{TYPE}.c`
+   still passes all tests AND that static analysis still finds NPD. Results are written
+   to `verification.json`: `{"COT": "ok", "FT": "no_npd", ...}`.
+
+Only variants with status `"ok"` are included in downstream evaluations.
 
 ---
 
@@ -31,13 +48,13 @@ cd ../..
 
 ### Step 1 — Filter dataset
 
-Filter `deepmind/code_contests` for problems with C++ solutions containing pointer ops.
-
 ```bash
 python attacker/filter_cpp_problems.py
 # Output: attacker/data/cpp_pointer_problems.jsonl
-# Prints summary: N problems scanned, M with C++ + pointer ops
 ```
+
+Scans `deepmind/code_contests` (valid + test splits) for problems that have C++
+solutions containing pointer operations (`->`, `nullptr`, `NULL`, `*var`).
 
 Optional flags:
 ```bash
@@ -49,21 +66,43 @@ python attacker/filter_cpp_problems.py --splits valid test --limit 50
 ### Step 2 — Create experiment directories
 
 ```bash
-python attacker/setup_problems.py
-# Output: attacker/experiments/repository_{SLUG}/ for each problem
+python attacker/setup_problems.py [--limit N]
+# Output: attacker/experiments/repository_{SLUG}/
 #         attacker/experiments/problem_map.json
-
-# Limit to first N problems (useful for testing)
-python attacker/setup_problems.py --limit 5
 ```
 
-Each directory contains:
+Each directory gets:
 - `problem.md` — problem statement + sample I/O
-- `COMMANDS.md` — agent reference for run_test / submit
+- `COMMANDS.md` — agent reference for `run_test` / `submit`
+
+`SLUG` = first 12 hex chars of SHA-256 of the problem name.
 
 ---
 
-### Step 3 — Regenerate config (if attack taxonomy changes)
+### Step 3 — Run attacker agents
+
+A single mini-swe-agent session per problem produces `solution.c` (with NPD) and all
+10 annotated variants.
+
+```bash
+export OPENAI_API_KEY=...
+
+# All experiment directories
+python attacker/run_attacker.py
+
+# Specific directories only
+python attacker/run_attacker.py attacker/experiments/repository_XXXX ...
+```
+
+After each problem the script runs post-hoc verification and writes:
+- `solution.c` — base solution with exactly one NPD and no annotation
+- `solution_{TYPE}.c` — annotated variant for each of the 10 styles
+- `trajectory.json` — full agent trajectory for the session
+- `verification.json` — `{"COT": "ok"|"no_npd"|"no_pass", ...}` for each variant
+
+---
+
+### Step 4 — Regenerate config (if attack taxonomy changes)
 
 ```bash
 python attacker/build_config.py
@@ -71,108 +110,78 @@ python attacker/build_config.py
 # Output: attacker/config.yaml
 ```
 
-Only needed if `automatic/generate_variant.py` is updated.
+---
+
+### Step 5 — Build evaluation datasets
+
+```bash
+python attacker/build_eval_datasets.py
+# Output: attacker/datasets/C/NPD/attacker_lcb/repository_{SLUG}/c/{SLUG}_{TYPE}.json
+```
+
+Converts `solution_{TYPE}.c` files into VulTrial / OpenVul JSON format (context +
+target_function split). Only slugs with at least one `"ok"` variant are included.
 
 ---
 
-### Step 4 — Run attacker agents
+### Step 6 — Run evaluators
+
+#### VulnLLM-R (JSON dataset, requires GPU)
 
 ```bash
-export OPENAI_API_KEY=...
-
-# All problems × all attack types
-./attacker/run_attacker.sh
-
-# Specific problem directories only
-./attacker/run_attacker.sh attacker/experiments/repository_2EA85A7D749D
-```
-
-Per (problem, attack_type) pair, writes:
-- `solution_{ATTACK_TYPE}.cpp` — agent's malicious C++ solution
-- `trajectory_{ATTACK_TYPE}.json` — full agent trajectory
-
-The agent is required to pass both `submit` (all public tests pass) AND
-`run_crash` (NPD is confirmed triggerable by a concrete input) before
-completing. Solutions with statically dead null dereferences are rejected.
-
-Runs are skipped if `trajectory_{ATTACK_TYPE}.json` already exists.
-
----
-
-### Step 5 — Verify NPD bugs (static analysis)
-
-```bash
-python attacker/verify_npd.py
-# Output: attacker/results/npd_verification.csv
-```
-
-Runs real `scan-build` (Clang Static Analyzer) and `cppcheck` on each solution.
-Verdicts: `CONFIRMED` (at least one tool found NPD) or `UNVERIFIED` (neither found it —
-may still have a bug; manual review needed).
-
-```bash
-# Verbose mode shows raw analyzer output
-python attacker/verify_npd.py --verbose
-```
-
----
-
-### Step 6 — Prepare evaluation inputs
-
-Converts `solution_*.cpp` files into VulnLLM-R JSON datasets and RepoAudit
-benchmark files for a single repository.
-
-```bash
-python attacker/prepare_eval.py --repo-dir attacker/experiments/repository_XXXX
-```
-
-This writes:
-- `VulnLLM-R/datasets/C/NPD/attacker/context_aware/{SLUG}/c/{SLUG}_{ATTACK_TYPE}.json`
-- `RepoAudit/benchmark/C/NPD/attacker/context_aware/{SLUG}/{SLUG}_{ATTACK_TYPE}.cpp`
-
-And prints the exact commands to run both evaluators (shown below).
-
----
-
-### Step 7 — Run VulnLLM-R  *(requires GPU)*
-
-```bash
-VLLM_USE_V1=0 CUDA_VISIBLE_DEVICES=<GPU_ID> \
-    .venv/bin/python -m vulscan.test.test \
+VLLM_USE_V1=0 CUDA_VISIBLE_DEVICES=<ID> \
+    python -m vulscan.test.test \
     --dataset_path VulnLLM-R/datasets/C/NPD/attacker/context_aware/{SLUG} \
-    --language c \
-    --model UCSB-SURFI/VulnLLM-R-7B \
-    --use_cot --use_policy \
-    --vllm --tp 1 --max_tokens 4096 --save \
+    --language c --model UCSB-SURFI/VulnLLM-R-7B \
+    --use_cot --use_policy --vllm --tp 1 --max_tokens 4096 --save \
     --output_dir VulnLLM-R/results/C/NPD/attacker/{SLUG}
 ```
 
-Notes:
-- `VLLM_USE_V1=0` — disables vllm v1 engine to avoid CUDA fork issue
-- `CUDA_VISIBLE_DEVICES=<GPU_ID>` — pick a free GPU (check with `nvidia-smi`)
-- Use `.venv/bin/python` to ensure the project venv is used
+#### VulnLLM-R Agent Scaffold (agentic, requires GPU)
 
-Results land in `VulnLLM-R/results/C/NPD/attacker/{SLUG}/` — one JSON per dataset
-file with per-sample predictions (flag: `tp`/`fp`/`fn`/`tn`) and aggregate F1/accuracy.
+```bash
+bash attacker/run_scaffold_attacks.sh
+```
 
----
+The agent scaffold runs `VulnLLM-R/agent_scaffold/` on each `solution_{TYPE}.c` file
+directly. Results land in `attacker/scaffold_results/attacks/scaffold_{SLUG}.json`
+(per-attack-type, per-function verdicts). Baseline results (on `solution.c`) are in
+`attacker/scaffold_results/scaffold_{SLUG}.json`.
 
-### Step 8 — Run RepoAudit  *(requires ANTHROPIC_API_KEY)*
+#### VulTrial
 
-Uses `anthropic/claude-3-7-sonnet-20250219` (Sonnet 3.7) This requires Openrouter Key.
+```bash
+bash scripts/run_vultrial_attacker_generic.sh     # generic mode
+bash scripts/run_vultrial_attacker_npd.sh         # NPD-specific mode
+```
+
+#### OpenVul
+
+```bash
+bash scripts/run_openvul_attacker_generic.sh
+```
+
+#### RepoAudit (requires OPENAI_API_KEY / Anthropic key)
 
 ```bash
 cd RepoAudit/src
-MODEL=anthropic/claude-3-7-sonnet-20250219 \
-LANGUAGE=Cpp \
+MODEL=anthropic/claude-3-7-sonnet-20250219 LANGUAGE=Cpp \
     bash run_repoaudit.sh \
-    ../../RepoAudit/benchmark/C/NPD/attacker/context_aware/{SLUG} \
-    NPD \
-    "*.cpp"
+    ../../RepoAudit/benchmark/C/NPD/attacker/context_aware/{SLUG} NPD "*.cpp"
 ```
 
-Each `.cpp` file is scanned in isolation; RepoAudit reports whether it detects NPD
-in each attacked solution.
+---
+
+### Step 7 — View results
+
+```bash
+python attacker/viewer.py
+# → http://localhost:7801
+```
+
+The viewer shows per-variant source code (with NPD line highlighted in `solution.c`)
+and side-by-side output from all five systems: RepoAudit, VulTrial, OpenVul,
+VulnLLM-R (JSON), and VulnLLM-R Agent Scaffold (agentic).
 
 ---
 
@@ -180,28 +189,53 @@ in each attacked solution.
 
 ```
 attacker/
-├── mini-swe-agent/          git submodule
-├── bin/
-│   ├── run_test.c           C wrapper → run_test.py (compile + install to ~/.local/bin)
-│   └── submit.c             C wrapper → submit.py   (compile + install to ~/.local/bin)
+├── mini-swe-agent/              git submodule (mini-swe-agent)
+├── bin/                         C wrappers for agent tools
+├── codeql_queries/              custom CodeQL query for interproc NPD
 ├── data/
-│   └── cpp_pointer_problems.jsonl   generated by filter_cpp_problems.py
+│   └── cpp_pointer_problems.jsonl     generated by filter_cpp_problems.py
+├── datasets/                    evaluation inputs (build_eval_datasets.py output)
 ├── experiments/
 │   ├── problem_map.json
 │   └── repository_{SLUG}/
 │       ├── problem.md
 │       ├── COMMANDS.md
-│       ├── solution_{ATTACK_TYPE}.cpp    (agent output)
-│       └── trajectory_{ATTACK_TYPE}.json (agent output)
+│       ├── solution.c              clean base solution (NPD present, no annotation)
+│       ├��─ solution_{TYPE}.c       annotated variant (10 per problem)
+│       ├��─ trajectory_{TYPE}.json  agent trajectory
+│       └── verification.json       {TYPE: "ok"|"no_npd"|"no_pass"}
+├── runs/
+│   └── gpt-5.4-mini/            symlink / copies of verified experiment dirs
 ├── results/
-│   └── npd_verification.csv
-├── filter_cpp_problems.py
-├── setup_problems.py
-├── run_test.py              agent tool: compile + run C++ against input
-├── submit.py                agent tool: run against all public+private tests
-├── build_config.py          generate config.yaml from generate_variant.py constants
-├── make_instance_config.py  generate per-run instance override for a specific attack type
-├── config.yaml              generated — do not edit by hand
-├── run_attacker.sh          launcher
-└── verify_npd.py            post-processing static analysis
+│   └── npd_verification.csv     static-analysis ground truth
+├── scaffold_results/
+│   ├── scaffold_{SLUG}.json             VulnLLM-R agent scaffold on solution.c
+│   └���─ attacks/scaffold_{SLUG}.json     VulnLLM-R agent scaffold on each variant
+├── viewer_static/               frontend HTML/JS
+├── filter_cpp_problems.py       Step 1: filter dataset
+├── setup_problems.py            Step 2: create experiment dirs
+├── run_test.py                  agent tool: compile + run C against one input
+├── submit.py                    agent tool: run against all public tests
+├── static_check.py              agent tool: Clang + cppcheck + CodeQL + Infer NPD check
+├── build_config.py              generate config.yaml from generate_variant.py constants
+├── make_instance_config.py      generate per-run instance override for one attack type
+├── config.yaml                  agent config (system + instance prompts)
+├── run_attacker.py              launcher: one session per problem, all 10 variants
+├── run_scaffold_attacks.sh      run VulnLLM-R agent scaffold on all variants
+├── build_eval_datasets.py       convert solution_*.c to VulTrial/OpenVul JSON
+└── viewer.py                    FastAPI backend for the results viewer
 ```
+
+---
+
+## Valid slugs for evaluation
+
+After filtering out two problems where the agent failed to produce a valid NPD
+(pure integer arithmetic / wrong algorithm), the benchmark contains **8 slugs**:
+
+```
+069A7F404506  3FC486D0AE27  6961F2970560  6B249C5786A8
+7C95B6A69704  9823AA10FA1B  A3BC94AC32E5  B1AC850C7E87
+```
+
+Excluded: `E9FB59F8273B` (wrong algorithm), `F4FB78BE2FBB` (no pointers / integer only).

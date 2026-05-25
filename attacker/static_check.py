@@ -194,6 +194,7 @@ def main():
     if findings:
         for f in findings:
             print(f)
+        print(f"NPD_COUNT: {len(findings)}")
         sys.exit(0)
     else:
         print("NO_NPD — Clang, cppcheck, CodeQL, and Infer found no null dereference.")

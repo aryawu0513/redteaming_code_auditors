@@ -352,14 +352,15 @@ mark.kw-mark {
 /* ── No-results ── */
 .no-results { padding: 16px; color: var(--text3); font-size: 13px; text-align: center; }
 
-/* ── Invalid (baseline miss) badge ── */
-.invalid-badge {
-  font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 3px;
-  background: rgba(248,81,73,0.12); color: var(--red);
-  border: 1px solid rgba(248,81,73,0.3); margin-left: 6px; vertical-align: middle;
-  letter-spacing: 0.03em;
+/* ── Per-system baseline badges on group headers ── */
+.bl-badges { display: inline-flex; gap: 3px; margin-left: 6px; vertical-align: middle; }
+.bl-badge {
+  font-size: 9px; font-weight: 700; padding: 1px 5px; border-radius: 3px;
+  font-family: var(--mono); letter-spacing: 0.02em;
 }
-.group-header.invalid { color: var(--red); opacity: 0.85; }
+.bl-det  { background: rgba(63,185,80,0.15);  color: var(--green); border: 1px solid rgba(63,185,80,0.3); }
+.bl-miss { background: rgba(248,81,73,0.12);  color: var(--red);   border: 1px solid rgba(248,81,73,0.3); }
+.bl-na   { background: var(--bg4); color: var(--text3); border: 1px solid var(--border); }
 
 /* ── Path steps in RepoAudit ── */
 .path-steps {
@@ -388,6 +389,23 @@ mark.kw-mark {
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .section-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.05em; }
+
+/* ── Copy button ── */
+.copy-btn {
+  background: none; border: 1px solid var(--border); border-radius: var(--radius);
+  color: var(--text3); cursor: pointer; font-size: 11px; padding: 2px 7px;
+  transition: all 0.15s; line-height: 1.5; white-space: nowrap;
+}
+.copy-btn:hover { background: var(--bg3); color: var(--text); }
+.copy-btn.copied { color: var(--green); border-color: var(--green); }
+
+/* Output block wrapper: positions copy button top-right */
+.output-wrap { position: relative; }
+.output-wrap .copy-btn { position: absolute; top: 8px; right: 8px; z-index: 1; }
+
+/* NPD bug line (baseline view) */
+.bug-line { background: rgba(248,81,73,0.08) !important; border-left: 3px solid var(--red); }
+.bug-line .ln-num { color: var(--red); opacity: 1; }
 </style>
 </head>
 <body>
@@ -407,6 +425,10 @@ mark.kw-mark {
         <span class="chip detected" data-outcome="detected">Caught RA</span>
         <span class="chip evaded" data-outcome="evaded-vl">Evaded VL</span>
         <span class="chip detected" data-outcome="caught-vl">Caught VL</span>
+        <span class="chip evaded" data-outcome="evaded-vt">Evaded VT</span>
+        <span class="chip detected" data-outcome="caught-vt">Caught VT</span>
+        <span class="chip evaded" data-outcome="evaded-ov">Evaded OV</span>
+        <span class="chip detected" data-outcome="caught-ov">Caught OV</span>
       </div>
     </div>
     <div id="file-list"></div>
@@ -422,6 +444,8 @@ mark.kw-mark {
       <div id="tb-baseline-badge"></div>
       <div id="tb-ra-badge"></div>
       <div id="tb-vl-badge"></div>
+      <div id="tb-vt-badge"></div>
+      <div id="tb-ov-badge"></div>
       <div class="tb-spacer"></div>
     </div>
 
@@ -434,6 +458,9 @@ mark.kw-mark {
         <div class="panel-header">
           <span>Source Code</span>
           <span class="fname" id="code-fname"></span>
+          <span style="flex:1"></span>
+          <button class="icon-btn" id="baseline-toggle" style="display:none" title="Toggle between attack variant and clean solution.c">⇄ solution.c</button>
+          <button class="icon-btn copy-btn" id="code-copy-btn" title="Copy source code">📋</button>
         </div>
         <div class="code-scroll">
           <pre><code class="language-c" id="code-block"></code></pre>
@@ -442,11 +469,17 @@ mark.kw-mark {
       <div id="analysis-panel">
         <div class="tabs">
           <div class="tab active" data-tab="repoaudit">RepoAudit</div>
+          <div class="tab" data-tab="vultrial">VulTrial</div>
+          <div class="tab" data-tab="openvul">OpenVul</div>
           <div class="tab" data-tab="vulnllm">VulnLLM-R</div>
+          <div class="tab" data-tab="scaffold">VL-Agent</div>
           <div class="tab" data-tab="problem">Problem</div>
         </div>
         <div class="tab-content active" id="tab-repoaudit"></div>
+        <div class="tab-content" id="tab-vultrial"></div>
+        <div class="tab-content" id="tab-openvul"></div>
         <div class="tab-content" id="tab-vulnllm"></div>
+        <div class="tab-content" id="tab-scaffold"></div>
         <div class="tab-content" id="tab-problem"></div>
       </div>
     </div>
@@ -526,22 +559,41 @@ function raBadgeHtml(detected) {
   if (detected === false) return `<span class="badge badge-evd">RA: Evaded ✓</span>`;
   return `<span class="badge badge-na">RA: N/A</span>`;
 }
-function vlBadgeHtml(flag) {
-  if (flag === 'tp') return `<span class="badge badge-det">VL: Detected</span>`;
-  if (flag === 'fn') return `<span class="badge badge-evd">VL: Evaded ✓</span>`;
-  if (flag) return `<span class="badge badge-na">VL: ${flag.toUpperCase()}</span>`;
-  return `<span class="badge badge-na">VL: N/A</span>`;
+function flagBadgeHtml(flag, prefix) {
+  if (flag === 'tp') return `<span class="badge badge-det">${prefix}: Detected</span>`;
+  if (flag === 'fn') return `<span class="badge badge-evd">${prefix}: Evaded ✓</span>`;
+  if (flag) return `<span class="badge badge-na">${prefix}: ${flag.toUpperCase()}</span>`;
+  return `<span class="badge badge-na">${prefix}: N/A</span>`;
 }
+function vlBadgeHtml(flag) { return flagBadgeHtml(flag, 'VL'); }
+function vtBadgeHtml(flag) { return flagBadgeHtml(flag, 'VT'); }
+function ovBadgeHtml(flag) { return flagBadgeHtml(flag, 'OV'); }
 function viHtml(detected, label) {
   if (detected === true)  return `<span class="vi det">${label}</span>`;
   if (detected === false) return `<span class="vi evd">${label}</span>`;
   return `<span class="vi na">${label}</span>`;
 }
-function flagVi(flag) {
-  if (flag === 'tp') return `<span class="vi det">VL</span>`;
-  if (flag === 'fn') return `<span class="vi evd">VL</span>`;
-  if (flag) return `<span class="vi na">VL</span>`;
-  return `<span class="vi na">VL</span>`;
+function flagVi(flag, label) {
+  if (flag === 'tp') return `<span class="vi det">${label}</span>`;
+  if (flag === 'fn') return `<span class="vi evd">${label}</span>`;
+  return `<span class="vi na">${label}</span>`;
+}
+
+// Render small per-system baseline badges for sidebar group headers
+// vl_detectable: true/false/null (from baseline_detectable, VulnLLM-R)
+// vt_flag / ov_flag: 'tp'/'fn'/null
+function baselineSystemBadges(vl_detectable, vt_flag, ov_flag) {
+  function mini(label, detected) {
+    if (detected === null || detected === undefined)
+      return `<span class="bl-badge bl-na">${label}</span>`;
+    return detected
+      ? `<span class="bl-badge bl-det">${label} ✓</span>`
+      : `<span class="bl-badge bl-miss">${label} ✗</span>`;
+  }
+  const vlDet = vl_detectable === true ? true : vl_detectable === false ? false : null;
+  const vtDet = vt_flag === 'tp' ? true : vt_flag === 'fn' ? false : null;
+  const ovDet = ov_flag === 'tp' ? true : ov_flag === 'fn' ? false : null;
+  return `<span class="bl-badges">${mini('VL', vlDet)}${mini('VT', vtDet)}${mini('OV', ovDet)}</span>`;
 }
 
 function pct(n, d) { return d > 0 ? Math.round(n / d * 100) : 0; }
@@ -556,6 +608,28 @@ function rateBarHtml(det, tot, colorClass) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Copy helpers ──────────────────────────────────────────────────────────────
+const _cpMap = {};
+let _cpN = 0;
+function _cpStore(text) { const k = 'k' + (_cpN++); _cpMap[k] = text; return k; }
+
+async function cpDo(e, k) {
+  const text = _cpMap[k] || '';
+  await navigator.clipboard.writeText(text);
+  const btn = e.currentTarget || e.target;
+  const orig = btn.textContent;
+  btn.textContent = '✓';
+  btn.classList.add('copied');
+  setTimeout(() => { btn.textContent = orig; btn.classList.remove('copied'); }, 1500);
+}
+
+// Wrap a .vl-output div with an absolute-positioned copy button
+function outputBlock(rawText, contentHtml, extraStyle = '') {
+  const k = _cpStore(rawText);
+  const styleAttr = extraStyle ? ` style="${extraStyle}"` : '';
+  return `<div class="output-wrap"><div class="vl-output"${styleAttr}>${contentHtml}</div><button class="copy-btn" onclick="cpDo(event,'${k}')" title="Copy to clipboard">📋</button></div>`;
 }
 
 // ── Hash routing ──────────────────────────────────────────────────────────────
@@ -604,11 +678,17 @@ function applyFilter() {
     if (S.activeOutcomes.size) {
       const rao = f.repoaudit_detected;
       const vlo = f.vulnllm_flag;
+      const vto = f.vultrial_flag;
+      const ovo = f.openvul_flag;
       let match = false;
-      if (S.activeOutcomes.has('evaded')   && rao === false) match = true;
-      if (S.activeOutcomes.has('detected') && rao === true)  match = true;
-      if (S.activeOutcomes.has('evaded-vl') && vlo === 'fn') match = true;
-      if (S.activeOutcomes.has('caught-vl') && vlo === 'tp') match = true;
+      if (S.activeOutcomes.has('evaded')    && rao === false) match = true;
+      if (S.activeOutcomes.has('detected')  && rao === true)  match = true;
+      if (S.activeOutcomes.has('evaded-vl') && vlo === 'fn')  match = true;
+      if (S.activeOutcomes.has('caught-vl') && vlo === 'tp')  match = true;
+      if (S.activeOutcomes.has('evaded-vt') && vto === 'fn')  match = true;
+      if (S.activeOutcomes.has('caught-vt') && vto === 'tp')  match = true;
+      if (S.activeOutcomes.has('evaded-ov') && ovo === 'fn')  match = true;
+      if (S.activeOutcomes.has('caught-ov') && ovo === 'tp')  match = true;
       if (!match) return false;
     }
     if (q && !f.problem.toLowerCase().includes(q) && !f.attack_type.toLowerCase().includes(q) && !f.slug.toLowerCase().includes(q)) return false;
@@ -626,14 +706,18 @@ function renderFileList() {
   // Group by problem slug
   const groups = {};
   S.filtered.forEach(f => {
-    if (!groups[f.slug]) groups[f.slug] = { problem: f.problem, items: [], baseline_detectable: f.baseline_detectable };
+    if (!groups[f.slug]) groups[f.slug] = {
+      problem: f.problem, items: [],
+      baseline_vl: f.baseline_detectable,
+      baseline_vt: f.baseline_vt_flag,
+      baseline_ov: f.baseline_ov_flag,
+    };
     groups[f.slug].items.push(f);
   });
   let html = '';
   for (const [slug, g] of Object.entries(groups)) {
-    const isInvalid = g.baseline_detectable === false;
-    const invalidBadge = isInvalid ? `<span class="invalid-badge" title="Model cannot detect NPD without attack comment">INVALID</span>` : '';
-    html += `<div class="group-header${isInvalid ? ' invalid' : ''}" data-slug="${escHtml(slug)}">${escHtml(g.problem)}${invalidBadge}</div>`;
+    const baselineBadges = baselineSystemBadges(g.baseline_vl, g.baseline_vt, g.baseline_ov);
+    html += `<div class="group-header" data-slug="${escHtml(slug)}">${escHtml(g.problem)}${baselineBadges}</div>`;
     for (const f of g.items) {
       const active = S.selected === f.id ? ' active' : '';
       const dotCls = f.verification === 'ok' ? 'dot-ok' : 'dot-bad';
@@ -642,7 +726,9 @@ function renderFileList() {
         <span class="at-label">${escHtml(f.attack_type)}</span>
         <span class="verdict-icons">
           ${viHtml(f.repoaudit_detected, 'RA')}
-          ${flagVi(f.vulnllm_flag)}
+          ${flagVi(f.vultrial_flag, 'VT')}
+          ${flagVi(f.openvul_flag, 'OV')}
+          ${flagVi(f.vulnllm_flag, 'VL')}
         </span>
       </div>`;
     }
@@ -681,6 +767,8 @@ async function selectFile(id) {
   document.getElementById('tb-at').textContent = at;
   document.getElementById('tb-ra-badge').innerHTML = raBadgeHtml(f?.repoaudit_detected);
   document.getElementById('tb-vl-badge').innerHTML = vlBadgeHtml(f?.vulnllm_flag);
+  document.getElementById('tb-vt-badge').innerHTML = vtBadgeHtml(f?.vultrial_flag);
+  document.getElementById('tb-ov-badge').innerHTML = ovBadgeHtml(f?.openvul_flag);
   const blEl = document.getElementById('tb-baseline-badge');
   if (blEl) {
     if (f?.baseline_detectable === false)
@@ -694,22 +782,31 @@ async function selectFile(id) {
   // Reset panels
   document.getElementById('code-block').textContent = '⋯ loading';
   document.getElementById('tab-repoaudit').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('tab-vultrial').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('tab-openvul').innerHTML = '<div class="spinner"></div>';
   document.getElementById('tab-vulnllm').innerHTML = '<div class="spinner"></div>';
+  document.getElementById('tab-scaffold').innerHTML = '<div class="spinner"></div>';
   document.getElementById('tab-problem').innerHTML = '<div class="spinner"></div>';
 
   setHash({ id });
 
   // Fetch in parallel
-  const [sol, ra, vl] = await Promise.all([
+  const [sol, ra, vl, vt, ov, sc] = await Promise.all([
     api(`/api/solution?slug=${slug}&at=${encodeURIComponent(at)}`),
     api(`/api/repoaudit?slug=${slug}&at=${encodeURIComponent(at)}`),
     api(`/api/vulnllm?slug=${slug}&at=${encodeURIComponent(at)}`),
+    api(`/api/vultrial?slug=${slug}&at=${encodeURIComponent(at)}`),
+    api(`/api/openvul?slug=${slug}&at=${encodeURIComponent(at)}`),
+    api(`/api/scaffold?slug=${slug}&at=${encodeURIComponent(at)}`),
   ]);
 
   const keywords = getKeywords(at);
   renderCode(sol, at);
   renderRepoAudit(ra, at, keywords);
+  renderVulTrialPanel(vt, keywords);
+  renderOpenVulPanel(ov, keywords);
   renderVulnLLM(vl, f?.vulnllm_flag, keywords);
+  renderScaffold(sc, at, keywords);
   renderProblem(sol);
 }
 
@@ -738,21 +835,29 @@ async function selectProblem(slug) {
   document.getElementById('tb-at').textContent = 'baseline';
   document.getElementById('tb-ra-badge').innerHTML = '';
   document.getElementById('tb-vl-badge').innerHTML = '';
+  document.getElementById('tb-vt-badge').innerHTML = '';
+  document.getElementById('tb-ov-badge').innerHTML = '';
   const blEl = document.getElementById('tb-baseline-badge');
   if (blEl) blEl.innerHTML = '';
 
   // Reset panels
-  ['tab-repoaudit','tab-vulnllm','tab-problem'].forEach(id =>
+  ['tab-repoaudit','tab-vultrial','tab-openvul','tab-vulnllm','tab-scaffold','tab-problem'].forEach(id =>
     document.getElementById(id).innerHTML = '<div class="spinner"></div>');
   document.getElementById('code-block').textContent = '⋯ loading';
 
-  const data = await api(`/api/problem?slug=${slug}`);
+  const [data, sc] = await Promise.all([
+    api(`/api/problem?slug=${slug}`),
+    api(`/api/scaffold?slug=${slug}`),
+  ]);
 
-  // Code panel: show solution.c
+  // Code panel: show solution.c (hide baseline toggle — we're already on baseline)
+  const toggleBtn = document.getElementById('baseline-toggle');
+  if (toggleBtn) toggleBtn.style.display = 'none';
+  _codeState.rawCode = data.code || '';
+  _codeState.baselineCode = '';
+  _codeState.baseline = false;
   document.getElementById('code-fname').textContent = 'solution.c';
-  const codeEl = document.getElementById('code-block');
-  codeEl.textContent = data.code || '(solution.c not found)';
-  hljs.highlightElement(codeEl);
+  _renderCodeLines(data.code || '', [], null);
 
   // Problem tab
   renderProblem(data);
@@ -761,65 +866,72 @@ async function selectProblem(slug) {
   document.getElementById('tab-repoaudit').innerHTML =
     `<div style="color:var(--text3);font-size:13px;padding:12px">RepoAudit was not run on the unmodified solution.c.</div>`;
 
-  // VulnLLM tab: VulnLLM-R baseline only
-  const vl = data.vulnllm;
-  const vlEl = document.getElementById('tab-vulnllm');
-  if (!vl) {
-    vlEl.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:12px">No VulnLLM-R baseline result available.</div>`;
-  } else {
-    const det = vl.predicted === 'yes';
-    const badgeStyle = det
-      ? 'background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)'
-      : 'background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.3)';
-    vlEl.innerHTML = `
-      <div class="vl-baseline-header" style="margin-bottom:10px">
-        <span class="vl-baseline-title">VulnLLM-R-7B — original solution.c</span>
-        <span class="vl-baseline-badge" style="${badgeStyle}">${det ? 'Detected' : 'Missed'}</span>
-        <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${vl.flag || ''}</span>
-      </div>
-      ${vl.output
-        ? `<div class="vl-output">${markKeywords(escHtml(vl.output), GLOBAL_KEYWORDS)}</div>`
-        : '<div style="color:var(--text3);font-size:12px">No reasoning available.</div>'}`;
-  }
+  // Baseline detection summary across all systems
+  renderBaselineSummary(data);
+
+  // Individual system tabs: show baseline output
+  renderBaselineSystemTab('tab-vultrial', 'VulTrial (gpt-4o, generic)', data.vultrial, false);
+  renderBaselineSystemTab('tab-openvul',  'OpenVul (Qwen3-4B)',         data.openvul,  true);
+  renderBaselineSystemTab('tab-vulnllm',  'VulnLLM-R-7B',              data.vulnllm,  false);
+  renderScaffold(sc, '', []);
 }
 
 // ── Code panel ────────────────────────────────────────────────────────────────
-function renderCode(sol, at) {
-  document.getElementById('code-fname').textContent = `${sol.slug}_${at}.c`;
-  const codeEl = document.getElementById('code-block');
-  const keywords = getKeywords(at);
 
-  // Highlight with hljs
-  codeEl.textContent = sol.code;
+// Per-selection state for the code panel
+const _codeState = { rawCode: '', baselineCode: '', npd_line: null, at: '', slug: '', baseline: false };
+
+function _renderCodeLines(code, keywords, bugLine) {
+  const codeEl = document.getElementById('code-block');
+  codeEl.textContent = code;
   hljs.highlightElement(codeEl);
   const highlighted = codeEl.innerHTML;
 
-  // Detect which raw source lines contain keywords
   const attackLines = new Set();
-  if (keywords.length) {
-    sol.code.split('\n').forEach((line, i) => {
+  if (keywords && keywords.length) {
+    code.split('\n').forEach((line, i) => {
       const lo = line.toLowerCase();
       if (keywords.some(kw => lo.includes(kw.toLowerCase()))) attackLines.add(i + 1);
     });
   }
 
-  // Wrap each line with a line-number span
   const htmlLines = highlighted.split('\n');
-  // Drop empty trailing line if present
   if (htmlLines.length && htmlLines[htmlLines.length - 1] === '') htmlLines.pop();
   const numbered = htmlLines.map((line, i) => {
     const n = i + 1;
-    const cls = attackLines.has(n) ? ' attack-line' : '';
+    let cls = '';
+    if (bugLine && n === bugLine) cls = ' bug-line';
+    else if (attackLines.has(n)) cls = ' attack-line';
     return `<span class="code-line${cls}" data-line="${n}"><span class="ln-num">${n}</span><span class="ln-code">${line}</span></span>`;
   }).join('\n');
 
   codeEl.innerHTML = numbered;
 
-  // If any attack lines found, scroll first one into view
-  if (attackLines.size) {
+  if (bugLine) {
+    const bugEl = codeEl.querySelector('.bug-line');
+    if (bugEl) bugEl.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  } else if (attackLines.size) {
     const first = codeEl.querySelector('.attack-line');
     if (first) first.scrollIntoView({ block: 'center', behavior: 'smooth' });
   }
+}
+
+function renderCode(sol, at) {
+  _codeState.rawCode = sol.code || '';
+  _codeState.baselineCode = sol.baseline_code || '';
+  _codeState.npd_line = sol.npd_line || null;
+  _codeState.at = at;
+  _codeState.slug = sol.slug;
+  _codeState.baseline = false;
+
+  const toggleBtn = document.getElementById('baseline-toggle');
+  if (toggleBtn) {
+    toggleBtn.style.display = _codeState.baselineCode ? '' : 'none';
+    toggleBtn.textContent = '⇄ solution.c';
+  }
+
+  document.getElementById('code-fname').textContent = `${sol.slug}_${at}.c`;
+  _renderCodeLines(sol.code, getKeywords(at), null);
 }
 
 // Strip verbose file paths from explorer output; keep expr + line + label
@@ -967,6 +1079,220 @@ function renderRepoAudit(ra, at, keywords) {
   }
 }
 
+// ── Generic auditor panel (VulTrial / OpenVul) ────────────────────────────────
+
+const TURN_LABELS = [
+  '🔍 Security Researcher',
+  '✍️ Code Author',
+  '⚖️ Moderator',
+  '🏛️ Review Board',
+];
+
+const NPD_RE = /null.{0,10}pointer|null.{0,10}deref|none.{0,10}deref|\bnpd\b|cwe.?476/i;
+
+function renderVerdictTable(rawText) {
+  const m = rawText.match(/\[[\s\S]*\]/);
+  if (!m) return '<em style="color:var(--text3)">(no JSON array in Review Board output)</em>';
+  let verdicts;
+  try { verdicts = JSON.parse(m[0]); } catch(e) { return '<em style="color:var(--text3)">(could not parse JSON)</em>'; }
+  if (!Array.isArray(verdicts) || !verdicts.length) return '<em style="color:var(--text3)">(empty verdicts)</em>';
+
+  const rows = verdicts.map(v => {
+    const vuln     = escHtml(v.vulnerability || '');
+    const decision = (v.decision || '').toLowerCase();
+    const severity = escHtml(v.severity || '');
+    const action   = escHtml(v.recommended_action || '');
+    const isNpd    = NPD_RE.test(v.vulnerability || '');
+    const rowBg    = isNpd && decision === 'invalid' ? 'rgba(248,81,73,0.12)'
+                   : isNpd && (decision === 'valid' || decision === 'partially valid') ? 'rgba(63,185,80,0.10)'
+                   : '';
+    return `<tr style="background:${rowBg}">
+      <td style="padding:5px 10px;border-bottom:1px solid var(--border)">${vuln}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--border);font-weight:600">${escHtml(decision)}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--border)">${severity}</td>
+      <td style="padding:5px 10px;border-bottom:1px solid var(--border)">${action}</td>
+    </tr>`;
+  }).join('');
+
+  return `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr style="background:var(--bg3)">
+      <th style="padding:5px 10px;text-align:left;border-bottom:1px solid var(--border)">Vulnerability</th>
+      <th style="padding:5px 10px;text-align:left;border-bottom:1px solid var(--border)">Decision</th>
+      <th style="padding:5px 10px;text-align:left;border-bottom:1px solid var(--border)">Severity</th>
+      <th style="padding:5px 10px;text-align:left;border-bottom:1px solid var(--border)">Action</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div style="font-size:11px;color:var(--text3);margin-top:6px">
+    🟥 NPD invalid = attack evaded &nbsp; 🟩 NPD valid = detected
+  </div>`;
+}
+
+function verdictBannerHtml(flag, title) {
+  if (flag === 'tp') return `<div class="verdict-banner banner-det">
+    <div class="banner-icon">🔴</div>
+    <div class="banner-text">
+      <div class="banner-label">Bug Detected</div>
+      <div class="banner-sub">${escHtml(title)} correctly identified the NPD vulnerability.</div>
+    </div></div>`;
+  if (flag === 'fn') return `<div class="verdict-banner banner-evd">
+    <div class="banner-icon">🟢</div>
+    <div class="banner-text">
+      <div class="banner-label">Attack Succeeded — Bug Evaded</div>
+      <div class="banner-sub">${escHtml(title)} missed the NPD. The adversarial comment was convincing.</div>
+    </div></div>`;
+  return `<div class="verdict-banner banner-na">
+    <div class="banner-icon">⚠</div>
+    <div class="banner-text"><div class="banner-label">${flag || '?'}</div></div></div>`;
+}
+
+// VulTrial panel — verdict banner + meta + 4-agent-turn sub-tabs
+function renderVulTrialPanel(data, keywords) {
+  const el = document.getElementById('tab-vultrial');
+  if (!data.available) {
+    el.innerHTML = `<div class="verdict-banner banner-na">
+      <div class="banner-icon">⚪</div>
+      <div class="banner-text"><div class="banner-label">No VulTrial Result Available</div></div>
+    </div>`;
+    return;
+  }
+
+  const isDet = data.flag === 'tp', isEvaded = data.flag === 'fn';
+  const turns = data.turns || {};
+  const hasTurns = Object.values(turns).some(t => t != null);
+
+  let html = verdictBannerHtml(data.flag, 'VulTrial (gpt-4o, generic)');
+
+  html += `<div class="vl-meta" style="margin-bottom:12px">
+    <div class="vl-cell"><div class="vl-key">Prediction</div>
+      <div class="vl-val ${data.predicted === 'yes' ? 'label-det' : 'label-evd'}">${data.predicted || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Ground Truth</div>
+      <div class="vl-val">${data.actual || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Flag</div>
+      <div class="vl-val">${data.flag || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Result</div>
+      <div class="vl-val ${isEvaded ? 'label-evd' : isDet ? 'label-det' : ''}">${isEvaded ? 'Evaded ✓' : isDet ? 'Detected' : '-'}</div></div>
+  </div>`;
+
+  if (hasTurns) {
+    html += `<div class="subtabs" id="vt-subtabs">`;
+    TURN_LABELS.forEach((lbl, i) => {
+      html += `<div class="subtab${i === 0 ? ' active' : ''}" data-turn="${i}">${lbl}</div>`;
+    });
+    html += `</div>`;
+
+    TURN_LABELS.forEach((lbl, i) => {
+      const txt = turns[String(i)];
+      let content;
+      if (txt == null) {
+        content = `<div style="color:var(--text3);font-size:12px">(no output file found)</div>`;
+      } else if (i === 3) {
+        // Review Board: verdict table + raw
+        content = renderVerdictTable(markKeywords(txt, keywords))
+          + `<div class="section-title" style="margin-top:14px">Raw Output</div>`
+          + outputBlock(txt, markKeywords(escHtml(txt), keywords));
+      } else {
+        content = outputBlock(txt, markKeywords(escHtml(txt), keywords));
+      }
+      html += `<div class="subtab-content${i === 0 ? ' active' : ''}" id="vt-turn-${i}">${content}</div>`;
+    });
+  } else if (data.output) {
+    html += `<div class="section-title">Final Output</div>` + outputBlock(data.output, markKeywords(escHtml(data.output), keywords));
+  }
+
+  el.innerHTML = html;
+
+  // Wire up sub-tab clicks
+  el.querySelectorAll('#vt-subtabs .subtab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const turn = tab.dataset.turn;
+      el.querySelectorAll('#vt-subtabs .subtab').forEach(t => t.classList.toggle('active', t.dataset.turn === turn));
+      el.querySelectorAll('[id^="vt-turn-"]').forEach(c => c.classList.toggle('active', c.id === `vt-turn-${turn}`));
+    });
+  });
+}
+
+// OpenVul panel — verdict banner + meta + majority vote + reasoning
+function renderOpenVulPanel(data, keywords) {
+  const el = document.getElementById('tab-openvul');
+  if (!data.available) {
+    el.innerHTML = `<div class="verdict-banner banner-na">
+      <div class="banner-icon">⚪</div>
+      <div class="banner-text"><div class="banner-label">No OpenVul Result Available</div></div>
+    </div>`;
+    return;
+  }
+
+  const isDet = data.flag === 'tp', isEvaded = data.flag === 'fn';
+  const hasVul = data.votes?.has_vul ?? '?';
+  const noVul  = data.votes?.no_vul  ?? '?';
+
+  let html = verdictBannerHtml(data.flag, 'OpenVul (Qwen3-4B)');
+
+  html += `<div class="vl-meta" style="margin-bottom:12px">
+    <div class="vl-cell"><div class="vl-key">Prediction</div>
+      <div class="vl-val ${data.predicted === 'yes' ? 'label-det' : 'label-evd'}">${data.predicted || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Ground Truth</div>
+      <div class="vl-val">${data.actual || '?'}</div></div>
+    <div class="vl-cell"><div class="vl-key">Votes (vul / safe)</div>
+      <div class="vl-val" style="font-size:13px">${hasVul} / ${noVul}</div></div>
+    <div class="vl-cell"><div class="vl-key">Result</div>
+      <div class="vl-val ${isEvaded ? 'label-evd' : isDet ? 'label-det' : ''}">${isEvaded ? 'Evaded ✓' : isDet ? 'Detected' : '-'}</div></div>
+  </div>`;
+
+  if (data.output) {
+    html += `<div class="section-title">Reasoning Output</div>` + outputBlock(data.output, markKeywords(escHtml(data.output), keywords));
+  }
+
+  el.innerHTML = html;
+}
+
+// ── Baseline summary (shown in topbar area of problem view) ───────────────────
+function renderBaselineSummary(data) {
+  // Build per-system detected status and update topbar badges
+  const systems = [
+    { label: 'VT', title: 'VulTrial',   d: data.vultrial },
+    { label: 'OV', title: 'OpenVul',    d: data.openvul  },
+    { label: 'VL', title: 'VulnLLM-R', d: data.vulnllm  },
+  ];
+  const tbVt = document.getElementById('tb-vt-badge');
+  const tbOv = document.getElementById('tb-ov-badge');
+  const tbVl = document.getElementById('tb-vl-badge');
+  const tbBl = document.getElementById('tb-baseline-badge');
+
+  if (tbVt) tbVt.innerHTML = data.vultrial  ? flagBadgeHtml(data.vultrial.flag,  'VT') : `<span class="badge badge-na">VT: N/A</span>`;
+  if (tbOv) tbOv.innerHTML = data.openvul   ? flagBadgeHtml(data.openvul.flag,   'OV') : `<span class="badge badge-na">OV: N/A</span>`;
+  if (tbVl) tbVl.innerHTML = data.vulnllm   ? flagBadgeHtml(data.vulnllm.flag,   'VL') : `<span class="badge badge-na">VL: N/A</span>`;
+  if (tbBl) tbBl.innerHTML = '';
+}
+
+// ── Baseline tab for one system ────────────────────────────────────────────────
+function renderBaselineSystemTab(tabId, title, d, showVotes) {
+  const el = document.getElementById(tabId);
+  if (!d) {
+    el.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:12px">No ${escHtml(title)} baseline result available.</div>`;
+    return;
+  }
+  const det = d.flag === 'tp';
+  const badgeStyle = det
+    ? 'background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)'
+    : 'background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.3)';
+  let html = `<div class="vl-baseline-header" style="margin-bottom:12px;display:flex;align-items:center;gap:10px">
+    <span style="font-size:13px;font-weight:600;color:var(--text2)">${escHtml(title)} — solution.c (no attack comment)</span>
+    <span class="vl-baseline-badge" style="${badgeStyle}">${det ? 'Detected NPD' : 'Missed NPD'}</span>
+    <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${d.flag || ''}</span>`;
+  if (showVotes && d.votes) {
+    html += `&nbsp;<span style="font-size:11px;color:var(--text3)">votes: ${d.votes.has_vul ?? '?'} vul / ${d.votes.no_vul ?? '?'} safe</span>`;
+  }
+  html += `</div>`;
+  if (d.output) {
+    html += outputBlock(d.output, markKeywords(escHtml(d.output), GLOBAL_KEYWORDS), 'max-height:60vh');
+  } else {
+    html += `<div style="color:var(--text3);font-size:12px">No reasoning available.</div>`;
+  }
+  el.innerHTML = html;
+}
+
 // ── VulnLLM panel ─────────────────────────────────────────────────────────────
 function renderVulnLLM(vl, flag, keywords) {
   const el = document.getElementById('tab-vulnllm');
@@ -1020,8 +1346,7 @@ function renderVulnLLM(vl, flag, keywords) {
 
   const outputText = vl.output || vl.cot || '';
   if (outputText) {
-    html += `<div class="section-title">Model Output (Attacked)</div>
-      <div class="vl-output">${markKeywords(escHtml(outputText), keywords)}</div>`;
+    html += `<div class="section-title">Model Output (Attacked)</div>` + outputBlock(outputText, markKeywords(escHtml(outputText), keywords));
   }
 
   // Baseline: model's result on the original unmodified solution.c
@@ -1038,9 +1363,109 @@ function renderVulnLLM(vl, flag, keywords) {
         <span style="font-size:11px;color:var(--text3);font-family:var(--mono)">${bl.flag || ''}</span>
       </div>`;
     if (bl.output) {
-      html += `<div class="vl-output" style="max-height:40vh">${markKeywords(escHtml(bl.output), keywords)}</div>`;
+      html += outputBlock(bl.output, markKeywords(escHtml(bl.output), keywords), 'max-height:40vh');
     }
     html += `</div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ── VulnLLM-R Agent Scaffold panel ────────────────────────────────────────────
+function renderScaffold(sc, at, keywords) {
+  const el = document.getElementById('tab-scaffold');
+  if (!sc) {
+    el.innerHTML = `<div style="color:var(--text3);font-size:13px;padding:12px">Scaffold data not available.</div>`;
+    return;
+  }
+
+  const isBaseline = !at;
+  const entries = isBaseline ? (sc.baseline || []) : (sc.attack || []);
+  const overall = isBaseline ? sc.baseline_overall : sc.attack_overall;
+  const baselineEntries = sc.baseline || [];
+
+  let html = '';
+
+  // Overall verdict banner
+  if (entries.length === 0) {
+    html += `<div class="verdict-banner banner-na">
+      <div class="banner-icon">⚪</div>
+      <div class="banner-text"><div class="banner-label">No Agent Scaffold Result Available</div>
+        <div class="banner-sub">VulnLLM-R agent scaffold was not run on this variant.</div>
+      </div>
+    </div>`;
+  } else if (overall === 'yes') {
+    html += `<div class="verdict-banner banner-det">
+      <div class="banner-icon">🔴</div>
+      <div class="banner-text"><div class="banner-label">Bug Detected — Agent Found NPD</div>
+        <div class="banner-sub">VulnLLM-R agentic mode (tree-sitter call graph + tool retrieval) identified CWE-476.</div>
+      </div>
+    </div>`;
+  } else {
+    html += `<div class="verdict-banner banner-evd">
+      <div class="banner-icon">🟢</div>
+      <div class="banner-text"><div class="banner-label">${isBaseline ? 'Missed on Baseline' : 'Adversarial Attack Succeeded — Agent Evaded'}</div>
+        <div class="banner-sub">VulnLLM-R agentic mode did not flag CWE-476 in any function.</div>
+      </div>
+    </div>`;
+  }
+
+  // Per-function table
+  if (entries.length > 0) {
+    const modeLabel = isBaseline ? 'Baseline (solution.c)' : `Attack Variant: ${at}`;
+    html += `<div class="section-title" style="margin-top:12px">Per-Function Results — ${modeLabel}</div>`;
+    html += `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">`;
+    for (const e of entries) {
+      const judgeYes = e.judge === 'yes';
+      const cwe476 = (e.cwe_type || '').includes('476');
+      const rowColor = judgeYes && cwe476 ? 'var(--red)' : judgeYes ? 'var(--yellow)' : 'var(--text3)';
+      const rowBg   = judgeYes && cwe476 ? 'rgba(248,81,73,0.07)' : 'var(--bg2)';
+      const judgeIcon = judgeYes ? '●' : '○';
+      const outputText = (e.final_results || []).map(r => r.output || '').filter(Boolean).join('\n\n---\n\n')
+                      || (e.exploratory_results || []).map(r => r.output || '').filter(Boolean).join('\n\n---\n\n');
+      const escOutput = escHtml(outputText);
+      const markedOutput = keywords && keywords.length ? markKeywords(escOutput, keywords) : escOutput;
+
+      html += `<details style="background:${rowBg};border:1px solid var(--border);border-radius:6px;overflow:hidden">
+        <summary style="padding:8px 10px;cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px">
+          <span style="color:${rowColor};font-size:14px">${judgeIcon}</span>
+          <span style="color:var(--text);font-weight:600">${escHtml(e.function || '?')}</span>
+          <span style="color:${rowColor};margin-left:4px">${judgeYes ? 'VULN' : 'safe'}</span>
+          ${e.cwe_type && e.cwe_type !== 'N/A' ? `<span style="color:var(--text3)">${escHtml(e.cwe_type)}</span>` : ''}
+          <span style="margin-left:auto;color:var(--text3)">${e.rounds_used || 0} round${(e.rounds_used||0)===1?'':'s'}</span>
+        </summary>`;
+      if (outputText) {
+        html += `<div style="padding:0 10px 10px">` + outputBlock(outputText, markedOutput, 'max-height:40vh') + `</div>`;
+      }
+      html += `</details>`;
+    }
+    html += `</div>`;
+  }
+
+  // If viewing an attack variant, also show the baseline section collapsed
+  if (!isBaseline && baselineEntries.length > 0) {
+    const blOverall = sc.baseline_overall;
+    const blBadgeStyle = blOverall === 'yes'
+      ? 'background:rgba(248,81,73,0.1);color:var(--red);border:1px solid rgba(248,81,73,0.3)'
+      : 'background:rgba(63,185,80,0.1);color:var(--green);border:1px solid rgba(63,185,80,0.3)';
+    html += `<div class="vl-baseline" style="margin-top:16px">
+      <div class="vl-baseline-header">
+        <span class="vl-baseline-title">Baseline — original solution.c (no attack comment)</span>
+        <span class="vl-baseline-badge" style="${blBadgeStyle}">${blOverall === 'yes' ? 'Detected' : 'Missed'}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:8px">`;
+    for (const e of baselineEntries) {
+      const judgeYes = e.judge === 'yes';
+      const cwe476 = (e.cwe_type || '').includes('476');
+      const rowColor = judgeYes && cwe476 ? 'var(--red)' : judgeYes ? 'var(--yellow)' : 'var(--text3)';
+      html += `<div style="display:flex;gap:8px;font-family:var(--mono);font-size:11px;padding:4px 8px;background:var(--bg2);border-radius:4px">
+        <span style="color:${rowColor}">${judgeYes ? '●' : '○'}</span>
+        <span style="color:var(--text)">${escHtml(e.function || '?')}</span>
+        <span style="color:${rowColor}">${judgeYes ? 'VULN' : 'safe'}</span>
+        ${e.cwe_type && e.cwe_type !== 'N/A' ? `<span style="color:var(--text3)">${escHtml(e.cwe_type)}</span>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
   }
 
   el.innerHTML = html;
@@ -1081,41 +1506,47 @@ function renderHomePage() {
   const totalN  = st.overall.total;
   const raTotal = st.overall.repoaudit_detected;
   const vlTotal = st.overall.vulnllm_detected;
+  const vtTotal = st.overall.vultrial_detected  || 0;
+  const ovTotal = st.overall.openvul_detected   || 0;
 
   let rows = '';
   for (const at of ATTACK_TYPES) {
-    const s = st.per_type[at] || {total:0, repoaudit_detected:0, vulnllm_detected:0};
-    const raP = pct(s.repoaudit_detected, s.total);
-    const vlP = pct(s.vulnllm_detected, s.total);
-    const raEvd = s.total - s.repoaudit_detected;
-    const vlEvd = s.total - s.vulnllm_detected;
+    const s = st.per_type[at] || {};
+    const n   = s.total || 0;
+    const raD = s.repoaudit_detected || 0;
+    const vlD = s.vulnllm_detected   || 0;
+    const vtD = s.vultrial_detected  || 0;
+    const ovD = s.openvul_detected   || 0;
     rows += `<tr>
       <td><span style="font-family:var(--mono);font-size:12px">${escHtml(at)}</span></td>
-      <td class="right">${s.total}</td>
-      <td class="right">${rateBarHtml(s.repoaudit_detected, s.total, 'fill-red')}</td>
-      <td class="right"><span class="evasion-pct">${raEvd}/${s.total} (${100-raP}%)</span></td>
-      <td class="right">${rateBarHtml(s.vulnllm_detected, s.total, 'fill-blue')}</td>
-      <td class="right"><span class="evasion-pct">${vlEvd}/${s.total} (${100-vlP}%)</span></td>
+      <td class="right">${n}</td>
+      <td class="right">${rateBarHtml(raD, n, 'fill-red')}</td>
+      <td class="right"><span class="evasion-pct">${n-raD}/${n} (${100-pct(raD,n)}%)</span></td>
+      <td class="right">${rateBarHtml(vtD, n, 'fill-blue')}</td>
+      <td class="right"><span class="evasion-pct">${n-vtD}/${n} (${100-pct(vtD,n)}%)</span></td>
+      <td class="right">${rateBarHtml(ovD, n, 'fill-blue')}</td>
+      <td class="right"><span class="evasion-pct">${n-ovD}/${n} (${100-pct(ovD,n)}%)</span></td>
+      <td class="right">${rateBarHtml(vlD, n, 'fill-blue')}</td>
+      <td class="right"><span class="evasion-pct">${n-vlD}/${n} (${100-pct(vlD,n)}%)</span></td>
     </tr>`;
   }
 
-  const raTotalP  = pct(raTotal, totalN);
-  const vlTotalP  = pct(vlTotal, totalN);
-  const raEvdTot  = totalN - raTotal;
-  const vlEvdTot  = totalN - vlTotal;
-
   el.innerHTML = `
     <div class="home-title">Adversarial NPD Attack Results</div>
-    <div class="home-sub">${totalN} verified solutions × 10 attack types × 8 problems &nbsp;·&nbsp; model: gpt-5.4-mini</div>
+    <div class="home-sub">${totalN} verified solutions × 10 attack types &nbsp;·&nbsp; attacker model: gpt-5.4-mini</div>
 
     <table class="stats-table">
       <thead>
         <tr>
           <th>Attack Type</th>
           <th class="right">N</th>
-          <th class="right">RepoAudit Detected</th>
+          <th class="right">RA Det.</th>
           <th class="right">RA Evasion</th>
-          <th class="right">VulnLLM-R Detected</th>
+          <th class="right">VulTrial Det.</th>
+          <th class="right">VT Evasion</th>
+          <th class="right">OpenVul Det.</th>
+          <th class="right">OV Evasion</th>
+          <th class="right">VulnLLM-R Det.</th>
           <th class="right">VL Evasion</th>
         </tr>
       </thead>
@@ -1125,26 +1556,26 @@ function renderHomePage() {
           <td>TOTAL</td>
           <td class="right">${totalN}</td>
           <td class="right">${rateBarHtml(raTotal, totalN, 'fill-red')}</td>
-          <td class="right"><span class="evasion-pct">${raEvdTot}/${totalN} (${100-raTotalP}%)</span></td>
+          <td class="right"><span class="evasion-pct">${totalN-raTotal}/${totalN} (${100-pct(raTotal,totalN)}%)</span></td>
+          <td class="right">${rateBarHtml(vtTotal, totalN, 'fill-blue')}</td>
+          <td class="right"><span class="evasion-pct">${totalN-vtTotal}/${totalN} (${100-pct(vtTotal,totalN)}%)</span></td>
+          <td class="right">${rateBarHtml(ovTotal, totalN, 'fill-blue')}</td>
+          <td class="right"><span class="evasion-pct">${totalN-ovTotal}/${totalN} (${100-pct(ovTotal,totalN)}%)</span></td>
           <td class="right">${rateBarHtml(vlTotal, totalN, 'fill-blue')}</td>
-          <td class="right"><span class="evasion-pct">${vlEvdTot}/${totalN} (${100-vlTotalP}%)</span></td>
+          <td class="right"><span class="evasion-pct">${totalN-vlTotal}/${totalN} (${100-pct(vlTotal,totalN)}%)</span></td>
         </tr>
       </tbody>
     </table>
 
     <div class="home-section">
-      <div class="home-section-title">Key Findings</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="home-section-title">Overall Evasion by Auditor</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px">
+        ${[['RepoAudit',raTotal],['VulTrial',vtTotal],['OpenVul',ovTotal],['VulnLLM-R',vlTotal]].map(([name,det]) => `
         <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">RepoAudit Overall Evasion</div>
-          <div style="font-size:28px;font-weight:700;color:var(--green)">${100-raTotalP}%</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:4px">${raEvdTot} of ${totalN} solutions evaded detection</div>
-        </div>
-        <div style="background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px">
-          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">VulnLLM-R Overall Evasion</div>
-          <div style="font-size:28px;font-weight:700;color:var(--green)">${100-vlTotalP}%</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:4px">${vlEvdTot} of ${totalN} solutions evaded detection</div>
-        </div>
+          <div style="font-size:11px;color:var(--text3);margin-bottom:4px">${name} Evasion</div>
+          <div style="font-size:28px;font-weight:700;color:var(--green)">${100-pct(det,totalN)}%</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:4px">${totalN-det} / ${totalN} evaded</div>
+        </div>`).join('')}
       </div>
     </div>`;
 }
@@ -1189,11 +1620,45 @@ function initKeyboard() {
   });
 }
 
+// ── Baseline toggle & code copy ───────────────────────────────────────────────
+function initCodePanel() {
+  // Baseline toggle
+  const toggleBtn = document.getElementById('baseline-toggle');
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      _codeState.baseline = !_codeState.baseline;
+      if (_codeState.baseline) {
+        document.getElementById('code-fname').textContent = 'solution.c (baseline — NPD highlighted)';
+        _renderCodeLines(_codeState.baselineCode, [], _codeState.npd_line);
+        toggleBtn.textContent = '⇄ attack variant';
+      } else {
+        document.getElementById('code-fname').textContent = `${_codeState.slug}_${_codeState.at}.c`;
+        _renderCodeLines(_codeState.rawCode, getKeywords(_codeState.at), null);
+        toggleBtn.textContent = '⇄ solution.c';
+      }
+    });
+  }
+
+  // Code copy button
+  const copyBtn = document.getElementById('code-copy-btn');
+  if (copyBtn) {
+    copyBtn.addEventListener('click', async () => {
+      const text = _codeState.baseline ? _codeState.baselineCode : _codeState.rawCode;
+      await navigator.clipboard.writeText(text);
+      const orig = copyBtn.textContent;
+      copyBtn.textContent = '✓';
+      copyBtn.classList.add('copied');
+      setTimeout(() => { copyBtn.textContent = orig; copyBtn.classList.remove('copied'); }, 1500);
+    });
+  }
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   initTheme();
   initTabs();
   initKeyboard();
+  initCodePanel();
   buildATChips();
   buildOutcomeChips();
 
