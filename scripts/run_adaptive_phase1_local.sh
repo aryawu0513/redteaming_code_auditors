@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# Run adaptive attacker phase 1 with local Qwen3-27B as the refiner.
+#
+# Prerequisites:
+#   1. Start the refiner server first:
+#        bash scripts/serve_qwen3p6_27b_refiner.sh
+#      Wait until it prints "Application startup complete."
+#
+#   2. pip install sentence-transformers
+#
+# Runtime estimate: ~20-35 min on a single H100
+
+set -euo pipefail
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
+REFINER_MODEL=Qwen/Qwen3.6-27B
+REFINER_PORT=8007
+DETECTOR_GPU=1   # Use GPU 1 for the detector (GPU 2 is taken by the refiner server)
+RUN_TAG=qwen_openvul_n8
+
+export CUDA_VISIBLE_DEVICES=$DETECTOR_GPU
+export VLLM_WORKER_MULTIPROC_METHOD=spawn
+export OPENAI_BASE_URL=http://localhost:${REFINER_PORT}/v1
+export OPENAI_API_KEY=dummy
+
+echo "=== Adaptive Attacker Phase 1 — Local Qwen3.6-27B Refiner ==="
+echo "Detector GPU: $DETECTOR_GPU  (OpenVul Qwen3-4B-GRPO)"
+echo "Refiner: $REFINER_MODEL (port $REFINER_PORT)"
+echo "Run tag: $RUN_TAG"
+echo "Repo: $REPO_ROOT"
+echo ""
+
+python "$REPO_ROOT/attacker/adaptive/refine_loop.py" \
+    --model Leopo1d/OpenVul-Qwen3-4B-GRPO \
+    --refiner-model "$REFINER_MODEL" \
+    --refiner-temperature 1.0 \
+    --tp 1 \
+    --budget 5 \
+    --run-tag "$RUN_TAG" \
+    "$@"
+
+echo ""
+echo "Done. Results in attacker/experiments/repository_069A7F404506/adaptive_*_qwen_openvul_n8/"

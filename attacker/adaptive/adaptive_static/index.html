@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Adaptive Attacker Viewer</title>
+<link rel="stylesheet" id="hljs-theme"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:       #0d1117;
+  --bg2:      #161b22;
+  --bg3:      #21262d;
+  --bg4:      #30363d;
+  --border:   #30363d;
+  --border2:  #21262d;
+  --text:     #e6edf3;
+  --text2:    #8b949e;
+  --text3:    #6e7681;
+  --accent:   #58a6ff;
+  --green:    #3fb950;
+  --red:      #f85149;
+  --yellow:   #d29922;
+  --purple:   #bc8cff;
+  --teal:     #2dd4bf;
+  --orange:   #f0883e;
+  --sidebar-w: 280px;
+  --radius:   8px;
+  --mono:     'SF Mono','Fira Code','Cascadia Code',Consolas,monospace;
+  --sans:     -apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+}
+
+[data-theme="light"] {
+  --bg:      #ffffff; --bg2: #f6f8fa; --bg3: #eaeef2; --bg4: #d0d7de;
+  --border:  #d0d7de; --border2: #eaeef2;
+  --text:    #1f2328; --text2: #656d76; --text3: #8c959f;
+  --accent:  #0969da; --green: #1a7f37; --red: #d1242f;
+  --yellow:  #9a6700; --purple: #8250df; --teal: #0f766e; --orange: #bc4c00;
+}
+
+html, body { height: 100%; font-family: var(--sans); background: var(--bg); color: var(--text); font-size: 14px; line-height: 1.5; }
+#app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Sidebar ─────────────────────────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar-w); min-width: var(--sidebar-w);
+  background: var(--bg2); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-top {
+  padding: 12px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 8px;
+}
+.sidebar-title {
+  font-size: 12px; font-weight: 700; color: var(--text2);
+  text-transform: uppercase; letter-spacing: .07em;
+  display: flex; align-items: center; justify-content: space-between;
+}
+#search {
+  width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 6px 10px; color: var(--text);
+  font-size: 13px; outline: none;
+}
+#search:focus { border-color: var(--accent); }
+#search::placeholder { color: var(--text3); }
+.tag-chip {
+  padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700;
+  font-family: var(--mono); cursor: pointer; border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text2); transition: all .12s; white-space: nowrap;
+}
+.tag-chip:hover { border-color: var(--accent); color: var(--accent); }
+.tag-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+#run-list { flex: 1; overflow-y: auto; padding: 4px 0; }
+#run-list::-webkit-scrollbar { width: 4px; }
+#run-list::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }
+
+.group-hdr {
+  padding: 8px 12px 4px; font-size: 10px; font-weight: 700;
+  color: var(--text3); text-transform: uppercase; letter-spacing: .07em;
+  position: sticky; top: 0; background: var(--bg2); z-index: 1;
+}
+.run-item {
+  padding: 7px 12px; cursor: pointer; border-left: 3px solid transparent;
+  display: flex; flex-direction: column; gap: 2px; transition: background .1s;
+}
+.run-item:hover { background: var(--bg3); }
+.run-item.active { background: var(--bg3); border-left-color: var(--accent); }
+.run-type { font-family: var(--mono); font-size: 12px; font-weight: 600; }
+.run-meta { display: flex; gap: 5px; align-items: center; }
+
+.badge {
+  display: inline-flex; align-items: center; padding: 1px 6px;
+  border-radius: 20px; font-size: 10px; font-weight: 700; font-family: var(--mono);
+  white-space: nowrap;
+}
+.badge-safe   { background: color-mix(in srgb, var(--green)  15%, transparent); color: var(--green);  }
+.badge-vuln   { background: color-mix(in srgb, var(--red)    15%, transparent); color: var(--red);    }
+.badge-budget { background: color-mix(in srgb, var(--yellow) 15%, transparent); color: var(--yellow); }
+.badge-static { background: color-mix(in srgb, var(--teal)   15%, transparent); color: var(--teal);   }
+.badge-round  { background: var(--bg4); color: var(--text2); }
+
+/* ── Main ─────────────────────────────────────────────────────────────────── */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+
+#viewer-header {
+  height: 52px; border-bottom: 1px solid var(--border);
+  padding: 0 16px; display: flex; align-items: center;
+  justify-content: space-between; background: var(--bg2); flex-shrink: 0;
+}
+#meta-info { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.meta-slug { font-family: var(--mono); font-size: 13px; color: var(--text3); }
+.meta-type { font-family: var(--mono); font-size: 15px; font-weight: 700; color: var(--accent); }
+.meta-sep  { color: var(--text3); }
+
+#nav-bar {
+  height: 52px; border-bottom: 1px solid var(--border); padding: 0 16px;
+  display: flex; align-items: center; gap: 10px; background: var(--bg); flex-shrink: 0;
+}
+.round-pills { flex: 1; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.round-pills::-webkit-scrollbar { display: none; }
+.rpill {
+  height: 28px; padding: 0 10px; border-radius: 20px; cursor: pointer;
+  font-size: 11px; font-weight: 600; font-family: var(--mono);
+  border: 1px solid var(--border); background: var(--bg3); color: var(--text2);
+  display: flex; align-items: center; gap: 5px; white-space: nowrap;
+  transition: all .12s; flex-shrink: 0;
+}
+.rpill:hover { border-color: var(--accent); color: var(--accent); }
+.rpill.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.rpill.verdict-safe   { border-color: var(--green);  }
+.rpill.verdict-vulnerable { border-color: var(--red); }
+.rpill.active.verdict-safe   { background: var(--green);  border-color: var(--green);  }
+.rpill.active.verdict-vulnerable { background: var(--red); border-color: var(--red); }
+
+#step-counter { font-family: var(--mono); font-size: 12px; color: var(--text2); min-width: 80px; text-align: center; }
+
+.btn {
+  display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--bg3); color: var(--text); font-size: 13px;
+  cursor: pointer; transition: all .12s; white-space: nowrap;
+}
+.btn:hover { background: var(--bg4); }
+.btn:disabled { opacity: .35; cursor: default; pointer-events: none; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn.primary:hover { opacity: .88; }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text2); }
+.btn.ghost:hover { background: var(--bg3); color: var(--text); }
+.btn.active { background: color-mix(in srgb, var(--accent) 15%, var(--bg3)); border-color: var(--accent); color: var(--accent); }
+
+#content-area {
+  flex: 1; overflow-y: auto; padding: 20px;
+}
+#content-area::-webkit-scrollbar { width: 6px; }
+#content-area::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* ── Cards ─────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg2); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden; margin-bottom: 14px;
+}
+.card-header {
+  display: flex; align-items: center; gap: 8px; padding: 9px 14px;
+  border-bottom: 1px solid var(--border2);
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em;
+}
+.card-body { padding: 14px; }
+
+.c-blue   { border-left: 3px solid var(--accent); }
+.c-blue   .card-header { background: color-mix(in srgb, var(--accent) 8%, var(--bg2)); color: var(--accent); }
+.c-green  { border-left: 3px solid var(--green); }
+.c-green  .card-header { background: color-mix(in srgb, var(--green) 8%, var(--bg2)); color: var(--green); }
+.c-red    { border-left: 3px solid var(--red); }
+.c-red    .card-header { background: color-mix(in srgb, var(--red) 8%, var(--bg2)); color: var(--red); }
+.c-purple { border-left: 3px solid var(--purple); }
+.c-purple .card-header { background: color-mix(in srgb, var(--purple) 8%, var(--bg2)); color: var(--purple); }
+.c-yellow { border-left: 3px solid var(--yellow); }
+.c-yellow .card-header { background: color-mix(in srgb, var(--yellow) 8%, var(--bg2)); color: var(--yellow); }
+.c-teal   { border-left: 3px solid var(--teal); }
+.c-teal   .card-header { background: color-mix(in srgb, var(--teal) 8%, var(--bg2)); color: var(--teal); }
+.c-gray   { border-left: 3px solid var(--text3); }
+.c-gray   .card-header { background: var(--bg3); color: var(--text2); }
+
+/* ── Vote bar ──────────────────────────────────────────────────────────────── */
+.vote-bar-wrap { margin-bottom: 12px; }
+.vote-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; font-size: 12px; }
+.vote-label { width: 70px; color: var(--text2); font-family: var(--mono); }
+.vote-track { flex: 1; height: 10px; background: var(--bg4); border-radius: 5px; overflow: hidden; }
+.vote-fill { height: 100%; border-radius: 5px; transition: width .4s ease; }
+.vote-fill.has-vul { background: var(--red); }
+.vote-fill.no-vul  { background: var(--green); }
+.vote-count { width: 20px; text-align: right; font-family: var(--mono); font-weight: 700; }
+.vote-count.has-vul { color: var(--red); }
+.vote-count.no-vul  { color: var(--green); }
+
+/* ── Verdict chip ──────────────────────────────────────────────────────────── */
+.verdict-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px;
+  border-radius: 20px; font-size: 11px; font-weight: 700; font-family: var(--mono);
+}
+.verdict-chip.safe { background: color-mix(in srgb, var(--green) 18%, transparent); color: var(--green); }
+.verdict-chip.vulnerable { background: color-mix(in srgb, var(--red) 18%, transparent); color: var(--red); }
+
+/* ── Annotation / code ─────────────────────────────────────────────────────── */
+pre.ann {
+  border-radius: 6px; padding: 12px 14px; font-family: var(--mono); font-size: 12.5px;
+  line-height: 1.65; overflow-x: auto; margin: 0; background: #0d1117 !important;
+}
+[data-theme="light"] pre.ann { background: #f6f8fa !important; }
+
+/* ── Diff ──────────────────────────────────────────────────────────────────── */
+.diff-wrap { border-radius: 6px; overflow: hidden; border: 1px solid var(--border); margin-bottom: 12px; }
+.diff-line { display: block; font-family: var(--mono); font-size: 12px; padding: 1px 10px; white-space: pre-wrap; word-break: break-all; line-height: 1.6; }
+.diff-line.add  { background: color-mix(in srgb, var(--green) 12%, transparent); color: var(--green); }
+.diff-line.del  { background: color-mix(in srgb, var(--red)   12%, transparent); color: var(--red); }
+.diff-line.hunk { background: color-mix(in srgb, var(--accent) 8%, transparent); color: var(--accent); }
+.diff-line.meta { color: var(--text3); }
+.diff-identical { padding: 8px 10px; color: var(--text3); font-size: 12px; font-style: italic; }
+
+/* ── Collapsible reasoning ─────────────────────────────────────────────────── */
+details.reasoning { margin-top: 12px; }
+details.reasoning > summary {
+  cursor: pointer; font-size: 12px; color: var(--purple); font-weight: 600;
+  list-style: none; display: flex; align-items: center; gap: 5px; user-select: none; padding: 4px 0;
+}
+details.reasoning > summary::before { content: '▶'; font-size: 9px; transition: transform .15s; }
+details.reasoning[open] > summary::before { transform: rotate(90deg); }
+.reasoning-body {
+  font-size: 12.5px; color: var(--text2); line-height: 1.7; white-space: pre-wrap;
+  margin-top: 8px; padding: 10px 12px; border-left: 2px solid var(--purple);
+  background: var(--bg3); border-radius: 0 6px 6px 0; max-height: 400px; overflow-y: auto;
+  font-family: var(--mono);
+}
+
+/* ── Rationale ─────────────────────────────────────────────────────────────── */
+.rationale-box {
+  font-size: 13px; color: var(--text2); line-height: 1.7; white-space: pre-wrap;
+  padding: 10px 14px; background: var(--bg3); border-radius: 6px; border-left: 3px solid var(--purple);
+}
+
+/* ── Stuck sim ─────────────────────────────────────────────────────────────── */
+.stuck-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); margin-top: 8px; }
+.stuck-track { flex: 1; height: 6px; background: var(--bg4); border-radius: 3px; overflow: hidden; }
+.stuck-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--yellow) 70%, var(--red)); }
+.stuck-val { font-family: var(--mono); color: var(--text2); min-width: 34px; text-align: right; }
+
+/* ── Round header ──────────────────────────────────────────────────────────── */
+.round-hdr {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding-bottom: 10px; border-bottom: 1px solid var(--border);
+}
+.round-label { font-size: 16px; font-weight: 700; font-family: var(--mono); }
+.round-arrow { color: var(--text3); font-size: 18px; margin: 0 4px; }
+
+/* ── Summary ───────────────────────────────────────────────────────────────── */
+.summary-grid { display: grid; grid-template-columns: auto 1fr; gap: 4px 16px; font-size: 13px; }
+.sg-label { color: var(--text2); }
+.sg-val   { font-family: var(--mono); font-weight: 600; }
+
+/* ── Home ──────────────────────────────────────────────────────────────────── */
+.home-wrap { max-width: 800px; margin: 0 auto; padding: 32px 20px; }
+.home-wrap h1 { font-size: 22px; font-weight: 700; margin-bottom: 8px; }
+.home-wrap p  { color: var(--text2); font-size: 14px; margin-bottom: 24px; }
+.summary-tbl { width: 100%; border-collapse: collapse; font-size: 13px; }
+.summary-tbl th {
+  text-align: left; padding: 7px 10px; border-bottom: 2px solid var(--border);
+  font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .05em;
+}
+.summary-tbl th:not(:first-child) { text-align: center; }
+.summary-tbl td { padding: 6px 10px; border-bottom: 1px solid var(--border2); }
+.summary-tbl td:not(:first-child) { text-align: center; font-family: var(--mono); font-size: 12px; }
+.summary-tbl tr:hover td { background: color-mix(in srgb, var(--accent) 4%, var(--bg)); cursor: pointer; }
+
+/* ── Misc ──────────────────────────────────────────────────────────────────── */
+.spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid var(--bg4); border-top-color: var(--accent); border-radius: 50%; animation: spin .6s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.empty-state { display: flex; align-items: center; justify-content: center; height: 100%; color: var(--text3); font-size: 15px; }
+#toast {
+  position: fixed; bottom: 20px; right: 20px; background: var(--red); color: #fff;
+  padding: 10px 16px; border-radius: var(--radius); font-size: 13px; z-index: 999;
+  transform: translateY(60px); opacity: 0; transition: all .25s;
+}
+#toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+<div id="app">
+  <aside id="sidebar">
+    <div class="sidebar-top">
+      <div class="sidebar-title">
+        <span>Adaptive Runs</span>
+        <button class="btn ghost" id="btn-refresh" style="padding:3px 6px;font-size:13px" title="Refresh">⟳</button>
+      </div>
+      <input id="search" type="text" placeholder="Filter type…" autocomplete="off" spellcheck="false">
+      <div id="tag-chips" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+    </div>
+    <div id="run-list"><div style="padding:20px;color:var(--text3);text-align:center"><div class="spinner" style="margin:0 auto 8px"></div><div>Loading…</div></div></div>
+  </aside>
+
+  <main id="main">
+    <div id="viewer-header">
+      <div id="meta-info">
+        <span style="color:var(--text3);font-size:13px">Select a run from the sidebar</span>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn ghost" id="btn-all" disabled>All rounds</button>
+        <button class="btn ghost" id="btn-home" title="Home">⌂ Home</button>
+        <button class="btn ghost" id="btn-theme">☀</button>
+      </div>
+    </div>
+
+    <div id="nav-bar">
+      <button class="btn" id="btn-prev" disabled>← Prev</button>
+      <span id="step-counter">—</span>
+      <button class="btn primary" id="btn-next" disabled>Next →</button>
+      <div class="round-pills" id="round-pills"></div>
+    </div>
+
+    <div id="content-area">
+      <div class="empty-state">Select a run from the sidebar to inspect it round by round.</div>
+    </div>
+  </main>
+</div>
+<div id="toast"></div>
+
+<script>
+'use strict';
+
+// ── State ────────────────────────────────────────────────────────────────────
+const S = {
+  runs: [],
+  filtered: [],
+  activeTag: null,  // null = "All"
+  selected: null,   // { slug, type, tag }
+  run: null,        // { result, rounds }
+  step: 0,          // 0..rounds.length (rounds.length = summary)
+  allMode: false,
+  showHome: true,
+};
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const runListEl    = $('run-list');
+const metaInfoEl   = $('meta-info');
+const contentEl    = $('content-area');
+const counterEl    = $('step-counter');
+const pillsEl      = $('round-pills');
+const btnPrev      = $('btn-prev');
+const btnNext      = $('btn-next');
+const btnAll       = $('btn-all');
+const searchEl     = $('search');
+const tagChipsEl   = $('tag-chips');
+
+// ── API ──────────────────────────────────────────────────────────────────────
+async function apiFetch(url) {
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
+
+// ── Load list ────────────────────────────────────────────────────────────────
+async function loadRuns(refresh = false) {
+  try {
+    const d = await apiFetch('/api/runs' + (refresh ? '?refresh=true' : ''));
+    S.runs = d.runs || [];
+    renderTagChips();
+    applyFilter();
+    if (S.showHome) renderHome();
+  } catch(e) {
+    toast('Failed to load runs: ' + e.message);
+  }
+}
+
+// ── Tag chips ─────────────────────────────────────────────────────────────────
+function renderTagChips() {
+  const tags = [...new Set(S.runs.map(r => r.run_tag || ''))].sort();
+  if (tags.length <= 1 && tags[0] === '') { tagChipsEl.innerHTML = ''; return; }
+  let html = `<span class="tag-chip${S.activeTag === null ? ' active' : ''}" data-tag="">All</span>`;
+  for (const t of tags) {
+    const label = t || '(untagged)';
+    html += `<span class="tag-chip${S.activeTag === t ? ' active' : ''}" data-tag="${esc(t)}">${esc(label)}</span>`;
+  }
+  tagChipsEl.innerHTML = html;
+  tagChipsEl.querySelectorAll('.tag-chip').forEach(el => {
+    el.addEventListener('click', () => {
+      S.activeTag = el.dataset.tag === '' && el.textContent === 'All' ? null : el.dataset.tag;
+      renderTagChips();
+      applyFilter();
+    });
+  });
+}
+
+// ── Filter ───────────────────────────────────────────────────────────────────
+function applyFilter() {
+  const q = searchEl.value.toLowerCase();
+  S.filtered = S.runs.filter(r => {
+    if (S.activeTag !== null && (r.run_tag || '') !== S.activeTag) return false;
+    return !q || r.type.toLowerCase().includes(q) || r.slug.toLowerCase().includes(q);
+  });
+  renderList();
+}
+
+function renderList() {
+  if (!S.filtered.length) {
+    runListEl.innerHTML = '<div style="padding:20px;color:var(--text3);text-align:center">No runs found</div>';
+    return;
+  }
+
+  // Group by tag then slug
+  const groups = {};
+  for (const r of S.filtered) {
+    const groupKey = r.run_tag || '(untagged)';
+    (groups[groupKey] = groups[groupKey] || []).push(r);
+  }
+
+  let html = '';
+  for (const [groupKey, runs] of Object.entries(groups)) {
+    html += `<div class="group-hdr">${esc(groupKey)}</div>`;
+    for (const r of runs) {
+      const cls = verdictBadgeClass(r.final_verdict, r.stop_reason);
+      const label = verdictLabel(r.final_verdict, r.stop_reason);
+      const active = S.selected &&
+        S.selected.slug === r.slug &&
+        S.selected.type === r.type &&
+        (S.selected.tag || '') === (r.run_tag || '');
+      html += `<div class="run-item${active ? ' active' : ''}" data-slug="${esc(r.slug)}" data-type="${esc(r.type)}" data-tag="${esc(r.run_tag || '')}">
+        <span class="run-type">${esc(r.type)}</span>
+        <div class="run-meta">
+          <span class="badge ${cls}">${esc(label)}</span>
+          <span class="badge badge-round">${r.rounds_used}r</span>
+        </div>
+      </div>`;
+    }
+  }
+  runListEl.innerHTML = html;
+  runListEl.querySelectorAll('.run-item').forEach(el => {
+    el.addEventListener('click', () => selectRun(el.dataset.slug, el.dataset.type, el.dataset.tag || ''));
+  });
+}
+
+// ── Select & load a run ──────────────────────────────────────────────────────
+async function selectRun(slug, type, tag = '') {
+  const sameRun = S.selected &&
+    S.selected.slug === slug && S.selected.type === type && S.selected.tag === tag;
+  if (sameRun && !S.showHome) return;
+  S.selected = { slug, type, tag };
+  S.run = null;
+  S.step = 0;
+  S.allMode = false;
+  S.showHome = false;
+
+  setNavEnabled(false);
+  metaInfoEl.innerHTML = '<div class="spinner"></div>';
+  contentEl.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
+  renderList();
+
+  const tagParam = tag ? `&tag=${encodeURIComponent(tag)}` : '';
+  try {
+    S.run = await apiFetch(`/api/run?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(type)}${tagParam}`);
+    renderMeta();
+    renderPills();
+    setNavEnabled(true);
+    renderCurrent();
+    updateHash();
+  } catch(e) {
+    toast('Failed to load run: ' + e.message);
+    contentEl.innerHTML = `<div style="padding:40px;color:var(--red)">${esc(e.message)}</div>`;
+  }
+}
+
+// ── Meta header ──────────────────────────────────────────────────────────────
+function renderMeta() {
+  const { result } = S.run;
+  const { slug, type, tag } = S.selected;
+  const cls = verdictBadgeClass(result.final_verdict, result.stop_reason);
+  const label = verdictLabel(result.final_verdict, result.stop_reason);
+  const tagBadge = tag ? `<span class="badge badge-round">${esc(tag)}</span>` : '';
+  metaInfoEl.innerHTML = `
+    <span class="meta-slug">${esc(slug)}</span>
+    <span class="meta-sep">/</span>
+    <span class="meta-type">${esc(type)}</span>
+    ${tagBadge}
+    <span class="meta-sep">·</span>
+    <span class="badge ${cls}">${esc(label)}</span>
+    <span class="badge badge-round">${result.rounds_used}r used</span>
+  `;
+}
+
+// ── Pills ────────────────────────────────────────────────────────────────────
+function renderPills() {
+  if (!S.run) { pillsEl.innerHTML = ''; return; }
+  const rounds = S.run.rounds;
+  let html = '';
+  for (let i = 0; i < rounds.length; i++) {
+    const r = rounds[i];
+    const vClass = r.detector_verdict === 'safe' ? 'verdict-safe' : 'verdict-vulnerable';
+    const active = !S.allMode && i === S.step;
+    html += `<div class="rpill ${vClass}${active ? ' active' : ''}" data-i="${i}">
+      R${r.round} <span style="font-size:9px">${r.detector_verdict === 'safe' ? '✓' : '✗'}</span>
+    </div>`;
+  }
+  // Summary pill
+  const sumActive = S.allMode || S.step >= rounds.length;
+  html += `<div class="rpill${sumActive ? ' active' : ''}" data-i="${rounds.length}">Summary</div>`;
+  pillsEl.innerHTML = html;
+  pillsEl.querySelectorAll('.rpill').forEach(el => {
+    el.addEventListener('click', () => {
+      const i = +el.dataset.i;
+      if (i >= S.run.rounds.length) {
+        S.allMode = false;
+        S.step = S.run.rounds.length;
+      } else {
+        S.allMode = false;
+        S.step = i;
+      }
+      updateNav();
+      renderCurrent();
+      updateHash();
+    });
+  });
+}
+
+function updatePills() {
+  const pills = pillsEl.querySelectorAll('.rpill');
+  pills.forEach((el, i) => {
+    const atSummary = i >= S.run.rounds.length;
+    if (atSummary) {
+      el.classList.toggle('active', S.allMode || S.step >= S.run.rounds.length);
+    } else {
+      el.classList.toggle('active', !S.allMode && i === S.step);
+    }
+  });
+  const active = pillsEl.querySelector('.rpill.active');
+  if (active) active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+}
+
+// ── Nav ──────────────────────────────────────────────────────────────────────
+function setNavEnabled(on) {
+  [btnPrev, btnNext, btnAll].forEach(b => b.disabled = !on);
+}
+
+function updateNav() {
+  if (!S.run) return;
+  const n = S.run.rounds.length;
+  btnPrev.disabled = S.allMode || S.step <= 0;
+  btnNext.disabled = S.allMode || S.step >= n;
+  btnAll.classList.toggle('active', S.allMode);
+  counterEl.textContent = S.allMode ? `All ${n} rounds` : (S.step >= n ? 'Summary' : `Round ${S.step + 1} / ${n}`);
+  updatePills();
+}
+
+function navigate(delta) {
+  if (!S.run || S.allMode) return;
+  const next = Math.max(0, Math.min(S.run.rounds.length, S.step + delta));
+  if (next === S.step) return;
+  S.step = next;
+  updateNav();
+  renderCurrent();
+  updateHash();
+}
+
+// ── Render ───────────────────────────────────────────────────────────────────
+function renderCurrent() {
+  if (!S.run) return;
+  const { rounds, result } = S.run;
+
+  if (S.allMode) {
+    contentEl.innerHTML = rounds.map((r, i) => renderRound(r, i, rounds)).join('') + renderSummary(result, rounds);
+  } else if (S.step >= rounds.length) {
+    contentEl.innerHTML = renderSummary(result, rounds);
+  } else {
+    contentEl.innerHTML = renderRound(rounds[S.step], S.step, rounds);
+  }
+  contentEl.scrollTop = 0;
+  contentEl.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+}
+
+function renderRound(r, idx, allRounds) {
+  const isStatic = r.round === 0 || r.round === '0';
+  const roundNum = parseInt(r.round, 10);
+  const votes = r.votes || {};
+  const hasVul = votes.has_vul ?? 0;
+  const noVul  = votes.no_vul  ?? 0;
+  const total  = hasVul + noVul || 1;
+  const vClass = r.detector_verdict === 'safe' ? 'c-green' : 'c-red';
+  const isFlip = r.detector_verdict === 'safe';
+
+  let html = `<div class="round-hdr">
+    <span class="round-label">Round ${roundNum}</span>
+    ${isStatic ? '<span class="badge badge-static">static baseline</span>' : ''}
+    <span class="verdict-chip ${r.detector_verdict === 'safe' ? 'safe' : 'vulnerable'}">${r.detector_verdict === 'safe' ? '✓ safe' : '✗ vulnerable'}</span>
+    ${isFlip && !isStatic ? '<span style="color:var(--green);font-size:13px;font-weight:700">← flip!</span>' : ''}
+  </div>`;
+
+  // ── 1. Payload (annotation) card ──────────────────────────────────────────
+  const prevText = idx > 0 ? allRounds[idx - 1].annotation_text : null;
+  const currText = r.annotation_text || '';
+  const hasDiff  = r.annotation_diff != null && r.annotation_diff !== '';
+
+  let annBody = '';
+  if (hasDiff) {
+    annBody += `<div style="margin-bottom:10px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Diff from round ${roundNum - 1}</div>`;
+    annBody += renderDiff(r.annotation_diff);
+  } else if (r.annotation_diff === '') {
+    annBody += `<div class="diff-wrap"><div class="diff-identical">No change from previous annotation</div></div>`;
+  }
+  annBody += `<div style="margin-bottom:6px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">${isStatic ? 'Annotation' : 'New annotation'}</div>`;
+  annBody += `<pre class="ann"><code class="language-c">${esc(currText)}</code></pre>`;
+
+  html += card('c-blue', '📝', isStatic ? 'Payload  (static baseline)' : `Payload  →  what the detector sees`, annBody);
+
+  // ── 2. Refiner rationale (rounds ≥ 1) ────────────────────────────────────
+  if (!isStatic && r.rationale) {
+    const ratBody = `
+      <div style="margin-bottom:8px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Why the refiner changed the annotation</div>
+      <div class="rationale-box">${esc(r.rationale)}</div>
+    `;
+    html += card('c-purple', '🧠', 'Refiner rationale', ratBody);
+  }
+
+  // ── 3. Detector response card ─────────────────────────────────────────────
+  let detBody = `
+    <div class="vote-bar-wrap">
+      <div class="vote-row">
+        <span class="vote-label">HAS_VUL</span>
+        <div class="vote-track"><div class="vote-fill has-vul" style="width:${(hasVul/total*100).toFixed(0)}%"></div></div>
+        <span class="vote-count has-vul">${hasVul}</span>
+      </div>
+      <div class="vote-row">
+        <span class="vote-label">NO_VUL</span>
+        <div class="vote-track"><div class="vote-fill no-vul" style="width:${(noVul/total*100).toFixed(0)}%"></div></div>
+        <span class="vote-count no-vul">${noVul}</span>
+      </div>
+    </div>
+  `;
+
+  if (r.stuck_sim != null) {
+    const pct = (r.stuck_sim * 100).toFixed(0);
+    detBody += `<div class="stuck-row">
+      <span>stuck sim</span>
+      <div class="stuck-track"><div class="stuck-fill" style="width:${pct}%"></div></div>
+      <span class="stuck-val">${r.stuck_sim.toFixed(2)}</span>
+    </div>`;
+  }
+
+  const filteredReasoning = r.detector_reasoning_filtered || '';
+  const fullReasoning     = r.detector_reasoning || '';
+
+  if (filteredReasoning) {
+    detBody += `<details class="reasoning">
+      <summary>NPD-relevant reasoning (filtered)</summary>
+      <div class="reasoning-body">${esc(filteredReasoning)}</div>
+    </details>`;
+  }
+  if (fullReasoning) {
+    detBody += `<details class="reasoning">
+      <summary>Full detector reasoning</summary>
+      <div class="reasoning-body">${esc(fullReasoning)}</div>
+    </details>`;
+  }
+
+  html += card(vClass, '🔍', `Detector response  (${hasVul + noVul} votes)`, detBody);
+
+  return `<div style="margin-bottom:28px">${html}</div>`;
+}
+
+function renderSummary(result, rounds) {
+  const stopClass = {
+    flipped_safe: 'c-green',
+    budget_exhausted: 'c-yellow',
+    static_succeeded: 'c-teal',
+  }[result.stop_reason] || 'c-gray';
+
+  const stopIcon = {
+    flipped_safe: '✓',
+    budget_exhausted: '⏱',
+    static_succeeded: '⚡',
+  }[result.stop_reason] || '?';
+
+  const flips = rounds.filter(r => r.detector_verdict === 'safe').length;
+
+  let body = `
+    <div class="summary-grid">
+      <span class="sg-label">Annotation type</span><span class="sg-val">${esc(result.annotation_type || '?')}</span>
+      <span class="sg-label">Stop reason</span><span class="sg-val">${esc(result.stop_reason || '?')}</span>
+      <span class="sg-label">Final verdict</span><span class="sg-val">${esc(result.final_verdict || '?')}</span>
+      <span class="sg-label">Rounds used</span><span class="sg-val">${result.rounds_used}</span>
+      <span class="sg-label">Safe rounds</span><span class="sg-val">${flips} / ${rounds.length}</span>
+      ${result.run_tag ? `<span class="sg-label">Run tag</span><span class="sg-val">${esc(result.run_tag)}</span>` : ''}
+      ${result.refiner_model ? `<span class="sg-label">Refiner</span><span class="sg-val">${esc(result.refiner_model)}</span>` : ''}
+    </div>
+  `;
+
+  if (result.winning_annotation) {
+    body += `<div style="margin-top:16px;margin-bottom:6px;font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Winning annotation</div>`;
+    body += `<pre class="ann"><code class="language-c">${esc(result.winning_annotation)}</code></pre>`;
+  }
+  if (result.winning_rationale) {
+    body += `<div style="margin-top:12px;margin-bottom:6px;font-size:11px;color:var(--text3);font-weight:700;text-transform:uppercase;letter-spacing:.06em">Winning rationale</div>`;
+    body += `<div class="rationale-box">${esc(result.winning_rationale)}</div>`;
+  }
+
+  return card(stopClass, stopIcon, `Summary — ${result.stop_reason || '?'}`, body);
+}
+
+function renderHome() {
+  S.showHome = true;
+  S.selected = null;
+  metaInfoEl.innerHTML = '<span style="color:var(--text3);font-size:13px">Adaptive Attacker Viewer</span>';
+  setNavEnabled(false);
+  pillsEl.innerHTML = '';
+  counterEl.textContent = '—';
+
+  const slugs = [...new Set(S.runs.map(r => r.slug))];
+  const tags  = [...new Set(S.runs.map(r => r.run_tag || ''))].sort();
+  let rows = '';
+  for (const r of S.runs) {
+    const cls = verdictBadgeClass(r.final_verdict, r.stop_reason);
+    const label = verdictLabel(r.final_verdict, r.stop_reason);
+    const tagLabel = r.run_tag || '—';
+    rows += `<tr data-slug="${esc(r.slug)}" data-type="${esc(r.type)}" data-tag="${esc(r.run_tag || '')}">
+      <td><code style="font-family:var(--mono);font-size:12px">${esc(r.slug)}</code></td>
+      <td><strong>${esc(r.type)}</strong></td>
+      <td><code style="font-family:var(--mono);font-size:11px;color:var(--text3)">${esc(tagLabel)}</code></td>
+      <td><span class="badge ${cls}">${esc(label)}</span></td>
+      <td>${r.rounds_used}</td>
+      <td style="color:${r.stop_reason === 'flipped_safe' || r.stop_reason === 'static_succeeded' ? 'var(--green)' : 'var(--red)'}">${esc(r.stop_reason)}</td>
+    </tr>`;
+  }
+
+  contentEl.innerHTML = `<div class="home-wrap">
+    <h1>Adaptive Attacker Viewer</h1>
+    <p>${S.runs.length} run${S.runs.length !== 1 ? 's' : ''} across ${slugs.length} slug${slugs.length !== 1 ? 's' : ''}, ${tags.length} tag${tags.length !== 1 ? 's' : ''}. Select a row or use the sidebar.</p>
+    <table class="summary-tbl">
+      <thead><tr>
+        <th>Slug</th><th>Type</th><th>Tag</th><th>Final verdict</th><th>Rounds</th><th>Stop reason</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+
+  contentEl.querySelectorAll('tr[data-slug]').forEach(el => {
+    el.addEventListener('click', () => selectRun(el.dataset.slug, el.dataset.type, el.dataset.tag || ''));
+  });
+}
+
+// ── Diff renderer ─────────────────────────────────────────────────────────────
+function renderDiff(diffText) {
+  if (!diffText) return `<div class="diff-wrap"><div class="diff-identical">No diff available</div></div>`;
+  const lines = diffText.split('\n');
+  const rendered = lines.map(line => {
+    if (line.startsWith('+++') || line.startsWith('---')) return `<span class="diff-line meta">${esc(line)}</span>`;
+    if (line.startsWith('@@'))  return `<span class="diff-line hunk">${esc(line)}</span>`;
+    if (line.startsWith('+'))   return `<span class="diff-line add">${esc(line)}</span>`;
+    if (line.startsWith('-'))   return `<span class="diff-line del">${esc(line)}</span>`;
+    return `<span class="diff-line">${esc(line)}</span>`;
+  }).join('');
+  return `<div class="diff-wrap">${rendered}</div>`;
+}
+
+// ── Hash sync ─────────────────────────────────────────────────────────────────
+function updateHash() {
+  if (!S.selected || S.showHome) {
+    history.replaceState(null, '', location.pathname);
+    return;
+  }
+  const p = new URLSearchParams();
+  p.set('slug', S.selected.slug);
+  p.set('type', S.selected.type);
+  if (S.selected.tag) p.set('tag', S.selected.tag);
+  p.set('step', S.allMode ? 'all' : String(S.step));
+  history.replaceState(null, '', '#' + p.toString());
+}
+
+async function restoreHash() {
+  const hash = location.hash.slice(1);
+  if (!hash) return;
+  const p = new URLSearchParams(hash);
+  const slug = p.get('slug'); const type = p.get('type'); const tag = p.get('tag') || '';
+  if (!slug || !type) return;
+  await selectRun(slug, type, tag);
+  const stepRaw = p.get('step');
+  if (stepRaw === 'all') { S.allMode = true; }
+  else if (stepRaw) { S.step = Math.max(0, parseInt(stepRaw, 10) || 0); }
+  updateNav(); renderCurrent(); updateHash();
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function card(colorCls, icon, title, body) {
+  return `<div class="card ${colorCls}">
+    <div class="card-header"><span>${icon}</span>${esc(title)}</div>
+    <div class="card-body">${body}</div>
+  </div>`;
+}
+
+function verdictBadgeClass(verdict, stopReason) {
+  if (stopReason === 'static_succeeded') return 'badge-static';
+  if (stopReason === 'budget_exhausted') return 'badge-budget';
+  return verdict === 'safe' ? 'badge-safe' : 'badge-vuln';
+}
+
+function verdictLabel(verdict, stopReason) {
+  if (stopReason === 'static_succeeded') return 'static ✓';
+  if (stopReason === 'budget_exhausted') return 'no flip';
+  return verdict === 'safe' ? 'flipped ✓' : 'vulnerable';
+}
+
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function toast(msg) {
+  const el = $('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), 3500);
+}
+
+// ── Event listeners ───────────────────────────────────────────────────────────
+btnPrev.addEventListener('click', () => navigate(-1));
+btnNext.addEventListener('click', () => navigate(+1));
+
+btnAll.addEventListener('click', () => {
+  if (!S.run) return;
+  S.allMode = !S.allMode;
+  updateNav(); renderCurrent(); updateHash();
+});
+
+$('btn-home').addEventListener('click', () => { S.showHome = true; renderHome(); renderList(); history.replaceState(null, '', location.pathname); });
+$('btn-refresh').addEventListener('click', () => loadRuns(true));
+
+$('btn-theme').addEventListener('click', () => {
+  const dark = document.documentElement.dataset.theme === 'dark';
+  document.documentElement.dataset.theme = dark ? 'light' : 'dark';
+  $('btn-theme').textContent = dark ? '🌙' : '☀';
+  $('hljs-theme').href = dark
+    ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css'
+    : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark-dimmed.min.css';
+});
+
+searchEl.addEventListener('input', applyFilter);
+
+document.addEventListener('keydown', e => {
+  if (e.target === searchEl) return;
+  if (e.key === 'ArrowRight' || e.key === 'l') { e.preventDefault(); navigate(+1); }
+  else if (e.key === 'ArrowLeft' || e.key === 'h') { e.preventDefault(); navigate(-1); }
+  else if (e.key === 'a' || e.key === 'A') btnAll.click();
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+(async () => {
+  await loadRuns();
+  if (location.hash) await restoreHash();
+  else renderHome();
+})();
+</script>
+</body>
+</html>
