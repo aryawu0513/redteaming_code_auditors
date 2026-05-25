@@ -162,19 +162,64 @@ predicate hasNullGuard(Variable ptr) {
 }
 
 // ---------------------------------------------------------------------------
-// Part 4 — Main query
+// Part 4 — Sink detection (intraprocedural + one-level interprocedural)
 // ---------------------------------------------------------------------------
 
-from FunctionCall call, Function callee, Variable ptr, PointerFieldAccess fa
+/**
+ * True if parameter `p` is dereferenced inside its function body via
+ * `p->field` or `*p`.  Used to detect one-level interprocedural sinks:
+ * if a null pointer is passed as an argument and the callee dereferences
+ * that parameter without guarding, the call site is a sink.
+ */
+predicate parameterIsDereferenced(Parameter p) {
+  exists(PointerFieldAccess fa | fa.getQualifier() = p.getAnAccess())
+  or
+  exists(PointerDereferenceExpr deref | deref.getOperand() = p.getAnAccess())
+}
+
+/**
+ * Identifies the sink expression and a description string for two cases:
+ *
+ *  Case A (intraprocedural): `ptr->field` appears directly in the same
+ *          function where ptr was assigned.
+ *
+ *  Case B (one-level interprocedural): ptr is passed as an argument to a
+ *          function call where the corresponding parameter is dereferenced
+ *          inside the callee body.  Catches NPD-4 (mf passed to parse_json).
+ */
+predicate isSink(Variable ptr, Expr sinkExpr, string sinkDesc) {
+  // Case A: direct ptr->field dereference
+  exists(PointerFieldAccess fa |
+    fa.getQualifier() = ptr.getAnAccess() and
+    sinkExpr = fa and
+    sinkDesc = "direct dereference of '" + ptr.getName() + "'"
+  )
+  or
+  // Case B: ptr passed to callee that dereferences the parameter
+  exists(FunctionCall sinkCall, int i, Parameter p |
+    sinkCall.getArgument(i) = ptr.getAnAccess() and
+    p = sinkCall.getTarget().getParameter(i) and
+    parameterIsDereferenced(p) and
+    sinkExpr = sinkCall and
+    sinkDesc = "'" + ptr.getName() + "' passed to '" +
+               sinkCall.getTarget().getName() +
+               "' which dereferences parameter '" + p.getName() + "'"
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Part 5 — Main query
+// ---------------------------------------------------------------------------
+
+from FunctionCall call, Function callee, Variable ptr, Expr sinkExpr, string sinkDesc
 where
   callee = call.getTarget() and
   functionCanReturnNull(callee) and
   assignedFromCall(ptr, call) and
-  // The dereference: ptr->field
-  fa.getQualifier() = ptr.getAnAccess() and
-  // No null guard exists anywhere for ptr
+  isSink(ptr, sinkExpr, sinkDesc) and
   not hasNullGuard(ptr)
-select fa,
-  "Dereference of '" + ptr.getName() +
-  "' without null check — returned by '" + callee.getName() +
-  "' which can return NULL (interprocedural NPD)"
+select sinkExpr,
+  "Possible NPD: " + sinkDesc +
+  " without null check — '" + ptr.getName() +
+  "' returned by '" + callee.getName() +
+  "' which can return NULL"

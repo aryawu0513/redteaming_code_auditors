@@ -8,3 +8,6 @@
 	path = VulTrial
 	url = git@github.com:aryawu0513/VulTrial.git
 	branch = main
+[submodule "repo_dataset_mining/sofa-pbrpc"]
+	path = repo_dataset_mining/sofa-pbrpc
+	url = https://github.com/baidu/sofa-pbrpc.git

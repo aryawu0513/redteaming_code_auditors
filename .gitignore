@@ -23,4 +23,7 @@ attacker/scaffold_results/
 attacker/experiments/
 attacker/experiment_eyeball/
 attacker/runs/
+attacker/datasets/
 *.plist
+repo_dataset_mining/harness/
+repo_dataset_mining/samples/
