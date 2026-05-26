@@ -3,7 +3,7 @@
 #
 # Prerequisites:
 #   1. A model is being served on port 8007 with an OpenAI-compatible API
-#      (e.g. Qwen/Qwen3.6-27B via vllm serve). Check with:
+#      (e.g. Qwen/Qwen3.6-27B-FP8 via vllm serve). Check with:
 #        curl -s http://localhost:8007/v1/models
 #
 # Raw attacker outputs land in attacker/runs/qwen3.6-27b/repository_<slug>/:
@@ -26,7 +26,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 REFINER_PORT="${REFINER_PORT:-8007}"
-MODEL="${MODEL:-openai/Qwen/Qwen3.6-27B}"
+MODEL="${MODEL:-openai/Qwen/Qwen3.6-27B-FP8}"
 CONFIG="${CONFIG:-$REPO_ROOT/attacker/config_qwen.yaml}"
 EXPERIMENTS_ROOT="${EXPERIMENTS_ROOT:-$REPO_ROOT/attacker/runs/qwen3.6-27b}"
 

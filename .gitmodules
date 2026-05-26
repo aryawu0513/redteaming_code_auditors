@@ -11,3 +11,6 @@
 [submodule "repo_dataset_mining/sofa-pbrpc"]
 	path = repo_dataset_mining/sofa-pbrpc
 	url = https://github.com/baidu/sofa-pbrpc.git
+[submodule "OpenVul"]
+	path = OpenVul
+	url = git@github.com:aryawu0513/OpenVul.git

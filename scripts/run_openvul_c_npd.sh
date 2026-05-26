@@ -16,8 +16,9 @@
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${OV_MODEL:-Leopo1d/OpenVul-Qwen3-4B-GRPO}"
-MODES="${MODES:-generic npd}"
+MODES="${MODES:-npd}"
 DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/handcraft}"
+RESULTS_ROOT="${RESULTS_ROOT:-$REPO_ROOT/OpenVul/results}"
 VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 
 for MODE in $MODES; do
@@ -26,9 +27,9 @@ for MODE in $MODES; do
         for VARIANT in "${VARIANTS[@]}"; do
             [ -d "$DATASET_ROOT/$CATEGORY/$VARIANT" ] || continue
             echo "=== OpenVul C/NPD/$CATEGORY/$VARIANT | mode=$MODE ==="
-            VLLM_USE_V1=0 python "$REPO_ROOT/OpenVul/run.py" \
+            VLLM_USE_V1=0 python "$REPO_ROOT/OpenVul/run_local_bench.py" \
                 --dataset-path "$DATASET_ROOT/$CATEGORY/$VARIANT" \
-                --output-dir   "$REPO_ROOT/OpenVul/results/$MODE/C/NPD/$CATEGORY" \
+                --output-dir   "$RESULTS_ROOT/$MODE/C/NPD/$CATEGORY" \
                 --variant      "$VARIANT" \
                 --mode         "$MODE" \
                 --model        "$MODEL" \

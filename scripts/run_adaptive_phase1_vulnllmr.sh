@@ -14,7 +14,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-REFINER_MODEL=Qwen/Qwen3.6-27B
+REFINER_MODEL=Qwen/Qwen3.6-27B-FP8
 REFINER_PORT=8007
 DETECTOR_GPU=3   # Use GPU 3 for the detector (GPU 1 for OpenVul, GPU 2 for refiner server)
 RUN_TAG=qwen_vulnllmr_agentic

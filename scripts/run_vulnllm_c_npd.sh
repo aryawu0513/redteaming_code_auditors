@@ -27,7 +27,7 @@ for CATEGORY in baseline context_aware; do
     for VARIANT in "${VARIANTS[@]}"; do
         [ -d "$DATASET_ROOT/$CATEGORY/$VARIANT" ] || continue
         echo "=== VulnLLM-R C/NPD/$CATEGORY/$VARIANT ==="
-        python -m vulscan.test.test \
+        VLLM_USE_V1=0 python -m vulscan.test.test \
             --output_dir  "$RESULTS_ROOT/$CATEGORY" \
             --dataset_path "$DATASET_ROOT/$CATEGORY/$VARIANT" \
             --language "$LANGUAGE" --model "$MODEL" \

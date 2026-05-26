@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Serve Qwen3.6-27B as an OpenAI-compatible refiner on port 8007.
+# Serve Qwen3.6-27B-FP8 as an OpenAI-compatible refiner on port 8007.
 #
 # Uses GPU 2 by default. Change CUDA_VISIBLE_DEVICES if occupied.
 # Enables:
@@ -15,14 +15,14 @@ set -euo pipefail
 export CUDA_VISIBLE_DEVICES=2
 export VLLM_USE_DEEP_GEMM=0
 
-echo "Serving Qwen3.6-27B on GPU $CUDA_VISIBLE_DEVICES, port 8007"
+echo "Serving Qwen3.6-27B-FP8 on GPU $CUDA_VISIBLE_DEVICES, port 8007"
 
-vllm serve Qwen/Qwen3.6-27B \
+vllm serve Qwen/Qwen3.6-27B-FP8 \
     --port 8007 \
     --reasoning-parser qwen3 \
     --enable-auto-tool-choice \
     --tool-call-parser qwen3_coder \
     --language-model-only \
-    --max-model-len 16384 \
+    --max-model-len 262144 \
     --attention-backend FLASH_ATTN \
-    --max-num-seqs 4
+    --max-num-seqs 1
