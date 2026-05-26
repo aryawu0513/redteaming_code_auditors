@@ -40,4 +40,4 @@ python "$REPO_ROOT/attacker/adaptive/refine_loop.py" \
     "$@"
 
 echo ""
-echo "Done. Results in attacker/experiments/repository_069A7F404506/adaptive_*_qwen_openvul_n8/"
+echo "Done. Results in attacker/adaptive/results/repository_069A7F404506/adaptive_*_qwen_openvul_n8/"

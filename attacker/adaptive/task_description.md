@@ -173,7 +173,7 @@ attacker/adaptive/
 Output tree per (slug, type):
 
 ```
-attacker/experiments/repository_{SLUG}/adaptive_{TYPE}/
+attacker/adaptive/results/repository_{SLUG}/adaptive_{TYPE}/
 ├── round_0.json    # static variant from existing pipeline + detector output
 ├── round_1.json    # first refinement + detector output
 ├── ...
@@ -434,7 +434,7 @@ detector's input window before phase three.
 When phase one is done, the following exist:
 
 1. `attacker/adaptive/phase1_slug.txt` — selected slug + reasoning.
-2. `attacker/experiments/repository_{SLUG}/adaptive_{TYPE}/` for all 10
+2. `attacker/adaptive/results/repository_{SLUG}/adaptive_{TYPE}/` for all 10
    taxonomy types, each containing `round_0.json` through `round_K.json`
    and `result.json`.
 3. `attacker/adaptive/observations.md` — pre-registered axes filled in per

@@ -6,8 +6,8 @@ JSON format consumed by VulnLLM-R, VulTrial, OpenVul, and RepoAudit.
 For each repository_SLUG, reads solution.c (clean) and solution_ATTACK.c files,
 splits each into context (helper functions) + target_function (main), and writes:
 
-  benchmark/leetcodebench/baseline/repository_SLUG/SLUG_CLEAN.json
-  benchmark/leetcodebench/context_aware/repository_SLUG/SLUG_COT.json
+  benchmark/leetcodebench_gpt54mini/baseline/repository_SLUG/SLUG_CLEAN.json
+  benchmark/leetcodebench_gpt54mini/context_aware/repository_SLUG/SLUG_COT.json
   ...
 
 Also copies the matching .c file alongside the JSON.
@@ -16,6 +16,7 @@ Unified JSON schema: code, context, target_function, function_name, file_name,
   CWE_ID, RELATED_CWE, stack_trace, target, language, dataset, idx, slug, variant
 """
 
+import argparse
 import json
 import re
 import shutil
@@ -23,8 +24,8 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).parent.parent
-RUNS_DIR  = Path(__file__).parent / "runs" / "gpt-5.4-mini"
-OUT_ROOT  = REPO_ROOT / "benchmark" / "leetcodebench"
+DEFAULT_RUNS_DIR = Path(__file__).parent / "runs" / "gpt-5.4-mini"
+DEFAULT_OUT_ROOT = REPO_ROOT / "benchmark" / "leetcodebench_gpt54mini"
 
 ATTACK_VARIANTS = [
     "CLEAN",
@@ -73,13 +74,27 @@ def load_verification(repo_dir: Path) -> dict[str, str]:
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__.strip().split("\n")[0])
+    parser.add_argument("--runs-dir", type=Path, default=DEFAULT_RUNS_DIR,
+                        help=f"Dir containing repository_<slug>/ subdirs. Default: {DEFAULT_RUNS_DIR}")
+    parser.add_argument("--out-root", type=Path, default=DEFAULT_OUT_ROOT,
+                        help=f"Output root for {{baseline,context_aware}}/. Default: {DEFAULT_OUT_ROOT}")
+    args = parser.parse_args()
+
+    runs_dir = args.runs_dir
+    out_root = args.out_root
+
+    if not runs_dir.is_dir():
+        print(f"ERROR: runs dir not found: {runs_dir}", file=sys.stderr)
+        sys.exit(1)
+
     slugs = sorted(p.name.removeprefix("repository_")
-                   for p in RUNS_DIR.iterdir()
+                   for p in runs_dir.iterdir()
                    if p.is_dir() and p.name.startswith("repository_"))
 
     total = 0
     for slug in slugs:
-        repo_dir = RUNS_DIR / f"repository_{slug}"
+        repo_dir = runs_dir / f"repository_{slug}"
 
         verification = load_verification(repo_dir)
         ok_attacks = {at for at in ATTACK_VARIANTS[1:] if verification.get(at) == "ok"}
@@ -97,7 +112,7 @@ def main():
                 continue
 
             category = "baseline" if variant == "CLEAN" else "context_aware"
-            out_dir  = OUT_ROOT / category / f"repository_{slug}"
+            out_dir  = out_root / category / f"repository_{slug}"
             out_dir.mkdir(parents=True, exist_ok=True)
 
             try:
@@ -112,9 +127,9 @@ def main():
             shutil.copy2(src, out_dir / src.name)
             total += 1
 
-        print(f"  {slug}: written to {OUT_ROOT}/{{baseline,context_aware}}/repository_{slug}/")
+        print(f"  {slug}: written to {out_root}/{{baseline,context_aware}}/repository_{slug}/")
 
-    print(f"\nDone — {total} JSON files written under {OUT_ROOT}")
+    print(f"\nDone — {total} JSON files written under {out_root}")
 
 
 if __name__ == "__main__":

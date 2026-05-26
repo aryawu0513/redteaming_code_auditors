@@ -4,7 +4,7 @@ viewer_adaptive.py — FastAPI backend for the adaptive attacker loop viewer.
 Usage:
     python attacker/adaptive/viewer_adaptive.py
     python attacker/adaptive/viewer_adaptive.py --port 8002
-    python attacker/adaptive/viewer_adaptive.py --exp-dir attacker/experiments
+    python attacker/adaptive/viewer_adaptive.py --exp-dir attacker/adaptive/results
 """
 import argparse
 import difflib
@@ -92,7 +92,7 @@ def _scan_runs(exp_dir: Path) -> list[dict]:
 # App factory
 # ---------------------------------------------------------------------------
 
-def build_app(exp_dir: str = "attacker/experiments") -> FastAPI:
+def build_app(exp_dir: str = "attacker/adaptive/results") -> FastAPI:
     exp_path = Path(exp_dir).resolve()
     app = FastAPI(title="Adaptive Attacker Viewer")
 
@@ -121,8 +121,8 @@ def build_app(exp_dir: str = "attacker/experiments") -> FastAPI:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Adaptive attacker loop viewer")
-    parser.add_argument("--exp-dir", default="attacker/experiments",
-                        help="Root experiments directory")
+    parser.add_argument("--exp-dir", default="attacker/adaptive/results",
+                        help="Root directory holding adaptive results")
     parser.add_argument("--port", type=int, default=8002)
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()

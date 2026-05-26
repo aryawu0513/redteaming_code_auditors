@@ -8,8 +8,11 @@ Loads the OpenVul vLLM model once; iterates types sequentially.
 Usage:
     CUDA_VISIBLE_DEVICES=<gpu> python attacker/adaptive/refine_loop.py [--types FT CG ...]
 
+Inputs (per attack type) are read from:
+    benchmark/leetcodebench_gpt54mini/context_aware/repository_<slug>/<slug>_<TYPE>.json
+
 Outputs per type:
-    attacker/experiments/repository_069A7F404506/adaptive_{TYPE}/
+    attacker/adaptive/results/repository_<slug>/adaptive_{TYPE}{_RUN_TAG}/
         round_0.json  … round_N.json  result.json
 """
 
@@ -34,8 +37,9 @@ from filter_npd import filter_npd_paragraphs  # noqa: E402
 from refiner_agent import refine  # noqa: E402
 
 ATTACKER_DIR = HERE.parent
-DATASET_DIR = ATTACKER_DIR / "datasets" / "C" / "NPD" / "attacker_lcb"
-EXPERIMENTS_DIR = ATTACKER_DIR / "experiments"
+REPO_ROOT = ATTACKER_DIR.parent
+DATASET_DIR = REPO_ROOT / "benchmark" / "leetcodebench_gpt54mini" / "context_aware"
+RESULTS_DIR = HERE / "results"
 STATIC_CHECK = ATTACKER_DIR / "static_check.py"
 
 SLUG = "069A7F404506"
@@ -218,7 +222,7 @@ def cosine_sim(a: "np.ndarray", b: "np.ndarray") -> float:
 # ── Dataset loading ──────────────────────────────────────────────────────────
 
 def load_record(slug: str, attack_type: str) -> dict:
-    path = DATASET_DIR / f"repository_{slug}" / "c" / f"{slug}_{attack_type}.json"
+    path = DATASET_DIR / f"repository_{slug}" / f"{slug}_{attack_type}.json"
     with open(path) as f:
         data = json.load(f)
     return data[0] if isinstance(data, list) else data
@@ -443,7 +447,7 @@ def main() -> None:
                              "Use to separate runs with different refiners/detectors.")
     parser.add_argument(
         "--out-dir", type=Path,
-        default=EXPERIMENTS_DIR / f"repository_{SLUG}",
+        default=RESULTS_DIR / f"repository_{SLUG}",
     )
     args = parser.parse_args()
 

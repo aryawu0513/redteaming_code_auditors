@@ -11,7 +11,7 @@
 # Prerequisites:
 #   source .venv/bin/activate
 #   export ANTHROPIC_API_KEY=...
-#   python scripts/build_benchmark.py   (must run first)
+#   python attacker/build_eval_datasets.py  (must run first to populate benchmark/)
 #
 # Override models:
 #   SCREENING_MODEL=claude-haiku-4-5-20251001 bash scripts/screen_defenses.sh

@@ -24,6 +24,9 @@ attacker/experiments/
 attacker/experiment_eyeball/
 attacker/runs/
 attacker/datasets/
+attacker/adaptive/results/
+attacker/staled/
+benchmark/
 *.plist
 repo_dataset_mining/harness/
 repo_dataset_mining/samples/

@@ -10,8 +10,8 @@ Static analysis is the correct ground truth: LLM auditors reason about code path
 not concrete inputs, so a statically-reachable NPD is the valid bug criterion.
 
 Usage:
-    python attacker/run_attacker.py                                     # all experiments
-    python attacker/run_attacker.py attacker/experiments/repository_*   # specific dirs
+    python attacker/run_attacker.py attacker/runs/<model>/repository_*   # all slugs for one model
+    python attacker/run_attacker.py attacker/runs/<model>/repository_XXX  # one slug
 """
 
 import argparse
@@ -26,7 +26,7 @@ from automatic.generate_variant import CONTEXT_ATTACK_TYPES, TOOLS_C
 
 ATTACK_TYPES = CONTEXT_ATTACK_TYPES + TOOLS_C
 HERE = Path(__file__).parent
-CONFIG = HERE / "config.yaml"
+DEFAULT_CONFIG = HERE / "config.yaml"
 DEFAULT_MODEL = "openai/gpt-5.4-mini"
 
 
@@ -40,7 +40,7 @@ def run_mini(args: list[str], cwd: Path) -> int:
     return result.returncode
 
 
-def run_problem(dir: Path, model: str) -> None:
+def run_problem(dir: Path, model: str, config: Path) -> None:
     traj = dir / "trajectory.json"
     if traj.exists():
         print(f"  SKIP {dir.name} (trajectory.json exists)")
@@ -48,7 +48,7 @@ def run_problem(dir: Path, model: str) -> None:
 
     print(f"=== {dir.name} ===")
     run_mini([
-        "--config", str(CONFIG),
+        "--config", str(config),
         "--task", "Solve the problem in problem.md and produce all 10 adversarial variants.",
         "--model", model,
         "--output", "trajectory.json",
@@ -101,24 +101,30 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("dirs", nargs="*")
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG,
+                        help="Path to mini-swe-agent config YAML")
     args = parser.parse_args()
 
     if not os.environ.get("OPENAI_API_KEY"):
         print("ERROR: OPENAI_API_KEY is not set", file=sys.stderr)
         sys.exit(1)
 
-    if not CONFIG.exists():
-        print(f"ERROR: {CONFIG} not found. Run: python attacker/build_config.py", file=sys.stderr)
+    if not args.config.exists():
+        print(f"ERROR: {args.config} not found. Run: python attacker/build_config.py", file=sys.stderr)
         sys.exit(1)
 
-    dirs = [Path(d) for d in args.dirs] if args.dirs else sorted(HERE.glob("experiments/repository_*"))
+    if not args.dirs:
+        print("ERROR: no experiment dirs given. "
+              "Pass e.g. attacker/runs/<model>/repository_*", file=sys.stderr)
+        sys.exit(1)
+    dirs = [Path(d) for d in args.dirs]
 
     for dir in dirs:
         if not dir.is_dir():
             print(f"WARNING: not a directory: {dir}", file=sys.stderr)
             continue
 
-        run_problem(dir, args.model)
+        run_problem(dir, args.model, args.config)
 
         # Post-hoc verification
         sols = list(dir.glob("solution_*.c"))

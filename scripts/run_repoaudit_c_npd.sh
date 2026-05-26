@@ -9,7 +9,7 @@
 #   bash scripts/run_repoaudit_c_npd.sh
 #
 # LeetCode benchmark:
-#   BENCHMARK=$REPO_ROOT/benchmark/leetcodebench bash scripts/run_repoaudit_c_npd.sh
+#   BENCHMARK=$REPO_ROOT/benchmark/leetcodebench_gpt54mini bash scripts/run_repoaudit_c_npd.sh
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

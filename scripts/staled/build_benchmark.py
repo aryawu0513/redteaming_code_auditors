@@ -9,7 +9,7 @@ Produces:
       {variant}_{ATTACK}.c     — raw C files (RepoAudit reads these)
       {variant}_{ATTACK}.json  — unified JSON (VulnLLM-R, VulTrial, OpenVul read these)
 
-  benchmark/leetcodebench/{category}/{slug}/
+  benchmark/leetcodebench_gpt54mini/{category}/{slug}/
       solution.c               — clean baseline
       solution_{ATTACK}.c      — attacked variants
       {slug}_CLEAN.json
@@ -180,7 +180,7 @@ def build_leetcodebench(force: bool) -> None:
         for category in LC_CATEGORIES:
             # For context_aware: all attacked variants
             # For baseline: only solution.c (CLEAN)
-            out_dir = OUT_ROOT / "leetcodebench" / category / f"repository_{slug}"
+            out_dir = OUT_ROOT / "leetcodebench_gpt54mini" / category / f"repository_{slug}"
             out_dir.mkdir(parents=True, exist_ok=True)
 
             # Copy .c files from the runs dir if available

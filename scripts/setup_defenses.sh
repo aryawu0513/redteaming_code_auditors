@@ -14,7 +14,7 @@
 #
 # Prerequisites:
 #   bash scripts/screen_defenses.sh   (must run first to populate the caches)
-#   python scripts/build_benchmark.py (must run first to populate benchmark/)
+#   python attacker/build_eval_datasets.py (must run first to populate benchmark/)
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"

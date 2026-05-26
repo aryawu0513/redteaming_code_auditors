@@ -22,7 +22,7 @@ if [[ -z "$SYSTEM" ]]; then
     exit 1
 fi
 
-export DATASET_ROOT="$REPO_ROOT/benchmark/leetcodebench"
+export DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/leetcodebench_gpt54mini}"
 export VARIANTS="${VARIANTS:-repository_069A7F404506 repository_3FC486D0AE27 repository_6961F2970560 repository_6B249C5786A8 repository_7C95B6A69704 repository_9823AA10FA1B repository_A3BC94AC32E5 repository_B1AC850C7E87}"
 
 case "$SYSTEM" in

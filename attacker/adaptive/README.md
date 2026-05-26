@@ -82,7 +82,7 @@ bash scripts/run_adaptive_phase1_vulnllmr.sh     # tag: qwen_vulnllmr_agentic
 python attacker/adaptive/viewer_adaptive.py      # http://localhost:8002
 ```
 
-Outputs land in `attacker/experiments/repository_069A7F404506/adaptive_{TYPE}_{RUN_TAG}/`:
+Outputs land in `attacker/adaptive/results/repository_069A7F404506/adaptive_{TYPE}_{RUN_TAG}/`:
 
 ```
 round_0.json          ← static variant + detector verdict

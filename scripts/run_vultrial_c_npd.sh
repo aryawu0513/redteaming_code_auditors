@@ -10,7 +10,7 @@
 #   bash scripts/run_vultrial_c_npd.sh
 #
 # LeetCode benchmark:
-#   DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench \
+#   DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench_gpt54mini \
 #   VARIANTS="repository_069A7F404506 repository_3FC486D0AE27 ..." \
 #     bash scripts/run_vultrial_c_npd.sh
 

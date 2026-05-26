@@ -46,48 +46,58 @@ Only variants with status `"ok"` are included in downstream evaluations.
 
 ## Pipeline
 
-### Step 1 — Filter dataset
+### Step 1 — Filter dataset and create experiment directories
 
 ```bash
-python attacker/filter_leetcode_problems.py [--run-dir attacker/runs/gpt-5]
+python attacker/filter_leetcode_problems.py --run-dir attacker/runs/<model>
 ```
 
 Downloads easy linked-list problems from `greengerong/leetcode` (HuggingFace) and
-creates experiment directories with parsed stdin/stdout test cases. Only problems
-with clean list/int I/O are included (no strings, no cycle/intersection tricks),
-so that solutions inherently require `struct Node*`, `malloc`, and null checks.
-
----
-
-### Step 2 — Create experiment directories
-
-```bash
-python attacker/setup_problems.py [--limit N]
-# Output: attacker/experiments/repository_{SLUG}/
-#         attacker/experiments/problem_map.json
-```
+writes one experiment directory per problem with parsed stdin/stdout test cases.
+Each `runs/<model>/repository_<slug>/` directory becomes mini-swe-agent's working
+directory in Step 2.
+Only problems with clean list/int I/O are included (no strings, no cycle/intersection
+tricks), so that solutions inherently require `struct Node*`, `malloc`, and null checks.
 
 Each directory gets:
 - `problem.md` — problem statement + sample I/O
-- `COMMANDS.md` — agent reference for `run_test` / `submit`
+- `tests/input_{i}.txt`, `tests/output_{i}.txt` — public test cases
 
-`SLUG` = first 12 hex chars of SHA-256 of the problem name.
+`SLUG` = first 12 hex chars of SHA-256 of the problem name. A `problem_map.json`
+mapping slugs → problem names is written alongside the directories.
 
 ---
 
-### Step 3 — Run attacker agents
+### Step 2 — Run attacker agents
 
 A single mini-swe-agent session per problem produces `solution.c` (with NPD) and all
 10 annotated variants.
 
+**Hosted OpenAI model (default — gpt-5.4-mini):**
 ```bash
 export OPENAI_API_KEY=...
 
-# All experiment directories
-python attacker/run_attacker.py
+# All slugs for a given model
+python attacker/run_attacker.py attacker/runs/gpt-5.4-mini/repository_*
 
-# Specific directories only
-python attacker/run_attacker.py attacker/experiments/repository_XXXX ...
+# A single slug
+python attacker/run_attacker.py attacker/runs/gpt-5.4-mini/repository_XXXX
+```
+
+**Local model (OpenAI-compatible vLLM server):** the launcher under
+`scripts/run_attacker_qwen.sh` points the agent at `http://localhost:8007/v1`, runs
+against the staged `attacker/runs/qwen3.6-27b/` tree, and uses
+`attacker/config_qwen.yaml` (no `cost_limit`, `step_limit: 100`). Override `MODEL`,
+`REFINER_PORT`, `CONFIG`, or `EXPERIMENTS_ROOT` via env vars.
+
+```bash
+# Start a local server first (example serves Qwen3.6-27B on port 8007):
+bash scripts/serve_qwen3p6_27b_refiner.sh
+
+# Then run the attacker against it:
+bash scripts/run_attacker_qwen.sh
+# or a single slug:
+bash scripts/run_attacker_qwen.sh attacker/runs/qwen3.6-27b/repository_069A7F404506
 ```
 
 After each problem the script runs post-hoc verification and writes:
@@ -98,7 +108,7 @@ After each problem the script runs post-hoc verification and writes:
 
 ---
 
-### Step 4 — Regenerate config (if attack taxonomy changes)
+### Step 3 — Regenerate config (if attack taxonomy changes)
 
 ```bash
 python attacker/build_config.py
@@ -106,21 +116,31 @@ python attacker/build_config.py
 # Output: attacker/config.yaml
 ```
 
+If you also use `config_qwen.yaml`, copy the regenerated `config.yaml` over it and
+re-apply the two diffs (drop `cost_limit`, bump `step_limit` to 100).
+
 ---
 
-### Step 5 — Build evaluation datasets
+### Step 4 — Build evaluation datasets
 
 ```bash
+# Default (gpt-5.4-mini runs → benchmark/leetcodebench_gpt54mini/):
 python attacker/build_eval_datasets.py
-# Output: attacker/datasets/C/NPD/attacker_lcb/repository_{SLUG}/c/{SLUG}_{TYPE}.json
+
+# Qwen runs → benchmark/leetcodebench_qwen/:
+python attacker/build_eval_datasets.py \
+    --runs-dir attacker/runs/qwen3.6-27b \
+    --out-root benchmark/leetcodebench_qwen
 ```
 
-Converts `solution_{TYPE}.c` files into VulTrial / OpenVul JSON format (context +
-target_function split). Only slugs with at least one `"ok"` variant are included.
+Converts `solution_{TYPE}.c` files into the unified evaluator JSON format (context +
+target_function split). Only slugs with at least one `"ok"` variant in
+`verification.json` are included. Output:
+`{out-root}/{baseline,context_aware}/repository_{SLUG}/{SLUG}_{TYPE}.json`.
 
 ---
 
-### Step 6 — Run evaluators
+### Step 5 — Run evaluators
 
 #### VulnLLM-R (JSON dataset, requires GPU)
 
@@ -136,13 +156,26 @@ VLLM_USE_V1=0 CUDA_VISIBLE_DEVICES=<ID> \
 #### VulnLLM-R Agent Scaffold (agentic, requires GPU)
 
 ```bash
-bash attacker/run_scaffold_attacks.sh
+# Handcraft benchmark
+bash scripts/run_scaffold_c_npd.sh
+
+# LeetCode benchmark
+DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench_gpt54mini \
+VARIANTS="repository_069A7F404506 repository_3FC486D0AE27 ..." \
+    bash scripts/run_scaffold_c_npd.sh
 ```
 
-The agent scaffold runs `VulnLLM-R/agent_scaffold/` on each `solution_{TYPE}.c` file
-directly. Results land in `attacker/scaffold_results/attacks/scaffold_{SLUG}.json`
-(per-attack-type, per-function verdicts). Baseline results (on `solution.c`) are in
-`attacker/scaffold_results/scaffold_{SLUG}.json`.
+`run_scaffold_c_npd.sh` mirrors `run_vulnllm_c_npd.sh` but invokes
+`agent_scaffold/scan.py --dataset` (the agentic scaffold) instead of the
+JSON-dataset test runner. Both consume the same
+`benchmark/{baseline,context_aware}/{variant}/` layout produced by
+`build_eval_datasets.py`.
+
+Results land at:
+- `VulnLLM-R/results/agent_scaffold/baseline/repository_{SLUG}/solution.json`
+- `VulnLLM-R/results/agent_scaffold/context_aware/repository_{SLUG}/solution_{TYPE}.json`
+
+Each JSON is a list of per-function scaffold verdicts.
 
 #### VulTrial
 
@@ -168,7 +201,7 @@ MODEL=anthropic/claude-3-7-sonnet-20250219 LANGUAGE=Cpp \
 
 ---
 
-### Step 7 — View results
+### Step 6 — View results
 
 ```bash
 python attacker/viewer.py
@@ -188,37 +221,39 @@ attacker/
 ├── mini-swe-agent/              git submodule (mini-swe-agent)
 ├── bin/                         C wrappers for agent tools
 ├── codeql_queries/              custom CodeQL query for interproc NPD
-├── datasets/                    evaluation inputs (build_eval_datasets.py output)
-├── experiments/
-│   ├── problem_map.json
-│   └── repository_{SLUG}/
-│       ├── problem.md
-│       ├── COMMANDS.md
-│       ├── solution.c              clean base solution (NPD present, no annotation)
-│       ├��─ solution_{TYPE}.c       annotated variant (10 per problem)
-│       ├��─ trajectory_{TYPE}.json  agent trajectory
-│       └── verification.json       {TYPE: "ok"|"no_npd"|"no_pass"}
-├── runs/
-│   └── gpt-5.4-mini/            symlink / copies of verified experiment dirs
-├── results/
-│   └── npd_verification.csv     static-analysis ground truth
-├── scaffold_results/
-│   ├── scaffold_{SLUG}.json             VulnLLM-R agent scaffold on solution.c
-│   └���─ attacks/scaffold_{SLUG}.json     VulnLLM-R agent scaffold on each variant
-├── viewer_static/               frontend HTML/JS
-├── filter_leetcode_problems.py  Step 1: download + filter LeetCode linked-list problems
-├── setup_problems.py            Step 2: create experiment dirs
+├── runs/                        raw attacker outputs (mini-swe-agent cwd), one subdir per model
+│   ├── gpt-5.4-mini/             verified gpt-5.4-mini attacker outputs
+│   │   ├── problem_map.json
+│   │   └── repository_{SLUG}/
+│   │       ├── problem.md, tests/
+│   │       ├── solution.c              clean base solution (NPD present)
+│   │       ├── solution_{TYPE}.c       annotated variant (10 per problem)
+│   │       ├── trajectory.json         agent trajectory
+│   │       └── verification.json       {TYPE: "ok"|"no_npd"|"no_pass"}
+│   └── qwen3.6-27b/              raw Qwen attacker outputs (same per-slug layout)
+├── adaptive/                    phase-1 adversarial refinement pipeline
+│   ├── refine_loop.py            reads benchmark/leetcodebench_gpt54mini/context_aware/
+│   ├── viewer_adaptive.py        FastAPI viewer for adaptive results
+│   └── results/                  adaptive outputs (round_<n>.json + result.json per run)
+├── viewer_static/               frontend HTML/JS for viewer.py
+├── filter_leetcode_problems.py  Step 1: download/filter problems + write experiment dirs
 ├── run_test.py                  agent tool: compile + run C against one input
 ├── submit.py                    agent tool: run against all public tests
 ├── static_check.py              agent tool: Clang + cppcheck + CodeQL + Infer NPD check
 ├── build_config.py              generate config.yaml from generate_variant.py constants
-├── make_instance_config.py      generate per-run instance override for one attack type
-├── config.yaml                  agent config (system + instance prompts)
-├── run_attacker.py              launcher: one session per problem, all 10 variants
-├── run_scaffold_attacks.sh      run VulnLLM-R agent scaffold on all variants
-├── build_eval_datasets.py       convert solution_*.c to VulTrial/OpenVul JSON
-└── viewer.py                    FastAPI backend for the results viewer
+├── config.yaml                  agent config (system + instance prompts) — hosted-model defaults
+├── config_qwen.yaml             agent config for local vLLM-served models (no cost_limit, step_limit 100)
+├── run_attacker.py              launcher: one session per problem, all 10 variants (--config selects YAML)
+├── build_eval_datasets.py       convert solution_*.c to evaluator JSON (--runs-dir / --out-root)
+├── viewer.py                    FastAPI backend for the results viewer
+└── staled/                      retired files kept for reference
 ```
+
+VulnLLM-R agent scaffold artifacts (`run_scaffold_attacks.py` + `results/agent_scaffold/`)
+live under `VulnLLM-R/`, not `attacker/`, since they are detector-side outputs.
+
+The companion launcher `scripts/run_attacker_qwen.sh` lives outside `attacker/` and
+wraps `run_attacker.py` with the local-model env vars and `config_qwen.yaml`.
 
 ---
 

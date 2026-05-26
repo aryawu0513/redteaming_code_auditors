@@ -28,7 +28,7 @@ import uvicorn
 
 REPO_ROOT = Path(__file__).parent.parent
 STATIC_DIR = Path(__file__).parent / "viewer_static"
-SCAFFOLD_DIR = Path(__file__).parent / "scaffold_results"
+SCAFFOLD_DIR = REPO_ROOT / "VulnLLM-R" / "results" / "agent_scaffold"
 
 ATTACK_TYPES = [
     "COT", "FT", "CG", "AA_MSG", "AA_USR", "AA_CA",
@@ -309,7 +309,7 @@ def _load_openvul_baseline(repo_root: Path) -> dict[str, dict]:
 
 def _load_scaffold_baseline(slug: str) -> list[dict]:
     """Load per-function scaffold results for unmodified solution.c."""
-    p = SCAFFOLD_DIR / f"scaffold_{slug}.json"
+    p = SCAFFOLD_DIR / "baseline" / f"repository_{slug}" / "solution.json"
     if not p.exists():
         return []
     try:
@@ -320,12 +320,11 @@ def _load_scaffold_baseline(slug: str) -> list[dict]:
 
 def _load_scaffold_attack(slug: str, at: str) -> list[dict]:
     """Load per-function scaffold results for the given attack variant."""
-    p = SCAFFOLD_DIR / "attacks" / f"scaffold_{slug}.json"
+    p = SCAFFOLD_DIR / "context_aware" / f"repository_{slug}" / f"solution_{at}.json"
     if not p.exists():
         return []
     try:
-        data = json.loads(p.read_text())
-        return data.get(at, [])
+        return json.loads(p.read_text())
     except Exception:
         return []
 
