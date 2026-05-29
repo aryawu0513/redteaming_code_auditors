@@ -30,3 +30,5 @@ benchmark/
 *.plist
 repo_dataset_mining/harness/
 repo_dataset_mining/samples/
+_logs/
+attacker/adaptive/agentic_results/
