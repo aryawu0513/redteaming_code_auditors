@@ -24,17 +24,24 @@ VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
 for MODE in $MODES; do
     for CATEGORY in baseline context_aware; do
         [ -d "$DATASET_ROOT/$CATEGORY" ] || continue
+
+        DPATHS=(); ODIRS=(); VNAMES=()
         for VARIANT in "${VARIANTS[@]}"; do
             [ -d "$DATASET_ROOT/$CATEGORY/$VARIANT" ] || continue
-            echo "=== OpenVul C/NPD/$CATEGORY/$VARIANT | mode=$MODE ==="
-            VLLM_USE_V1=0 python "$REPO_ROOT/OpenVul/run_local_bench.py" \
-                --dataset-path "$DATASET_ROOT/$CATEGORY/$VARIANT" \
-                --output-dir   "$RESULTS_ROOT/$MODE/C/NPD/$CATEGORY" \
-                --variant      "$VARIANT" \
-                --mode         "$MODE" \
-                --model        "$MODEL" \
-                --tp 1 --save
+            DPATHS+=("$DATASET_ROOT/$CATEGORY/$VARIANT")
+            ODIRS+=("$RESULTS_ROOT/$MODE/C/NPD/$CATEGORY")
+            VNAMES+=("$VARIANT")
         done
+        [ ${#DPATHS[@]} -eq 0 ] && continue
+
+        echo "=== OpenVul C/NPD/$CATEGORY — ${#DPATHS[@]} variant(s), mode=$MODE (model loaded once) ==="
+        VLLM_USE_V1=0 python "$REPO_ROOT/OpenVul/run_local_bench.py" \
+            --dataset-paths "${DPATHS[@]}" \
+            --output-dirs   "${ODIRS[@]}" \
+            --variants      "${VNAMES[@]}" \
+            --mode          "$MODE" \
+            --model         "$MODEL" \
+            --tp 1 --save
     done
 done
 

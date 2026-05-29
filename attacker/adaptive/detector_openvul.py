@@ -20,21 +20,21 @@ try:
 except Exception:
     pass
 
-from OpenVul.run import build_user_prompt, parse_verdict, SYSTEM_PROMPT  # noqa: E402
+from OpenVul.run_local_bench import build_user_prompt, parse_verdict, SYSTEM_PROMPT  # noqa: E402
 
 
 class OpenVulDetector:
     """
     Wraps OpenVul NPD Qwen3-4B via vLLM.  Load the model once; call detect() per round.
 
-    Uses n=8 with majority vote, matching the original OpenVul run.py pipeline.
+    Uses pass@1 (n=1, single sample) — majority voting was dropped.
     """
 
     def __init__(
         self,
         model_id: str = "Leopo1d/OpenVul-Qwen3-4B-GRPO",
         tp: int = 1,
-        n: int = 8,
+        n: int = 1,
         temperature: float = 0.6,
     ) -> None:
         from vllm import LLM, SamplingParams  # import here to avoid slow import at module level
@@ -50,6 +50,37 @@ class OpenVulDetector:
             min_p=0,
             max_tokens=32768,
         )
+
+    def _build_prompt(self, record: dict, mode: str) -> str:
+        user_prompt = build_user_prompt(record, mode)
+        return self.tokenizer.apply_chat_template(
+            [
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+            tokenize=False,
+            add_generation_prompt=True,
+            enable_thinking=True,
+        )
+
+    @staticmethod
+    def _parse_output(output) -> dict:
+        raw_outputs = [o.text for o in output.outputs]
+        votes: dict[str, int] = {"has_vul": 0, "no_vul": 0}
+        for text in raw_outputs:
+            v = parse_verdict(text)
+            if v == "has_vul":
+                votes["has_vul"] += 1
+            else:
+                votes["no_vul"] += 1
+        majority = "yes" if votes["has_vul"] >= votes["no_vul"] else "no"
+        verdict = "vulnerable" if majority == "yes" else "safe"
+        return {
+            "verdict": verdict,
+            "reasoning": raw_outputs[0] if raw_outputs else "",
+            "all_outputs": raw_outputs,
+            "votes": votes,
+        }
 
     def detect(self, record: dict, mode: str = "npd") -> dict:
         """
@@ -67,33 +98,20 @@ class OpenVulDetector:
               "votes":       {"has_vul": int, "no_vul": int},
             }
         """
-        user_prompt = build_user_prompt(record, mode)
-        prompt_str = self.tokenizer.apply_chat_template(
-            [
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": user_prompt},
-            ],
-            tokenize=False,
-            add_generation_prompt=True,
-            enable_thinking=True,
-        )
+        prompt_str = self._build_prompt(record, mode)
         output = self.llm.generate([prompt_str], self.params)[0]
-        raw_outputs = [o.text for o in output.outputs]
+        return self._parse_output(output)
 
-        votes: dict[str, int] = {"has_vul": 0, "no_vul": 0}
-        for text in raw_outputs:
-            v = parse_verdict(text)
-            if v == "has_vul":
-                votes["has_vul"] += 1
-            else:
-                votes["no_vul"] += 1
+    def detect_batch(self, records: list[dict], mode: str = "npd") -> list[dict]:
+        """
+        Run the detector on several records in ONE vLLM call.
 
-        majority = "yes" if votes["has_vul"] >= votes["no_vul"] else "no"
-        verdict = "vulnerable" if majority == "yes" else "safe"
-
-        return {
-            "verdict": verdict,
-            "reasoning": raw_outputs[0] if raw_outputs else "",
-            "all_outputs": raw_outputs,
-            "votes": votes,
-        }
+        vLLM batches the prompts natively (continuous batching), so N records
+        cost far less wall-clock than N sequential detect() calls. Returns one
+        result dict per input record, in order.
+        """
+        if not records:
+            return []
+        prompts = [self._build_prompt(r, mode) for r in records]
+        outputs = self.llm.generate(prompts, self.params)
+        return [self._parse_output(o) for o in outputs]

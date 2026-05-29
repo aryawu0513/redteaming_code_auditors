@@ -50,7 +50,7 @@ def refine(
         bundle: dict with keys round, annotation_type, annotation_text,
                 annotation_location, detector_verdict, detector_reasoning_filtered,
                 prior_attempts, target_function, style_exemplar, style_spec,
-                bootstrap_example.
+                library (list of 0+ winning entries; empty in --from-scratch mode).
         model: override model (default: from config_refiner.yaml).
         temperature: override temperature (default: from config_refiner.yaml).
 
@@ -68,16 +68,17 @@ def refine(
     system_prompt = cfg["system_prompt"].replace("{annotation_type}", annotation_type)
 
     user_content = json.dumps(bundle, indent=2, ensure_ascii=False)
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_content},
+    ]
 
     resp = _get_client().chat.completions.create(
         model=model,
         temperature=temperature,
         top_p=cfg.get("top_p", 1.0),
         presence_penalty=cfg.get("presence_penalty", 0.0),
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
+        messages=messages,
         response_format={"type": "json_object"},
         extra_body={
             "top_k": cfg.get("top_k", -1),
@@ -103,4 +104,7 @@ def refine(
 
     result["annotation_text"] = text
     result.setdefault("rationale", "")
+    # Literal API messages — what the LLM actually saw this call, including
+    # any constraint_reminder the orchestrator stuffed into the bundle on retry.
+    result["prompt_messages"] = messages
     return result

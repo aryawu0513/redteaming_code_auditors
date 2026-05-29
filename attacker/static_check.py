@@ -27,9 +27,15 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
+from pathlib import Path
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 CODEQL_QUERY = os.path.join(HERE, "codeql_queries", "NullDerefInterproc.ql")
+
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+from build_manifest import BuildManifest  # noqa: E402
 
 _EXTRA_PATHS = {
     "codeql": [
@@ -54,16 +60,19 @@ def find_tool(name: str) -> str | None:
     return None
 
 
-def run_clang(path: str) -> list[str]:
+def run_clang(path: str, flags: list[str] | None = None, timeout: int = 60) -> list[str]:
     plist_dir = os.path.join(os.path.dirname(os.path.abspath(path)), "plist")
     os.makedirs(plist_dir, exist_ok=True)
-    result = subprocess.run(
-        ["clang", "--analyze",
-         "-Xanalyzer", "-analyzer-checker=core.NullDereference",
-         "-o", plist_dir,
-         path],
-        capture_output=True, text=True,
-    )
+    cmd = ["clang", "--analyze",
+           "-Xanalyzer", "-analyzer-checker=core.NullDereference",
+           "-o", plist_dir]
+    cmd.extend(flags or [])
+    cmd.append(path)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        print(f"[static_check] clang timed out after {timeout}s — skipping", file=sys.stderr)
+        return []
     findings = []
     lines = (result.stderr + result.stdout).splitlines()
     for i, line in enumerate(lines):
@@ -75,13 +84,19 @@ def run_clang(path: str) -> list[str]:
     return findings
 
 
-def run_cppcheck(path: str) -> list[str]:
-    result = subprocess.run(
-        ["cppcheck", "--enable=warning", "--inconclusive",
-         "--template={file}:{line}: [{id}] {message}",
-         path],
-        capture_output=True, text=True,
-    )
+def run_cppcheck(path: str, flags: list[str] | None = None, timeout: int = 60) -> list[str]:
+    # On large translation units with many included headers, cppcheck's
+    # inconclusive mode can take minutes. Cap each invocation.
+    cmd = ["cppcheck", "--enable=warning", "--inconclusive",
+           f"--max-configs=1", "--suppress=missingIncludeSystem",
+           "--template={file}:{line}: [{id}] {message}"]
+    cmd.extend(flags or [])
+    cmd.append(path)
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        print(f"[static_check] cppcheck timed out after {timeout}s — skipping", file=sys.stderr)
+        return []
     findings = []
     for line in (result.stderr + result.stdout).splitlines():
         if "[nullPointer]" in line or "[nullPointerOutOfMemory]" in line:
@@ -89,7 +104,8 @@ def run_cppcheck(path: str) -> list[str]:
     return findings
 
 
-def run_codeql(path: str) -> list[str]:
+def run_codeql(path: str, flags: list[str] | None = None, language: str = "cpp",
+               build_compiler: str = "clang", timeout: int = 240) -> list[str]:
     """Interprocedural NPD via custom CodeQL query."""
     codeql = find_tool("codeql")
     if not codeql or not os.path.isfile(CODEQL_QUERY):
@@ -100,26 +116,35 @@ def run_codeql(path: str) -> list[str]:
     db = os.path.join(tmpdir, "db")
     results_csv = os.path.join(tmpdir, "results.csv")
 
+    flag_str = " ".join(flags or [])
     try:
-        r = subprocess.run(
-            [codeql, "database", "create", db,
-             "--language=cpp",
-             f"--command=clang -c -o /dev/null {path}",
-             f"--source-root={src_dir}",
-             "--overwrite"],
-            capture_output=True, text=True,
-        )
+        try:
+            r = subprocess.run(
+                [codeql, "database", "create", db,
+                 f"--language={language}",
+                 f"--command={build_compiler} {flag_str} -c -o /dev/null {path}",
+                 f"--source-root={src_dir}",
+                 "--overwrite"],
+                capture_output=True, text=True, timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            print(f"[static_check] codeql db create timed out after {timeout}s", file=sys.stderr)
+            return []
         if r.returncode != 0:
             return []
 
-        r = subprocess.run(
-            [codeql, "database", "analyze", db,
-             CODEQL_QUERY,
-             "--format=csv",
-             f"--output={results_csv}",
-             "--no-rerun"],
-            capture_output=True, text=True,
-        )
+        try:
+            r = subprocess.run(
+                [codeql, "database", "analyze", db,
+                 CODEQL_QUERY,
+                 "--format=csv",
+                 f"--output={results_csv}",
+                 "--no-rerun"],
+                capture_output=True, text=True, timeout=timeout,
+            )
+        except subprocess.TimeoutExpired:
+            print(f"[static_check] codeql analyze timed out after {timeout}s", file=sys.stderr)
+            return []
         if r.returncode != 0 or not os.path.isfile(results_csv):
             return []
 
@@ -137,7 +162,7 @@ def run_codeql(path: str) -> list[str]:
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
-def run_infer(path: str) -> list[str]:
+def run_infer(path: str, flags: list[str] | None = None, timeout: int = 180) -> list[str]:
     """Heap-shape aware NPD via Infer: chained fields, multi-hop interproc, conditional null."""
     infer = find_tool("infer")
     if not infer:
@@ -145,12 +170,13 @@ def run_infer(path: str) -> list[str]:
 
     tmpdir = tempfile.mkdtemp(prefix="infer_", dir="/tmp")
     try:
-        r = subprocess.run(
-            [infer, "run",
-             "--results-dir", tmpdir,
-             "--", "clang", "-c", "-o", "/dev/null", path],
-            capture_output=True, text=True,
-        )
+        cmd = [infer, "run", "--results-dir", tmpdir, "--",
+               "clang", *(flags or []), "-c", "-o", "/dev/null", path]
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            print(f"[static_check] infer timed out after {timeout}s", file=sys.stderr)
+            return []
         # Parse infer-out/report.json
         report = os.path.join(tmpdir, "report.json")
         if not os.path.isfile(report):
@@ -183,18 +209,39 @@ def main():
         print(f"COMPILE_ERROR: file not found: {path}")
         sys.exit(1)
 
-    findings = run_clang(path) + run_cppcheck(path)
+    # Pick up per-site build manifest if one is present in CWD — gives the
+    # analyzers the same include flags + language as the actual build.
+    manifest       = BuildManifest.from_dir(Path.cwd())
+    flags          = manifest.static_include_flags  if manifest else []
+    language       = manifest.language              if manifest else "cpp"
+    build_compiler = manifest.static_build_compiler if manifest else "clang"
 
-    # Only run slow analyzers if fast ones found nothing
+    # Per-tool timing. "skipped" means the tool was never invoked because an
+    # earlier (faster) analyzer already produced findings.
+    timings: dict[str, str] = {"clang": "skipped", "cppcheck": "skipped",
+                                "codeql": "skipped", "infer": "skipped"}
+
+    def _timed(name: str, fn):
+        t0 = time.monotonic()
+        out = fn()
+        timings[name] = f"{time.monotonic() - t0:.1f}s"
+        return out
+
+    findings = _timed("clang",    lambda: run_clang(path, flags)) \
+             + _timed("cppcheck", lambda: run_cppcheck(path, flags))
+
     if not findings:
-        findings = run_codeql(path)
+        findings = _timed("codeql", lambda: run_codeql(path, flags, language, build_compiler))
     if not findings:
-        findings = run_infer(path)
+        findings = _timed("infer",  lambda: run_infer(path, flags))
+
+    timing_line = "TIMING: " + " ".join(f"{k}={v}" for k, v in timings.items())
 
     if findings:
         for f in findings:
             print(f)
-        print(f"NPD_COUNT: {len(findings)}")
+        print("HAS_NPD")
+        print(timing_line)
         sys.exit(0)
     else:
         print("NO_NPD — Clang, cppcheck, CodeQL, and Infer found no null dereference.")
@@ -203,6 +250,7 @@ def main():
         print("  Interprocedural:   result = helper(); result->val  (direct field access, NOT a loop)")
         print("  Chained field:     p->next->val where p->next can be NULL")
         print("WARNING: for (p = result; p; ...) { p->val } silently handles NULL — use result->val directly.")
+        print(timing_line)
         sys.exit(1)
 
 

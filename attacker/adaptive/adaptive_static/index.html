@@ -597,6 +597,38 @@ function renderRound(r, idx, allRounds) {
     ${isFlip && !isStatic ? '<span style="color:var(--green);font-size:13px;font-weight:700">← flip!</span>' : ''}
   </div>`;
 
+  // ── 0. Refiner prompt card (the literal API messages this round) ─────────
+  if (!isStatic && Array.isArray(r.prompt_messages) && r.prompt_messages.length) {
+    const sysMsg  = r.prompt_messages.find(m => m.role === 'system');
+    const userMsg = r.prompt_messages.find(m => m.role === 'user');
+    let userBundle = null;
+    try { userBundle = userMsg ? JSON.parse(userMsg.content) : null; } catch (_) {}
+    const libN = userBundle && Array.isArray(userBundle.library) ? userBundle.library.length : null;
+    const priorN = userBundle && Array.isArray(userBundle.prior_attempts) ? userBundle.prior_attempts.length : null;
+
+    let promptBody = `<div style="display:flex;gap:14px;font-size:11px;color:var(--text3);margin-bottom:10px">`;
+    if (sysMsg)  promptBody += `<span>system: ${sysMsg.content.length.toLocaleString()} chars</span>`;
+    if (userMsg) promptBody += `<span>user: ${userMsg.content.length.toLocaleString()} chars</span>`;
+    if (libN != null)   promptBody += `<span>library: ${libN} ${libN === 1 ? 'entry' : 'entries'}</span>`;
+    if (priorN != null) promptBody += `<span>prior_attempts: ${priorN}</span>`;
+    if (r._prompt_backfilled) promptBody += `<span style="color:var(--yellow)">⚠ backfilled (reconstructed)</span>`;
+    promptBody += `</div>`;
+
+    if (sysMsg) {
+      promptBody += `<details class="reasoning">
+        <summary>System message (role=system)</summary>
+        <div class="reasoning-body">${esc(sysMsg.content)}</div>
+      </details>`;
+    }
+    if (userMsg) {
+      promptBody += `<details class="reasoning">
+        <summary>User message (role=user — the JSON bundle)</summary>
+        <div class="reasoning-body">${esc(userMsg.content)}</div>
+      </details>`;
+    }
+    html += card('c-gray', '📨', 'Refiner prompt  (what the LLM saw)', promptBody);
+  }
+
   // ── 1. Payload (annotation) card ──────────────────────────────────────────
   const prevText = idx > 0 ? allRounds[idx - 1].annotation_text : null;
   const currText = r.annotation_text || '';

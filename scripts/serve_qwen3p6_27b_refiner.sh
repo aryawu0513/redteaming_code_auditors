@@ -25,4 +25,4 @@ vllm serve Qwen/Qwen3.6-27B-FP8 \
     --language-model-only \
     --max-model-len 262144 \
     --attention-backend FLASH_ATTN \
-    --max-num-seqs 1
+    --max-num-seqs 10   # batch-sync fires up to 9 concurrent refiner calls per round

@@ -1,39 +1,40 @@
 #!/usr/bin/env bash
-# run_attacker_qwen.sh — Run the attacker against a local vLLM-served model.
+# run_attacker_qwen_sofa.sh — sofa-pbrpc C++ NPD pilot, served by local Qwen.
+#
+# Same wiring as run_attacker_qwen.sh, but points at:
+#   CONFIG  = attacker/config_sofa.yaml      (C++ stub-completion variant)
+#   DIRS    = attacker/runs/qwen3.6-27b/repository_NPD-*
 #
 # Prerequisites:
 #   1. A model is being served on port 8007 with an OpenAI-compatible API
 #      (e.g. Qwen/Qwen3.6-27B-FP8 via vllm serve). Check with:
 #        curl -s http://localhost:8007/v1/models
+#   2. The sample dir tree (samples/NPD-{1..4}) must be in place with
+#      starter.cc, tests.cc, build.yaml, task.md. The per-site repository_NPD-*
+#      dirs symlink those in.
 #
-# Raw attacker outputs land in attacker/runs/qwen3.6-27b/repository_<slug>/:
-#   - solution.c, solution_<TYPE>.c (10 variants)
+# Per-site outputs land in attacker/runs/qwen3.6-27b/repository_NPD-<N>/:
+#   - solution.cc, solution_<TYPE>.cc (10 variants)
 #   - trajectory.json
 #   - verification.json
 #
-# To rerun a specific slug, delete its trajectory.json first.
+# To rerun a specific site, delete its trajectory.json first.
 #
-# To run a subset of slugs, pass them as arguments, e.g.:
-#   bash scripts/run_attacker_qwen.sh \
-#     attacker/runs/qwen3.6-27b/repository_069A7F404506
-#
-# Build evaluator JSON datasets from these outputs with:
-#   python attacker/build_eval_datasets.py \
-#     --runs-dir attacker/runs/qwen3.6-27b \
-#     --out-root benchmark/leetcodebench_qwen
+# To run a subset, pass them as arguments:
+#   bash scripts/run_attacker_qwen_sofa.sh \
+#     attacker/runs/qwen3.6-27b/repository_NPD-1
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 REFINER_PORT="${REFINER_PORT:-8007}"
 MODEL="${MODEL:-openai/Qwen/Qwen3.6-27B-FP8}"
-CONFIG="${CONFIG:-$REPO_ROOT/attacker/config_qwen.yaml}"
+CONFIG="${CONFIG:-$REPO_ROOT/attacker/config_sofa.yaml}"
 EXPERIMENTS_ROOT="${EXPERIMENTS_ROOT:-$REPO_ROOT/attacker/runs/qwen3.6-27b}"
 
 export OPENAI_BASE_URL="http://localhost:${REFINER_PORT}/v1"
 export OPENAI_API_BASE="$OPENAI_BASE_URL"   # LiteLLM honors OPENAI_API_BASE
 export OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}"
-export LITELLM_REQUEST_TIMEOUT=1800         # 30 min; Qwen3 thinking can be slow
 
 # Sanity-check the server
 if ! curl -fsS "http://localhost:${REFINER_PORT}/v1/models" >/dev/null; then
@@ -41,17 +42,23 @@ if ! curl -fsS "http://localhost:${REFINER_PORT}/v1/models" >/dev/null; then
     exit 1
 fi
 
+# Sanity-check the config
+if [[ ! -f "$CONFIG" ]]; then
+    echo "ERROR: config not found: $CONFIG" >&2
+    exit 1
+fi
+
 if [[ $# -gt 0 ]]; then
     DIRS=("$@")
 else
-    DIRS=("$EXPERIMENTS_ROOT"/repository_*)
+    DIRS=("$EXPERIMENTS_ROOT"/repository_NPD-*)
 fi
 
-echo "=== Attacker run (local model) ==="
+echo "=== Attacker run (sofa-pbrpc C++ pilot, local model) ==="
 echo "Model:   $MODEL"
 echo "Config:  $CONFIG"
 echo "Server:  $OPENAI_BASE_URL"
-echo "Dirs:    ${#DIRS[@]} experiment directories"
+echo "Sites:   ${#DIRS[@]} repository_NPD-* directories"
 echo ""
 
 python "$REPO_ROOT/attacker/run_attacker.py" \

@@ -195,6 +195,13 @@ predicate isSink(Variable ptr, Expr sinkExpr, string sinkDesc) {
     sinkDesc = "direct dereference of '" + ptr.getName() + "'"
   )
   or
+  // Case A2: explicit *ptr dereference (e.g. fn(*ptr), root->AddMember(name, *ptr, ...))
+  exists(PointerDereferenceExpr deref |
+    deref.getOperand() = ptr.getAnAccess() and
+    sinkExpr = deref and
+    sinkDesc = "explicit dereference '*" + ptr.getName() + "'"
+  )
+  or
   // Case B: ptr passed to callee that dereferences the parameter
   exists(FunctionCall sinkCall, int i, Parameter p |
     sinkCall.getArgument(i) = ptr.getAnAccess() and

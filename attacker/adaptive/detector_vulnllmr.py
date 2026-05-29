@@ -84,3 +84,14 @@ class VulnLLMRDetector:
             "all_outputs": [raw],
             "votes": votes,
         }
+
+    def detect_batch(self, records: list[dict]) -> list[dict]:
+        """
+        Interface parity with OpenVulDetector.detect_batch.
+
+        The agent scaffold runs its own multi-call exploration loop per record
+        (policy_runs queries + a final verdict) and exposes no cross-record
+        batching hook, so this simply loops detect(). No real wall-clock saving
+        here — the batched fast path is OpenVul-only.
+        """
+        return [self.detect(r) for r in records]
