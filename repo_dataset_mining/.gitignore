@@ -1,0 +1,6 @@
+# CodeQL databases and compiled harness artifacts
+harness/
+sofa-pbrpc/
+__pycache__/
+*.pyc
+viewer_static/node_modules/

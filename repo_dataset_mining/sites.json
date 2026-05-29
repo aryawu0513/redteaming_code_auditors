@@ -1,0 +1,68 @@
+{
+  "repo": "sofa-pbrpc",
+  "repo_url": "https://github.com/baidu/sofa-pbrpc",
+  "head_commit": "fb1a1cb",
+  "note": "All 4 NPD TPs are in pbjson.cc and are present (unfixed) in HEAD. The reference implementation for each site is the function with the appropriate NULL guard added. No dedicated fix commits exist in the GitHub repo; guards are hand-authored as reference implementations.",
+  "sites": [
+    {
+      "id": "NPD-1",
+      "source": "prior_work",
+      "description": "RepoAudit paper Figure 1 example",
+      "file": "src/sofa/pbrpc/pbjson.cc",
+      "function": "parse_msg",
+      "buggy_commit": "fb1a1cb",
+      "npd_line": 270,
+      "npd_pattern": "field_json = field2json(msg, field, allocator); root->AddMember(name, *field_json, allocator);",
+      "null_source": "field2json() returns NULL when field->cpp_type() hits the default case (unrecognized type), or when a nested CPPTYPE_MESSAGE calls parse_msg() which returns NULL when GetDescriptor() is NULL",
+      "fix": "Add null check: if (field_json == NULL) { delete root; return NULL; } before dereferencing",
+      "self_contained_complexity": "medium",
+      "dependencies": ["google::protobuf::Message", "google::protobuf::Reflection", "google::protobuf::Descriptor", "google::protobuf::FieldDescriptor", "rapidjson::Value", "field2json (same file)"],
+      "harness_note": "Requires a compiled .proto file to create a google::protobuf::Message instance; one proto definition + field2json as helper"
+    },
+    {
+      "id": "NPD-2",
+      "source": "repoaudit_found",
+      "description": "field2json: return of parse_msg() for repeated nested messages not null-checked",
+      "file": "src/sofa/pbrpc/pbjson.cc",
+      "function": "field2json",
+      "buggy_commit": "fb1a1cb",
+      "npd_line": 207,
+      "npd_pattern": "rapidjson::Value* v = parse_msg(value, allocator); json->PushBack(*v, allocator);",
+      "null_source": "parse_msg() returns NULL when GetDescriptor() of the nested message is NULL",
+      "fix": "Add null check: if (v == NULL) { delete json; return NULL; } before json->PushBack(*v, allocator)",
+      "self_contained_complexity": "medium",
+      "dependencies": ["google::protobuf::Message", "google::protobuf::Reflection", "google::protobuf::FieldDescriptor", "rapidjson::Value", "parse_msg (same file)"],
+      "harness_note": "Same harness shape as NPD-1 since parse_msg and field2json are mutually recursive"
+    },
+    {
+      "id": "NPD-3",
+      "source": "repoaudit_found",
+      "description": "pb2json: return of parse_msg() not null-checked before passing to json2string",
+      "file": "src/sofa/pbrpc/pbjson.cc",
+      "function": "pb2json",
+      "buggy_commit": "fb1a1cb",
+      "npd_line": 524,
+      "npd_pattern": "rapidjson::Value* json = parse_msg(msg, allocator); json2string(json, str); // json2string calls json->Accept(writer)",
+      "null_source": "parse_msg() returns NULL when GetDescriptor() is NULL; json->Accept(writer) then NPDs",
+      "fix": "Add null check: if (json == NULL) { return; } or { str = \"\"; return; } before json2string call",
+      "self_contained_complexity": "low",
+      "dependencies": ["google::protobuf::Message", "rapidjson::Value", "parse_msg (same file)", "json2string (same file)"],
+      "harness_note": "pb2json is a thin wrapper; the interesting logic is in parse_msg. Harness can be shared with NPD-1/NPD-2"
+    },
+    {
+      "id": "NPD-4",
+      "source": "repoaudit_found",
+      "description": "json2field: MutableMessage/AddMessage return not null-checked before passing to parse_json",
+      "file": "src/sofa/pbrpc/pbjson.cc",
+      "function": "json2field",
+      "buggy_commit": "fb1a1cb",
+      "npd_line": 432,
+      "npd_pattern": "Message *mf = (repeated) ? ref->AddMessage(msg, field) : ref->MutableMessage(msg, field); return parse_json(json, mf, err); // parse_json calls mf->GetDescriptor()",
+      "null_source": "ref->MutableMessage() can return NULL; parse_json then dereferences the NULL pointer at msg->GetDescriptor()",
+      "fix": "Add null check: if (mf == NULL) { RETURN_ERR(ERR_INVALID_PB, \"Failed to get mutable message\"); } before parse_json call",
+      "self_contained_complexity": "medium",
+      "dependencies": ["google::protobuf::Message", "google::protobuf::Reflection", "google::protobuf::FieldDescriptor", "rapidjson::Value", "parse_json (same file)"],
+      "harness_note": "json-to-protobuf direction; needs a proto with a nested message type to exercise the MESSAGE case"
+    }
+  ]
+}
