@@ -17,9 +17,9 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 MODEL="${OV_MODEL:-Leopo1d/OpenVul-Qwen3-4B-GRPO}"
 MODES="${MODES:-npd}"
-DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/handcraft}"
+DATASET_ROOT="${DATASET_ROOT:-$REPO_ROOT/benchmark/leetcodebench_qwen}"
 RESULTS_ROOT="${RESULTS_ROOT:-$REPO_ROOT/OpenVul/results}"
-VARIANTS=(${VARIANTS:-creatend findrec mkbuf allocate})
+VARIANTS=(${VARIANTS:-repository_069A7F404506 repository_3FC486D0AE27 repository_6961F2970560 repository_6B249C5786A8 repository_7C95B6A69704 repository_9823AA10FA1B repository_A3BC94AC32E5 repository_B1AC850C7E87})
 
 for MODE in $MODES; do
     for CATEGORY in baseline context_aware; do
@@ -41,7 +41,7 @@ for MODE in $MODES; do
             --variants      "${VNAMES[@]}" \
             --mode          "$MODE" \
             --model         "$MODEL" \
-            --tp 1 --save
+            --tp 1 --n 1 --save
     done
 done
 

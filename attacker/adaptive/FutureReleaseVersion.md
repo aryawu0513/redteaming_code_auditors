@@ -13,12 +13,11 @@ over the 9 attack TYPEs (`FT`, `CG`, `AA_MSG`, `AA_USR`, `AA_CA`,
 `TOOL_ClangSA`, `TOOL_Coverity`, `TOOL_Frama`, `TOOL_Fuzzer`) and try to
 flip the detector within each type's locked format.
 
-For the from-scratch variant (no `BOOTSTRAP` seed), we are adopting
-**Option B**: interleaved rounds — the outer loop walks rounds, the
+We adopt **Option B**: interleaved rounds — the outer loop walks rounds, the
 inner loop walks types, and a shared `library` of successful flips is
 synced between rounds so any type's success seeds the next round for
-every other type. This is the minimum architectural change needed for
-from-scratch to work at all, and it is what the research run will use.
+every other type. This is the minimum architectural change needed to
+share wins across types.
 
 ## What the release version should do (Option C)
 

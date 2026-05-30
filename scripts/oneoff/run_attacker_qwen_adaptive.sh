@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Run the mini-swe-agent adaptive attacker against an HTTP detector.
+# NOTE: This agentic variant is stale; code moved under attacker/adaptive/stale/.
 #
 # Prerequisites (start in separate terminals):
 #   1. Refiner LLM (the attacker agent itself):
@@ -13,7 +14,7 @@
 # Default targets slug 069A7F404506 (matches the bootstrapped refine_loop runs).
 #
 # Outputs land in:
-#   attacker/adaptive/agentic_results/repository_<slug>/<run_tag>/
+#   attacker/adaptive/stale/agentic_results/repository_<slug>/<run_tag>/
 
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -49,11 +50,11 @@ echo "Run tag:     $RUN_TAG"
 echo ""
 
 # shellcheck disable=SC2086
-python "$REPO_ROOT/attacker/adaptive/run_attacker_adaptive.py" \
+python "$REPO_ROOT/attacker/adaptive/stale/run_attacker_adaptive.py" \
     --slugs $SLUGS \
     --run-tag "$RUN_TAG" \
     --model "$MODEL" \
     "$@"
 
 echo ""
-echo "Done. Results in $REPO_ROOT/attacker/adaptive/agentic_results/"
+echo "Done. Results in $REPO_ROOT/attacker/adaptive/stale/agentic_results/"

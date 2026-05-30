@@ -7,84 +7,46 @@ Sample scripts to run the full pipeline. Adapt env vars to change bug type / lan
 ```bash
 uv sync
 source .venv/bin/activate
-bash scripts/setup_benchmark.sh
 ```
 
-Populates `RepoAudit/benchmark/`, `VulnLLM-R/datasets/`, `VulTrial/datasets/`, and `OpenVul/datasets/` from:
-- `benchmark/` (safe source codes)
-- `automatic/texts/` (attack payloads)
+## Unified Pipeline (recommended)
 
-## Run RepoAudit
+Use the flag-driven launcher and run any step independently:
 
 ```bash
-source .venv/bin/activate
-export ANTHROPIC_API_KEY=...
+# Full pipeline (attacker → build → eval → round0 → adaptive)
+bash scripts/run_pipeline.sh --benchmark leetcodebench --system openvul --step all
 
-bash scripts/run_repoaudit_c_npd.sh         # C/NPD (default)
-
-# UAF:
-BUG_TYPE=UAF BENCHMARK="$(pwd)/RepoAudit/benchmark/C/UAF" \
-    bash scripts/run_repoaudit_c_npd.sh
-
-# Python/NPD:
-LANGUAGE=Python BUG_TYPE=NPD FILES='*.py' \
-    BENCHMARK="$(pwd)/RepoAudit/benchmark/Python/NPD" \
-    bash scripts/run_repoaudit_c_npd.sh
+# Just one step (debug)
+bash scripts/run_pipeline.sh --benchmark leetcodebench --system openvul --step round0
 ```
 
-Results land in `RepoAudit/result/dfbscan/{model}/NPD/{lang}/{category}/{timestamp}/`.
+Defaults:
+- `--benchmark leetcodebench` (Qwen dataset)
+- `--system` is required
+- `--step eval`
 
-## Run VulnLLM-R
+**Baseline-gated round0:** for OpenVul and VulnLLM-R, context_aware is only run
+if the baseline sample is correctly flagged as vulnerable. You can also compute
+round0 posthoc with:
 
 ```bash
-source .venv/bin/activate
-nvidia-smi                             # pick a free GPU
-export CUDA_VISIBLE_DEVICES=<id>
-
-bash scripts/run_vulnllm_c_npd.sh      # C/NPD (default)
-
-# UAF:
-DATASET_ROOT="$(pwd)/VulnLLM-R/datasets/C/UAF" \
-RESULTS_ROOT="$(pwd)/VulnLLM-R/results/C/UAF/policy" \
-VARIANTS="freeitem dropconn relogger rmentry" \
-    bash scripts/run_vulnllm_c_npd.sh
-
-# Python/NPD:
-DATASET_ROOT="$(pwd)/VulnLLM-R/datasets/Python/NPD" \
-RESULTS_ROOT="$(pwd)/VulnLLM-R/results/Python/NPD/policy" \
-VARIANTS="finduser makeconn parseitem loadconf" \
-LANGUAGE=python \
-    bash scripts/run_vulnllm_c_npd.sh
+python scripts/filter_round0.py \
+  --baseline-dir OpenVul/results/npd/C/NPD/baseline \
+  --context-dir  OpenVul/results/leetcodebench_qwen/npd/C/NPD/context_aware
 ```
 
-Results land in `VulnLLM-R/results/{lang}/{bug}/policy/{category}/`.
+## One-off Scripts
 
-## Run VulTrial
+Temporary or system-specific runners live in `scripts/oneoff/`. The pipeline
+launcher calls these internally; you generally shouldn't need to invoke them
+directly.
+
+## Serving Scripts (detectors for adaptive loop)
 
 ```bash
-source .venv/bin/activate
-export OPENAI_API_KEY=...       # for gpt-4o (default)
-# or: export ANTHROPIC_API_KEY=... and set VT_MODEL=claude-sonnet-4-6
-
-bash scripts/run_vultrial_c_npd.sh          # C/NPD, both modes (default)
-
-# Single mode or model:
-VT_MODEL=claude-sonnet-4-6 MODES="npd" bash scripts/run_vultrial_c_npd.sh
+bash scripts/serve_detector_openvul.sh
+bash scripts/serve_detector_vulnllmr.sh
+bash scripts/serve_detector_repoaudit.sh
+bash scripts/serve_detector_vultrial.sh
 ```
-
-Results land in `VulTrial/results/{model}/{mode}/C/NPD/{category}/`.
-
-## Run OpenVul
-
-```bash
-source .venv/bin/activate
-nvidia-smi                             # pick a free GPU
-export CUDA_VISIBLE_DEVICES=<id>
-
-bash scripts/run_openvul_c_npd.sh      # C/NPD (default)
-
-# Single mode:
-MODES="npd" bash scripts/run_openvul_c_npd.sh
-```
-
-Results land in `OpenVul/results/{mode}/C/NPD/{category}/`.

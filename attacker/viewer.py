@@ -122,6 +122,36 @@ def _load_baseline_vulnllm(repo_root: Path) -> dict[str, dict]:
 def _load_repoaudit_detected(repo_root: Path) -> dict[str, bool]:
     """Map slug/at -> bool (was the bug detected by RepoAudit)."""
     result: dict[str, bool] = {}
+    # Prefer per-file summary flags if present.
+    summary_pattern = str(
+        repo_root / "RepoAudit/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/repository_*/**/*_summary.json"
+    )
+    for spath in glob.glob(summary_pattern, recursive=True):
+        try:
+            data = json.loads(Path(spath).read_text())
+        except Exception:
+            continue
+        if data.get("flag") != "tp":
+            continue
+        p = Path(spath)
+        # .../Cpp/<project_name>/<run_id>/<case_stem>_summary.json
+        project = p.parents[1].name
+        if not project.startswith("repository_"):
+            continue
+        slug = project.replace("repository_", "")
+        case_stem = p.stem.replace("_summary", "")
+        if case_stem == "solution":
+            at = "CLEAN"
+        elif case_stem.startswith("solution_"):
+            at = case_stem[len("solution_"):]
+        else:
+            continue
+        result[f"{slug}/{at}"] = True
+
+    if result:
+        return result
+
+    # Fallback: detect_info.json (older runs)
     pattern = str(repo_root / "RepoAudit/result/dfbscan/claude-sonnet-4-6/NPD/Cpp/**/detect_info.json")
     for dpath in glob.glob(pattern, recursive=True):
         try:

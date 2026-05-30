@@ -157,15 +157,15 @@ VLLM_USE_V1=0 CUDA_VISIBLE_DEVICES=<ID> \
 
 ```bash
 # Handcraft benchmark
-bash scripts/run_scaffold_c_npd.sh
+bash scripts/run_vulnllm_agentic_c_npd.sh
 
 # LeetCode benchmark
 DATASET_ROOT=$REPO_ROOT/benchmark/leetcodebench_gpt54mini \
 VARIANTS="repository_069A7F404506 repository_3FC486D0AE27 ..." \
-    bash scripts/run_scaffold_c_npd.sh
+    bash scripts/run_vulnllm_agentic_c_npd.sh
 ```
 
-`run_scaffold_c_npd.sh` mirrors `run_vulnllm_c_npd.sh` but invokes
+`run_vulnllm_agentic_c_npd.sh` mirrors `run_vulnllm_c_npd.sh` but invokes
 `agent_scaffold/scan.py --dataset` (the agentic scaffold) instead of the
 JSON-dataset test runner. Both consume the same
 `benchmark/{baseline,context_aware}/{variant}/` layout produced by

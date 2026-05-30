@@ -15,8 +15,8 @@ must already be running. See:
   scripts/serve_qwen3p6_27b_refiner.sh
 
 Usage:
-  python attacker/adaptive/run_attacker_adaptive.py --slugs 069A7F404506
-  python attacker/adaptive/run_attacker_adaptive.py --slugs 069A7F404506 --types FT
+  python attacker/adaptive/stale/run_attacker_adaptive.py --slugs 069A7F404506
+  python attacker/adaptive/stale/run_attacker_adaptive.py --slugs 069A7F404506 --types FT
 """
 import argparse
 import os

@@ -85,7 +85,7 @@ def detect_batch(req: DetectBatchRequest) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--detector", choices=["openvul", "vulnllmr"], required=True)
+    parser.add_argument("--detector", choices=["openvul", "vulnllmr", "repoaudit", "vultrial"], required=True)
     parser.add_argument("--port", type=int, default=8008)
     parser.add_argument("--tp", type=int, default=1,
                         help="vLLM tensor parallel size")
@@ -100,12 +100,24 @@ def main() -> None:
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = OpenVulDetector(**kwargs)
-    else:
+    elif args.detector == "vulnllmr":
         from detector_vulnllmr import VulnLLMRDetector
         kwargs = {"tp": args.tp}
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = VulnLLMRDetector(**kwargs)
+    elif args.detector == "repoaudit":
+        from detector_repoaudit import RepoAuditDetector
+        kwargs = {}
+        if args.model:
+            kwargs["model_name"] = args.model
+        DETECTOR = RepoAuditDetector(**kwargs)
+    else:
+        from detector_vultrial import VulTrialDetector
+        kwargs = {}
+        if args.model:
+            kwargs["model"] = args.model
+        DETECTOR = VulTrialDetector(**kwargs)
 
     print(f"[server] {args.detector} loaded; serving on 0.0.0.0:{args.port}", flush=True)
     uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")

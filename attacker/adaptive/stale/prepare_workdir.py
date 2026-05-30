@@ -9,9 +9,9 @@ solution_{TYPE}.c containing only the target_function. Also emit bootstrap.md
 (the per-type style constraints), and a `detect` symlink to detect_cli.py.
 
 Usage:
-    python attacker/adaptive/prepare_workdir.py \\
+    python attacker/adaptive/stale/prepare_workdir.py \\
         --slug 069A7F404506 \\
-        --out attacker/adaptive/agentic_results/repository_069A7F404506/qwen_openvul_agentic
+        --out attacker/adaptive/stale/agentic_results/repository_069A7F404506/qwen_openvul_agentic
 
 The directory is what the mini-swe-agent uses as cwd.
 """

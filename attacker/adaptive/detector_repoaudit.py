@@ -1,0 +1,101 @@
+"""
+detector_repoaudit.py — RepoAudit wrapper with OpenVulDetector-like interface.
+"""
+from __future__ import annotations
+
+import json
+import os
+import shutil
+import subprocess
+import tempfile
+from pathlib import Path
+
+
+REPO_ROOT = Path(__file__).parent.parent.parent
+REPOAUDIT_DIR = REPO_ROOT / "RepoAudit" / "src"
+
+
+def _concat_logs(log_dir: Path, case_stem: str) -> str:
+    parts: list[str] = []
+    case_log = log_dir / f"{case_stem}.log"
+    if case_log.exists():
+        parts.append(f"=== REPOAUDIT_CASE_LOG ({case_stem}.log) ===\n" + case_log.read_text())
+    dfb = log_dir / "dfbscan.log"
+    if dfb.exists():
+        parts.append("=== REPOAUDIT_DFBSCAN_LOG (dfbscan.log) ===\n" + dfb.read_text())
+    return "\n\n".join(parts).strip()
+
+
+class RepoAuditDetector:
+    """
+    Runs RepoAudit on a temp project dir containing one C file.
+
+    Verdict: vulnerable if per-file summary flag is tp (bug detected).
+    Reasoning: concatenated dfbscan + per-file logs + detect_info.json.
+    """
+
+    def __init__(
+        self,
+        model_name: str = "claude-sonnet-4-6",
+        language: str = "Cpp",
+        bug_type: str = "NPD",
+        files: str = "*.c",
+    ) -> None:
+        self.model_name = model_name
+        self.language = language
+        self.bug_type = bug_type
+        self.files = files
+
+    def detect(self, record: dict) -> dict:
+        code = (record.get("context", "") + "\n" + record.get("target_function", "")).strip()
+        file_name = record.get("file_name") or "solution.c"
+        case_stem = Path(file_name).stem
+
+        with tempfile.TemporaryDirectory(prefix="repoaudit_det_") as tmp:
+            project_dir = Path(tmp) / "project"
+            project_dir.mkdir(parents=True, exist_ok=True)
+            (project_dir / file_name).write_text(code)
+
+            result_root = Path(tmp) / "ra_out"
+            env = os.environ.copy()
+            env["RA_RESULT_ROOT"] = str(result_root)
+            env["LANGUAGE"] = self.language
+            env["MODEL"] = self.model_name
+
+            cmd = [
+                "bash",
+                str(REPOAUDIT_DIR / "run_repoaudit.sh"),
+                str(project_dir),
+                self.bug_type,
+                self.files,
+            ]
+            subprocess.run(cmd, cwd=REPOAUDIT_DIR, env=env, check=True)
+
+            # Find latest run dir
+            model_slug = self.model_name.replace("/", "_")
+            proj_name = project_dir.name
+            res_base = result_root / "result" / "dfbscan" / model_slug / self.bug_type / self.language / proj_name
+            run_dirs = sorted(res_base.glob("*"))
+            if not run_dirs:
+                return {"verdict": "safe", "reasoning": "RepoAudit produced no results.", "votes": {}}
+            latest = run_dirs[-1]
+
+            summary = latest / f"{case_stem}_summary.json"
+            verdict = "safe"
+            if summary.exists():
+                sdata = json.loads(summary.read_text())
+                verdict = "vulnerable" if sdata.get("flag") == "tp" else "safe"
+
+            detect_info = latest / "detect_info.json"
+            di_text = ""
+            if detect_info.exists():
+                di_text = "=== REPOAUDIT_DETECT_INFO_JSON ===\n" + detect_info.read_text()
+
+            log_dir = result_root / "log" / "dfbscan" / model_slug / self.bug_type / self.language / proj_name / latest.name
+            logs = _concat_logs(log_dir, case_stem)
+
+            reasoning = "\n\n".join([t for t in [logs, di_text] if t]).strip()
+            return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
+
+    def detect_batch(self, records: list[dict]) -> list[dict]:
+        return [self.detect(r) for r in records]

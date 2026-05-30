@@ -3,7 +3,7 @@
 backfill_prompts.py — Reconstruct prompt_messages for an already-completed
 adaptive run and inject them into the per-round JSON files.
 
-Exact for runs with NO integrity retries (none in qwen_openvul_fromscratch).
+Exact for runs with NO integrity retries (none in qwen_openvul_n8).
 For runs where retries fired, the reconstructed bundle of the WINNING attempt
 won't carry the orchestrator's constraint_reminder, so it will be the round-N
 attempt-1 bundle — close to but not exactly what the LLM finally saw.
@@ -14,11 +14,9 @@ Replays round-major + batch-sync semantics:
   * round-N flips are appended to the library after the round, in args.types order
 
 Usage:
-    python attacker/adaptive/backfill_prompts.py --tag qwen_openvul_fromscratch
-    python attacker/adaptive/backfill_prompts.py --tag qwen_openvul_fromscratch --from-scratch
+    python attacker/adaptive/backfill_prompts.py --tag qwen_openvul_n8
 """
 import argparse
-import copy
 import json
 import sys
 from pathlib import Path
@@ -28,7 +26,6 @@ sys.path.insert(0, str(HERE))
 
 from refine_loop import (  # noqa: E402
     ALL_TYPES,
-    BOOTSTRAP,
     SLUG,
     STYLE_SPECS,
     _make_library_entry,
@@ -42,8 +39,7 @@ from refiner_agent import _load_config  # noqa: E402
 DEFAULT_RESULTS_ROOT = HERE / "results" / f"repository_{SLUG}"
 
 
-def reconstruct(tag: str, from_scratch: bool, results_root: Path,
-                types: list[str]) -> int:
+def reconstruct(tag: str, results_root: Path, types: list[str]) -> int:
     sys_template = _load_config()["system_prompt"]
 
     runs: dict[str, dict] = {}
@@ -62,7 +58,7 @@ def reconstruct(tag: str, from_scratch: bool, results_root: Path,
         print(f"no runs found under {results_root} for tag={tag!r}")
         return 0
 
-    library: list[dict] = [] if from_scratch else [copy.deepcopy(BOOTSTRAP)]
+    library: list[dict] = []
 
     # Round 0 contributions to library: any type whose round-0 verdict was safe.
     for t in types:
@@ -169,8 +165,6 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--tag", required=True,
                         help="Run tag suffix on adaptive_{TYPE}_{tag}/ dirs.")
-    parser.add_argument("--from-scratch", action="store_true",
-                        help="The run was launched with --from-scratch (no BOOTSTRAP seed).")
     parser.add_argument("--results-root", type=Path, default=DEFAULT_RESULTS_ROOT,
                         help="Directory containing adaptive_*/ subdirs.")
     parser.add_argument("--types", nargs="+", default=ALL_TYPES, choices=ALL_TYPES,
@@ -178,8 +172,8 @@ def main() -> None:
                              "library-order fidelity). Default: ALL_TYPES.")
     args = parser.parse_args()
 
-    print(f"backfilling prompts for tag={args.tag} (from_scratch={args.from_scratch})")
-    n = reconstruct(args.tag, args.from_scratch, args.results_root, args.types)
+    print(f"backfilling prompts for tag={args.tag}")
+    n = reconstruct(args.tag, args.results_root, args.types)
     print(f"done. wrote {n} round files.")
 
 

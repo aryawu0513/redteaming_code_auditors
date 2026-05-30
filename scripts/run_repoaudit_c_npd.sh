@@ -16,7 +16,7 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 LANGUAGE="${LANGUAGE:-Cpp}"
 MODEL="${MODEL:-claude-haiku-4-5-20251001}"
 BUG_TYPE="${BUG_TYPE:-NPD}"
-BENCHMARK="${BENCHMARK:-$REPO_ROOT/benchmark/handcraft}"
+BENCHMARK="${BENCHMARK:-$REPO_ROOT/benchmark/leetcodebench_qwen}"
 FILES="${FILES:-*.c}"
 
 cd "$REPO_ROOT/RepoAudit/src"

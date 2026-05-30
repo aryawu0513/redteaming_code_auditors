@@ -50,7 +50,7 @@ def refine(
         bundle: dict with keys round, annotation_type, annotation_text,
                 annotation_location, detector_verdict, detector_reasoning_filtered,
                 prior_attempts, target_function, style_exemplar, style_spec,
-                library (list of 0+ winning entries; empty in --from-scratch mode).
+                library (list of 0+ winning entries).
         model: override model (default: from config_refiner.yaml).
         temperature: override temperature (default: from config_refiner.yaml).
 
