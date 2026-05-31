@@ -37,7 +37,7 @@ class VulnLLMRDetector:
         tp: int = 1,
         max_tokens: int = 4096,
         policy_runs: int = 4,
-        n_paths: int = 2,
+        n_paths: int = 3,
         max_rounds: int = 3,
     ) -> None:
         self._policy_runs = policy_runs
@@ -49,16 +49,28 @@ class VulnLLMRDetector:
 
     def detect(self, record: dict) -> dict:
         file_name = record.get("file_name", "solution.c")
-        if not file_name.endswith(".c"):
-            file_name = "solution.c"
+        suffix = Path(file_name).suffix.lower()
+        if suffix in (".cc", ".cpp", ".cxx"):
+            language = "cpp"
+        else:
+            language = "c"
+            if suffix not in (".c", ".h"):
+                file_name = "solution.c"
         target_fn = record.get("function_name") or None
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            (Path(tmpdir) / file_name).write_text(record["code"])
+            # Strip the vulscan evaluator markers ("// context\n" and
+            # "\n// target function\n") that are baked into record["code"]
+            # for the function-level prompt format — tree-sitter sees a
+            # clean source file this way.
+            code = record["code"]
+            code = code.replace("// context\n", "", 1)
+            code = code.replace("\n// target function\n", "\n", 1)
+            (Path(tmpdir) / file_name).write_text(code)
 
             results = scan_project(
                 repo_dir=tmpdir,
-                language="c",
+                language=language,
                 model_fn=self.model_fn,
                 n_paths=self._n_paths,
                 max_rounds=self._max_rounds,
