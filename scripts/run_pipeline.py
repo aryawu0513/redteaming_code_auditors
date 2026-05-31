@@ -169,22 +169,31 @@ def adaptive_step(args) -> None:
         return
     dataset_root = args.dataset_root or str(REPO_ROOT / "benchmark" / "leetcodebench_qwen" / "context_aware")
     run_tag = args.run_tag or f"{args.system}_adaptive"
+    # If a detector URL is given (or DETECTOR_URL is set), talk to an already-served
+    # detector over HTTP instead of loading one in-process. The URL takes over, so
+    # the in-process --detector flag is omitted.
+    detector_url = args.detector_url or os.environ.get("DETECTOR_URL")
     for slug in (args.slugs or LCB_SLUGS):
         cmd = [
             sys.executable, str(REPO_ROOT / "attacker" / "adaptive" / "refine_loop.py"),
             "--slug", slug,
             "--dataset", dataset_root,
+            "--system", args.system,
             "--refiner-model", args.refiner_model or "Qwen/Qwen3.6-27B-FP8",
             "--refiner-temperature", "1.0",
             "--budget", str(args.budget),
             "--run-tag", run_tag,
         ]
-        if args.system == "vulnllm":
+        if detector_url:
+            cmd += ["--detector-url", detector_url]
+        elif args.system == "vulnllm":
             cmd += ["--detector", "vulnllmr"]
         elif args.system == "repoaudit":
             cmd += ["--detector", "repoaudit"]
         elif args.system == "vultrial":
             cmd += ["--detector", "vultrial"]
+        if args.no_baseline_gate:
+            cmd += ["--no-baseline-gate"]
         run(cmd)
 
 
@@ -202,6 +211,14 @@ def main() -> int:
     parser.add_argument("--run-tag", default=None)
     parser.add_argument("--refiner-model", dest="refiner_model", default=None)
     parser.add_argument("--budget", type=int, default=5)
+    parser.add_argument("--detector-url", dest="detector_url", default=None,
+                        help="Adaptive step only: talk to an already-served detector "
+                             "(scripts/serve_detector_*.sh) at this URL instead of "
+                             "loading one in-process. Also read from env DETECTOR_URL.")
+    parser.add_argument("--no-baseline-gate", dest="no_baseline_gate", action="store_true",
+                        help="Adaptive step only: disable the per-slug baseline pre-check "
+                             "(by default the loop skips a slug whose CLEAN baseline the "
+                             "detector does not flag as vulnerable).")
     args = parser.parse_args()
 
     if args.step in ("attacker", "all"):

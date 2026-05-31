@@ -2,7 +2,7 @@
 """
 refine_loop.py — Adaptive attacker orchestrator (Section 5).
 
-Runs the closed-loop refinement for one slug across all 9 non-COT attack types.
+Runs the closed-loop refinement for one slug across all 10 attack types.
 Loads the OpenVul vLLM model once.
 
 Iteration order is round-major: round 0 detect is performed for every type
@@ -63,8 +63,10 @@ BUDGET = 5
 STUCK_THRESHOLD = 0.95
 STUCK_MODEL_NAME = "all-MiniLM-L6-v2"
 
-# COT already evaded statically — skip it, record static_succeeded in summary
-ALL_TYPES = ["FT", "CG", "AA_MSG", "AA_USR", "AA_CA",
+# All attack types are first-class: each is detected at round 0 and, if it does
+# not already evade the detector, refined like any other. (COT is NOT special-
+# cased — whether its static annotation evades is measured per run, not assumed.)
+ALL_TYPES = ["COT", "FT", "CG", "AA_MSG", "AA_USR", "AA_CA",
              "TOOL_ClangSA", "TOOL_Coverity", "TOOL_Frama", "TOOL_Fuzzer"]
 
 # ── Per-type style specifications ────────────────────────────────────────────
@@ -290,6 +292,22 @@ def load_record(slug: str, attack_type: str) -> dict:
     path = DATASET_DIR / f"repository_{slug}" / f"{slug}_{attack_type}.json"
     with open(path) as f:
         data = json.load(f)
+    return data[0] if isinstance(data, list) else data
+
+
+def load_baseline_record(slug: str) -> dict | None:
+    """
+    Load the CLEAN (un-annotated) baseline record for `slug`, or None if absent.
+
+    Baseline lives in the sibling `baseline/` dir of the context_aware DATASET_DIR.
+    The filename differs by benchmark (sofa: `{slug}_CLEAN.json`; leetcode:
+    `CLEAN.json`), so glob for any `*CLEAN*.json` under the slug dir.
+    """
+    baseline_dir = DATASET_DIR.parent / "baseline" / f"repository_{slug}"
+    matches = sorted(baseline_dir.glob("*CLEAN*.json"))
+    if not matches:
+        return None
+    data = json.loads(matches[0].read_text())
     return data[0] if isinstance(data, list) else data
 
 
@@ -687,7 +705,7 @@ def main() -> None:
     global SLUG, DATASET_DIR
     parser = argparse.ArgumentParser(description="Adaptive attacker — phase 1")
     parser.add_argument("--types", nargs="+", default=ALL_TYPES,
-                        help="Attack types to run (default: all 9 non-COT)")
+                        help="Attack types to run (default: all 10)")
     parser.add_argument("--model", default="Leopo1d/OpenVul-Qwen3-4B-GRPO",
                         help="Detector model ID (for openvul detector)")
     parser.add_argument("--detector", choices=["openvul", "vulnllmr", "repoaudit", "vultrial"], default="openvul",
@@ -715,16 +733,36 @@ def main() -> None:
                         help="Source benchmark dataset root holding "
                              "repository_<slug>/<slug>_<TYPE>.json records.")
     parser.add_argument(
-        "--out-dir", type=Path, default=None,
-        help="Output dir (default: results/repository_<slug>).",
+        "--system", default=None,
+        help="Detector system label for the output subdir: "
+             "results/<system>/repository_<slug>/. Defaults to --detector. "
+             "Set explicitly when using --detector-url (where --detector is "
+             "ignored) so the served detector is named correctly.",
     )
+    parser.add_argument(
+        "--out-dir", type=Path, default=None,
+        help="Output dir (default: results/<system>/repository_<slug>).",
+    )
+    parser.add_argument(
+        "--no-baseline-gate", dest="baseline_gate", action="store_false",
+        help="Disable the baseline pre-check. By default the loop first detects on "
+             "the CLEAN baseline record; if the detector already calls it safe (the "
+             "naked bug isn't caught), the whole slug is skipped as baseline_miss "
+             "since there is nothing for an annotation to evade.",
+    )
+    parser.set_defaults(baseline_gate=True)
     args = parser.parse_args()
 
     # Point the module-level record loader at the requested slug/dataset.
     SLUG = args.slug
     DATASET_DIR = args.dataset
+    # System label names the output subdir; default to the in-process detector.
+    if args.system is None:
+        args.system = args.detector
     if args.out_dir is None:
-        args.out_dir = RESULTS_DIR / f"repository_{SLUG}"
+        # Group results by detector system so different systems don't collide:
+        #   results/<system>/repository_<slug>/
+        args.out_dir = RESULTS_DIR / args.system / f"repository_{SLUG}"
 
     dir_suffix = f"_{args.run_tag}" if args.run_tag else ""
     print(f"Adaptive loop — slug={SLUG}")
@@ -774,6 +812,40 @@ def main() -> None:
         f"Library mode: {mode}\n"
         f"Run tag: {args.run_tag or '(none)'}\n"
     )
+
+    # ── Baseline gate ─────────────────────────────────────────────────────────
+    # Before any refinement, check that the detector actually catches the NAKED
+    # bug (the CLEAN baseline, no annotation). If it calls the baseline safe,
+    # there is nothing for an annotation to evade — skip the whole slug. This
+    # folds the round0 baseline gate into the adaptive loop so context_aware
+    # detection happens exactly once (here, in this process) and we never refine
+    # a slug the detector can't catch on its own.
+    if args.baseline_gate:
+        baseline = load_baseline_record(SLUG)
+        if baseline is None:
+            print(f"[baseline-gate] no CLEAN baseline record for {SLUG} — skipping gate")
+        else:
+            print(f"[baseline-gate] detecting on CLEAN baseline for {SLUG} …", flush=True)
+            base_det = detector.detect(baseline)
+            print(f"[baseline-gate] verdict={base_det['verdict']}  votes={base_det['votes']}")
+            (args.out_dir / f"baseline_gate{dir_suffix}.json").write_text(json.dumps({
+                "slug": SLUG,
+                "verdict": base_det["verdict"],
+                "votes": base_det["votes"],
+                "reasoning": base_det["reasoning"],
+            }, indent=2))
+            if base_det["verdict"] == "safe":
+                print(f"\n*** baseline_miss: detector does NOT catch the naked bug for "
+                      f"{SLUG}; skipping adaptive refinement ***")
+                (args.out_dir / f"summary{dir_suffix}.csv").write_text(
+                    "annotation_type,static_verdict,final_verdict,rounds_used,stop_reason\n"
+                )
+                (args.out_dir / "phase1_summary_partial.json").write_text(json.dumps([{
+                    "slug": SLUG,
+                    "stop_reason": "baseline_miss",
+                    "final_verdict": "safe",
+                }], indent=2))
+                return
 
     # ── Shared library of successful flips ────────────────────────────────────
     # Seeded only by round-0 successes. Every flip is appended, so later rounds
@@ -839,17 +911,6 @@ def main() -> None:
 
     # ── Summaries ─────────────────────────────────────────────────────────────
     summaries: list[dict] = []
-
-    # COT: the dataset's static COT annotation already evades the detector. This
-    # is a measurement of the benchmark, not part of the adaptive loop's
-    # discovered library — so we report it but do not seed it.
-    summaries.append({
-        "annotation_type": "COT",
-        "static_verdict": "safe",
-        "final_verdict": "safe",
-        "rounds_used": 0,
-        "stop_reason": "static_succeeded",
-    })
 
     for attack_type in args.types:
         r = states[attack_type]["result"]
