@@ -4,7 +4,8 @@ build_eval_datasets.py — Convert attacker solution.c files into the unified be
 JSON format consumed by VulnLLM-R, VulTrial, OpenVul, and RepoAudit.
 
 For each repository_SLUG, reads solution.c (clean) and solution_ATTACK.c files,
-splits each into context (helper functions) + target_function (main), and writes:
+splits each into context (helper functions) + target_function (the function containing
+the NPD, majority-voted across all solution_*.c annotation sites), and writes:
 
   benchmark/leetcodebench_gpt54mini/baseline/repository_SLUG/SLUG_CLEAN.json
   benchmark/leetcodebench_gpt54mini/context_aware/repository_SLUG/SLUG_COT.json
@@ -34,24 +35,25 @@ ATTACK_VARIANTS = [
     "TOOL_ClangSA", "TOOL_Frama", "TOOL_Fuzzer", "TOOL_Coverity",
 ]
 
-MAIN_RE = re.compile(r'^(?:int|void)\s+main\s*\(', re.MULTILINE)
+from annotation_utils import vote_annotated_function, vote_anchor
 
 
-def split_file(code: str) -> tuple[str, str]:
-    """Return (context, target_function) split at the start of main()."""
-    m = MAIN_RE.search(code)
-    if not m:
-        raise ValueError("No main() found")
-    return code[:m.start()].rstrip(), code[m.start():]
+def split_file(code: str, split_at: int) -> tuple[str, str]:
+    """Return (context, target_function) split at split_at char offset."""
+    return code[:split_at].rstrip(), code[split_at:]
 
 
-def build_entry(slug: str, variant: str, context: str, target: str, idx: int) -> dict:
+def build_entry(slug: str, variant: str, context: str, target: str,
+                idx: int, function_name: str = "main",
+                deref_line: str = "", caller: str = "") -> dict:
     file_name = "solution.c" if variant == "CLEAN" else f"solution_{variant}.c"
     return {
         "code": f"// context\n{context}\n\n// target function\n{target}",
         "context": context,
         "target_function": target,
-        "function_name": "main",
+        "function_name": function_name,
+        "deref_line": deref_line,
+        "caller": caller,
         "file_name": file_name,
         "CWE_ID": ["CWE-476"],
         "RELATED_CWE": [],
@@ -96,11 +98,35 @@ def main():
     for slug in slugs:
         repo_dir = runs_dir / f"repository_{slug}"
 
+        if not (repo_dir / "solution.c").exists():
+            print(f"  [skip] {slug} — no solution.c (not a C leetcodebench slug)")
+            continue
+
         verification = load_verification(repo_dir)
         ok_attacks = {at for at in ATTACK_VARIANTS[1:] if verification.get(at) == "ok"}
         if not ok_attacks:
             print(f"  [skip] {slug} — no verified attack variants")
             continue
+
+        # Majority-vote target function and deref_line across all solution files.
+        all_solution_files = [
+            repo_dir / ("solution.c" if v == "CLEAN" else f"solution_{v}.c")
+            for v in ATTACK_VARIANTS
+        ]
+        fn_name, split_at = vote_annotated_function(all_solution_files)
+        # Collect target_functions from annotated variants to vote on deref_line.
+        deref_line = ""
+        target_functions = []
+        for v in ATTACK_VARIANTS[1:]:  # skip CLEAN — no annotation
+            src = repo_dir / f"solution_{v}.c"
+            if src.exists():
+                code = src.read_text()
+                _, tgt = split_file(code, split_at)
+                target_functions.append(tgt)
+        deref_line = vote_anchor(target_functions) or ""
+        if fn_name != "main":
+            print(f"  [info] {slug} — target function: {fn_name!r}, deref_line: {deref_line!r}")
+        slug_written = False
 
         for idx, variant in enumerate(ATTACK_VARIANTS):
             src = repo_dir / ("solution.c" if variant == "CLEAN" else f"solution_{variant}.c")
@@ -115,19 +141,18 @@ def main():
             out_dir  = out_root / category / f"repository_{slug}"
             out_dir.mkdir(parents=True, exist_ok=True)
 
-            try:
-                context, target = split_file(src.read_text())
-            except ValueError as e:
-                print(f"  [skip] {slug}/{variant} — {e}")
-                continue
-
-            entry = build_entry(slug, variant, context, target, idx)
+            code = src.read_text()
+            context, target = split_file(code, split_at)
+            entry = build_entry(slug, variant, context, target, idx,
+                                fn_name, deref_line, fn_name)
             out_json = out_dir / f"{slug}_{variant}.json"
             out_json.write_text(json.dumps([entry], indent=2))
             shutil.copy2(src, out_dir / src.name)
             total += 1
+            slug_written = True
 
-        print(f"  {slug}: written to {out_root}/{{baseline,context_aware}}/repository_{slug}/")
+        if slug_written:
+            print(f"  {slug}: written to {out_root}/{{baseline,context_aware}}/repository_{slug}/")
 
     print(f"\nDone — {total} JSON files written under {out_root}")
 

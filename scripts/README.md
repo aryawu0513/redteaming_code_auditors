@@ -66,6 +66,38 @@ python scripts/filter_round0.py \
   --context-dir  OpenVul/results/leetcodebench_qwen/npd/C/NPD/context_aware
 ```
 
+## Running adaptive in parallel for multiple systems
+
+When serving two detectors at once, override the default port (both serve scripts default
+to 8008) and point each pipeline run at the right URL:
+
+```bash
+# Terminal 1 — OpenVul on 8008 (default)
+bash scripts/serve_detector_openvul.sh
+
+# Terminal 2 — VulnLLM-R on 8009
+PORT=8009 bash scripts/serve_detector_vulnllmr.sh
+
+# Terminal 3 — OpenVul adaptive
+OPENAI_BASE_URL=http://localhost:8007/v1 OPENAI_API_KEY=dummy \
+  python scripts/run_pipeline.py --benchmark leetcodebench --system openvul --step adaptive \
+  --detector-url http://localhost:8008 --run-tag openvul_adaptive_r2
+
+# Terminal 4 — VulnLLM adaptive
+OPENAI_BASE_URL=http://localhost:8007/v1 OPENAI_API_KEY=dummy \
+  python scripts/run_pipeline.py --benchmark leetcodebench --system vulnllm --step adaptive \
+  --detector-url http://localhost:8009 --run-tag vulnllm_adaptive_r2
+```
+
+**`OPENAI_BASE_URL` must be set** to the Qwen refiner server (typically port 8007).
+Without it the OpenAI client hits the real OpenAI API with the Qwen model name and
+returns `invalid model ID`.
+
+**Always use a unique `--run-tag` for each experiment run.** The tag is used as a suffix
+for every output file and subdirectory inside `attacker/adaptive/results/<system>/repository_<slug>/`
+(e.g. `adaptive_AA_CA_<tag>/`, `summary_<tag>.csv`). Reusing a tag from a prior run
+silently overwrites those files.
+
 ## One-off Scripts
 
 Temporary or system-specific runners live in `scripts/oneoff/`. The pipeline

@@ -141,21 +141,49 @@ STYLE_SPECS: dict[str, str] = {
 
 # ── Annotation helpers ───────────────────────────────────────────────────────
 
-# The attack annotation always sits on the line(s) immediately above the NPD
-# deref site. That deref line is a stable per-slug anchor: the refiner only ever
-# rewrites the comment, never the code, so the anchor is invariant across rounds.
-DEFAULT_ANCHOR = "long long ans = head->val;"
-ANCHOR = {
-    "069A7F404506": "long long ans = head->val;",   # leetcode binary2int
-    "NPD-1": "obj->AddMember(key, *v, allocator);",  # sofa parse_msg   (*v)
-    "NPD-2": "json->PushBack(*v, allocator);",        # sofa field2json  (*v)
-    "NPD-3": "rapidjson::Value& json_ref = *json;",   # sofa pb2json     (*json)
-}
+# The attack annotation always sits immediately above the NPD deref site.
+# That deref line is the anchor: the refiner only rewrites the comment, never
+# the code, so the anchor is invariant across rounds.
+#
+# Priority order for resolving the anchor:
+#   1. deref_line field stamped by the builder into the dataset record (fastest)
+#   2. Direct detection from the current target_function (works when it carries
+#      an annotation — avoids a filesystem round-trip for AA_CA / AA_MSG / etc.)
+#   3. Majority vote across all dataset records for the slug (handles non-annotated
+#      attack types such as FT, COT, TOOL_* on legacy datasets without deref_line)
+
+import sys as _sys
+_sys.path.insert(0, str(HERE.parent))  # attacker/ on path for annotation_utils
+from annotation_utils import (  # noqa: E402
+    first_code_after_comment as _first_code_after_comment,
+    anchor_from_aa_usr as _anchor_from_aa_usr,
+)
+
+_anchor_cache: dict[str, str] = {}
 
 
-def get_anchor() -> str:
-    """Deref line that the annotation must sit above, for the current SLUG."""
-    return ANCHOR.get(SLUG, DEFAULT_ANCHOR)
+def get_anchor(target_function: str = "", record: dict | None = None) -> str:
+    """Return the NPD deref line (anchor) for the current SLUG.
+
+    1. deref_line field stamped by the builder into the dataset record.
+    2. Per-type detection on the current record's target_function:
+         AA_USR  → strip the trailing inline comment from the deref line
+         all others → first non-comment code line after the annotation block
+    3. Cached result from a previous call for this SLUG.
+    4. Return "" if nothing found (callers treat this as a graceful skip).
+    """
+    if record and record.get("deref_line"):
+        _anchor_cache[SLUG] = record["deref_line"]
+        return record["deref_line"]
+    if target_function:
+        found = (_anchor_from_aa_usr(target_function) if "// USER:" in target_function
+                 else _first_code_after_comment(target_function))
+        if found:
+            _anchor_cache[SLUG] = found
+            return found
+    if SLUG in _anchor_cache:
+        return _anchor_cache[SLUG]
+    return ""
 
 
 def _comment_block_above(lines: list[str], idx: int) -> tuple[int | None, int | None]:
@@ -187,7 +215,7 @@ def _comment_block_above(lines: list[str], idx: int) -> tuple[int | None, int | 
 
 def extract_annotation(target_function: str) -> str:
     """Extract the C comment immediately above the current SLUG's deref anchor."""
-    anchor = get_anchor()
+    anchor = get_anchor(target_function)
     lines = target_function.split("\n")
     idx = next((i for i, l in enumerate(lines) if anchor in l), None)
     if idx is None:
@@ -203,7 +231,7 @@ def replace_annotation(target_function: str, new_comment: str) -> str:
     Replace the existing annotation (comment block above the anchor) with
     new_comment. Each line is indented to match the anchor line's indentation.
     """
-    anchor = get_anchor()
+    anchor = get_anchor(target_function)
     lines = target_function.split("\n")
     idx = next((i for i, l in enumerate(lines) if anchor in l), None)
     if idx is None:
@@ -218,7 +246,7 @@ def replace_annotation(target_function: str, new_comment: str) -> str:
 
 def get_source_context(target_function: str, radius: int = 15) -> str:
     """Return ±radius lines around the current SLUG's deref anchor."""
-    anchor = get_anchor()
+    anchor = get_anchor(target_function)
     lines = target_function.split("\n")
     idx = next((i for i, l in enumerate(lines) if anchor in l), None)
     if idx is None:
@@ -259,7 +287,7 @@ def check_integrity(target_function: str, context: str, language: str = "c") -> 
     exists in the base code.
     """
     if language in ("cpp", "c++", "cxx"):
-        if get_anchor() not in target_function:
+        if get_anchor(target_function) not in target_function:
             return False
         return _annotation_is_safe_comment(extract_annotation(target_function))
 
@@ -357,6 +385,7 @@ def init_type(
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     record = load_record(SLUG, attack_type)
+    get_anchor(record=record)  # prime cache from deref_line if present
 
     print(f"\n{'='*60}")
     print(f"[{attack_type}] round 0 — detecting static variant …")
@@ -435,7 +464,7 @@ def produce_annotation(
         "annotation_type": attack_type,
         "annotation_text": extract_annotation(current_record["target_function"]),
         "annotation_location": (
-            f"immediately before `{get_anchor()}` (the NPD deref site)"
+            f"immediately before `{get_anchor(current_record['target_function'])}` (the NPD deref site)"
         ),
         "detector_verdict": det["verdict"],
         "detector_reasoning_filtered": filtered,

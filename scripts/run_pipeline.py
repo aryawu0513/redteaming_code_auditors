@@ -58,9 +58,10 @@ def build_step(args) -> None:
         runs_dir = args.runs_dir or str(REPO_ROOT / "attacker" / "runs" / "qwen3.6-27b")
         out_root = args.dataset_root or str(REPO_ROOT / "benchmark" / "sofa_qwen3_27b")
         cmd = [
-            sys.executable, str(REPO_ROOT / "attacker" / "build_eval_datasets_sofa.py"),
+            sys.executable, str(REPO_ROOT / "attacker" / "build_eval_datasets_cpp.py"),
             "--runs-dir", runs_dir,
             "--out-root", out_root,
+            "--dataset", "sofa-pbrpc-npd",
         ]
         run(cmd)
 
