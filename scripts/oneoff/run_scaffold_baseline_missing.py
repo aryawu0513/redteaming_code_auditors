@@ -45,10 +45,10 @@ def scan_solution(repo_dir: Path, model_fn, model_fn_diverse) -> list[dict]:
             model_fn=model_fn,
             n_paths=2,
             max_rounds=3,
-            policy_runs=4,
+            policy_runs=0,
             model_fn_diverse=model_fn_diverse,
             target_functions=None,
-            cwe_hints=None,
+            cwe_hints=["CWE-476"],
             verbose=True,
         )
 

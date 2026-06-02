@@ -36,7 +36,7 @@ class VulnLLMRDetector:
         model_id: str = "UCSB-SURFI/VulnLLM-R-7B",
         tp: int = 1,
         max_tokens: int = 4096,
-        policy_runs: int = 4,
+        policy_runs: int = 0,
         n_paths: int = 3,
         max_rounds: int = 3,
     ) -> None:

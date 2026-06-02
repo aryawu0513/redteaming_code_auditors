@@ -54,12 +54,37 @@ predicate returnsPointerField(Function f) {
 }
 
 /**
- * A source-level function whose return value may be NULL on some path.
+ * Well-known library/POSIX functions that can return NULL on failure.
+ * These are not from source, so we list them explicitly.
+ */
+predicate isKnownNullReturningLibFunc(Function f) {
+  f.getName() in [
+    "malloc", "calloc", "realloc", "valloc", "aligned_alloc",
+    "strdup", "strndup", "wcsdup",
+    "fopen", "fdopen", "freopen", "popen", "tmpfile",
+    "opendir", "readdir",
+    "getenv", "secure_getenv",
+    "inet_ntoa", "gethostbyname",
+    "dlopen", "dlsym",
+    "mmap",
+    "g_malloc", "g_new", "g_strdup"   // glib variants
+  ]
+}
+
+/**
+ * A function whose return value may be NULL on some path —
+ * either a source-level function we can analyse, or a well-known library call.
  */
 predicate functionCanReturnNull(Function f) {
-  f.fromSource() and
   f.getType() instanceof PointerType and
-  (returnsNullInitLocal(f) or returnsExplicitNull(f) or returnsPointerField(f))
+  (
+    // Source-level functions we can inspect
+    (f.fromSource() and
+     (returnsNullInitLocal(f) or returnsExplicitNull(f) or returnsPointerField(f)))
+    or
+    // Well-known library functions that can return NULL
+    isKnownNullReturningLibFunc(f)
+  )
 }
 
 // ---------------------------------------------------------------------------
