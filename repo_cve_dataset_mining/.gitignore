@@ -1,0 +1,2 @@
+# Intermediate pipeline outputs — large generated files, not for version control
+*.jsonl
