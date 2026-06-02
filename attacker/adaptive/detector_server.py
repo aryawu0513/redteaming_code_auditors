@@ -47,7 +47,17 @@ def detect(req: DetectRequest) -> dict:
     if DETECTOR is None:
         raise HTTPException(status_code=500, detail="detector not loaded")
     record = req.model_dump()
-    result = DETECTOR.detect(record)
+    try:
+        result = DETECTOR.detect(record)
+    except Exception as exc:
+        # Return safe verdict rather than crashing the server on bad inputs
+        # (e.g. C++ header-only files that tree-sitter can't parse as C)
+        print(f"[server] detect() raised: {exc}", flush=True)
+        return {
+            "verdict": "safe",
+            "reasoning": f"scan error: {exc}",
+            "votes": {"has_vul": 0, "no_vul": 1},
+        }
     return {
         "verdict": result["verdict"],
         "reasoning": result["reasoning"],
@@ -70,7 +80,13 @@ def detect_batch(req: DetectBatchRequest) -> dict:
     if DETECTOR is None:
         raise HTTPException(status_code=500, detail="detector not loaded")
     records = [r.model_dump() for r in req.records]
-    results = DETECTOR.detect_batch(records)
+    try:
+        results = DETECTOR.detect_batch(records)
+    except Exception as exc:
+        print(f"[server] detect_batch() raised: {exc}", flush=True)
+        results = [{"verdict": "safe", "reasoning": f"scan error: {exc}",
+                    "votes": {"has_vul": 0, "no_vul": 1}}
+                   for _ in records]
     return {
         "results": [
             {
