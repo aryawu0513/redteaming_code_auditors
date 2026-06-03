@@ -436,6 +436,7 @@ def produce_annotation(
     refiner_model: str,
     refiner_temperature: float,
     run_tag: str,
+    skip_static_check: bool = False,
 ) -> tuple[str | None, str]:
     """
     Phase 1 of a round for one type: get a VALID annotation (refiner + integrity
@@ -483,8 +484,10 @@ def produce_annotation(
             out_raw = refine(bundle, model=refiner_model, temperature=refiner_temperature)
             cand = out_raw["annotation_text"]
             new_tf = replace_annotation(current_record["target_function"], cand)
-            if not check_integrity(new_tf, current_record["context"],
-                                   language=current_record.get("language", "c")):
+            if not skip_static_check and not check_integrity(
+                new_tf, current_record["context"],
+                language=current_record.get("language", "c"),
+            ):
                 print(f"[{attack_type}] round {rnd} attempt {attempt+1}: integrity FAIL — NPD removed")
                 bundle["constraint_reminder"] = (
                     "INVALID: the static analyzer no longer detects the NPD after your "
@@ -635,6 +638,7 @@ def run_round_sequential(
     refiner_model: str,
     refiner_temperature: float,
     run_tag: str,
+    skip_static_check: bool = False,
 ) -> dict | None:
     """
     One round for one type, sequential (immediate-sync) path. `library` is the
@@ -643,7 +647,8 @@ def run_round_sequential(
     """
     print(f"\n[{state['attack_type']}] round {rnd} — refining …")
     new_comment, rationale = produce_annotation(
-        state, rnd, library, refiner_model, refiner_temperature, run_tag
+        state, rnd, library, refiner_model, refiner_temperature, run_tag,
+        skip_static_check=skip_static_check,
     )
     if new_comment is None:
         return None
@@ -663,6 +668,7 @@ def run_round_batched(
     refiner_model: str,
     refiner_temperature: float,
     run_tag: str,
+    skip_static_check: bool = False,
 ) -> None:
     """
     One round for ALL active types, batch-sync path. Order-invariant:
@@ -680,7 +686,8 @@ def run_round_batched(
     # ── PRODUCE wave (concurrent) ─────────────────────────────────────────────
     def _produce(st: dict) -> tuple[dict, str | None, str]:
         nc, rat = produce_annotation(
-            st, rnd, snapshot, refiner_model, refiner_temperature, run_tag
+            st, rnd, snapshot, refiner_model, refiner_temperature, run_tag,
+            skip_static_check=skip_static_check,
         )
         return st, nc, rat
 
@@ -771,6 +778,11 @@ def main() -> None:
     parser.add_argument(
         "--out-dir", type=Path, default=None,
         help="Output dir (default: results/<system>/repository_<slug>).",
+    )
+    parser.add_argument(
+        "--no-static-check", dest="no_static_check", action="store_true",
+        help="Skip the static-analyzer integrity check after each refinement. "
+             "Use for CVE datasets where the NPD is pre-validated by CodeQL at build time.",
     )
     parser.add_argument(
         "--no-baseline-gate", dest="baseline_gate", action="store_false",
@@ -918,6 +930,7 @@ def main() -> None:
                 refiner_model=args.refiner_model,
                 refiner_temperature=args.refiner_temperature,
                 run_tag=args.run_tag,
+                skip_static_check=args.no_static_check,
             )
         else:  # immediate sync — order-dependent, sequential
             for attack_type in active:
@@ -930,6 +943,7 @@ def main() -> None:
                     refiner_model=args.refiner_model,
                     refiner_temperature=args.refiner_temperature,
                     run_tag=args.run_tag,
+                    skip_static_check=args.no_static_check,
                 )
                 if entry is not None:
                     library.append(entry)  # immediate sync — next type this round sees it

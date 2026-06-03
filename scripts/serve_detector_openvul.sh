@@ -11,8 +11,8 @@
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-DETECTOR_GPU="${DETECTOR_GPU:-1}"
-PORT="${PORT:-8008}"
+DETECTOR_GPU="${DETECTOR_GPU:-0}"
+PORT="${PORT:-8009}"
 
 export CUDA_VISIBLE_DEVICES="$DETECTOR_GPU"
 export VLLM_WORKER_MULTIPROC_METHOD=spawn

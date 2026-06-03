@@ -66,6 +66,11 @@ class VulnLLMRDetector:
             code = record["code"]
             code = code.replace("// context\n", "", 1)
             code = code.replace("\n// target function\n", "\n", 1)
+            # Strip bare class-access-specifier preamble (e.g. "public:\n") that
+            # appears in CVE dataset snippets extracted from class bodies.
+            # tree-sitter sees it as a broken declaration and misparsed the function.
+            import re as _re
+            code = _re.sub(r'^\s*(public|private|protected)\s*:\s*\n', '', code)
             (Path(tmpdir) / file_name).write_text(code)
 
             results = scan_project(

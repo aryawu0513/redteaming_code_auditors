@@ -6,14 +6,16 @@ For each repo shows per-round flip counts (how many attack types flipped
 at round 0, round 1, ..., budget) plus total. Also prints aggregate
 per-round and overall stats.
 
-Repos are split into two groups:
-  - leetcode: repository_<hex>  (e.g. repository_069A7F404506)
-  - sofa:     repository_NPD-*  (e.g. repository_NPD-1)
+Repos are split into three groups:
+  - leetcodebench: repository_<hex>      (e.g. repository_069A7F404506)
+  - sofa:          repository_NPD-[123]  (e.g. repository_NPD-1)
+  - cvebench:      repository_NPD-CVE-*  (e.g. repository_NPD-CVE-01)
 
 Repos where the system cannot achieve a baseline are excluded entirely.
 
 Usage:
     python attacker/adaptive/summarize_results.py [--systems vulnllm openvul ...]
+                                                  [--dataset leetcodebench sofa cvebench]
                                                   [--results-dir path/to/results]
 """
 import argparse
@@ -58,8 +60,13 @@ def is_baseline_miss(repo_dir: pathlib.Path) -> bool:
     return False
 
 
-def is_sofa(slug: str) -> bool:
-    return slug.startswith("repository_NPD-")
+def dataset_of(slug: str) -> str:
+    """Return 'cvebench', 'sofa', or 'leetcodebench' for a repo dir name."""
+    if slug.startswith("repository_NPD-CVE-"):
+        return "cvebench"
+    if slug.startswith("repository_NPD-"):
+        return "sofa"
+    return "leetcodebench"
 
 
 def print_group(label: str, repo_dirs: list[pathlib.Path]) -> tuple[int, int, int, dict]:
@@ -76,6 +83,7 @@ def print_group(label: str, repo_dirs: list[pathlib.Path]) -> tuple[int, int, in
 
         if is_baseline_miss(repo_dir):
             skipped += 1
+            print(f"    {slug}: baseline_miss (skipped)")
             continue
 
         # Find per-type subdirs (adaptive_<TYPE>_<run_tag>/)
@@ -93,7 +101,6 @@ def print_group(label: str, repo_dirs: list[pathlib.Path]) -> tuple[int, int, in
             continue
 
         round_counts: dict[int, int] = {r: 0 for r in range(MAX_BUDGET + 1)}
-        never_flipped = []
         n_types = len(type_dirs)
 
         for at, td in sorted(type_dirs.items()):
@@ -102,16 +109,13 @@ def print_group(label: str, repo_dirs: list[pathlib.Path]) -> tuple[int, int, in
                 round_counts[rnd] += 1
                 round_totals[rnd] += 1
                 grand_flipped += 1
-            else:
-                never_flipped.append(at)
             grand_total += 1
 
         total_flipped = sum(round_counts.values())
         per_round = "  ".join(
             f"r{r}:{round_counts[r]}" for r in range(MAX_BUDGET + 1) if round_counts[r] > 0
         )
-        miss_str = f"  miss={never_flipped}" if never_flipped else ""
-        print(f"    {slug}: {total_flipped}/{n_types}  [{per_round}]{miss_str}")
+        print(f"    {slug}: {total_flipped}/{n_types}  [{per_round}]")
 
     per_round_agg = "  ".join(
         f"r{r}:{round_totals[r]}" for r in range(MAX_BUDGET + 1) if round_totals[r] > 0
@@ -122,16 +126,21 @@ def print_group(label: str, repo_dirs: list[pathlib.Path]) -> tuple[int, int, in
     return grand_flipped, grand_total, skipped, round_totals
 
 
-def summarize_system(system: str, results_dir: pathlib.Path) -> None:
+DATASET_LABELS = {
+    "leetcodebench": "LeetCode Bench",
+    "sofa":          "sofa-pbrpc",
+    "cvebench":      "CVE Bench",
+}
+
+
+def summarize_system(system: str, results_dir: pathlib.Path,
+                     datasets: list[str]) -> None:
     base = results_dir / system
     if not base.exists():
         print(f"[{system}] results dir not found: {base}")
         return
 
     all_repo_dirs = sorted(d for d in base.iterdir() if d.is_dir())
-
-    leetcode_dirs = [d for d in all_repo_dirs if not is_sofa(d.name)]
-    sofa_dirs = [d for d in all_repo_dirs if is_sofa(d.name)]
 
     print(f"\n{'='*60}")
     print(f"  {system.upper()}")
@@ -142,16 +151,11 @@ def summarize_system(system: str, results_dir: pathlib.Path) -> None:
     total_skipped = 0
     combined_round_totals: dict[int, int] = {r: 0 for r in range(MAX_BUDGET + 1)}
 
-    if leetcode_dirs:
-        f, t, s, rt = print_group("LeetCode Bench", leetcode_dirs)
-        total_flipped += f
-        total_problems += t
-        total_skipped += s
-        for r, v in rt.items():
-            combined_round_totals[r] += v
-
-    if sofa_dirs:
-        f, t, s, rt = print_group("sofa-pbrpc", sofa_dirs)
+    for ds in datasets:
+        group_dirs = [d for d in all_repo_dirs if dataset_of(d.name) == ds]
+        if not group_dirs:
+            continue
+        f, t, s, rt = print_group(DATASET_LABELS.get(ds, ds), group_dirs)
         total_flipped += f
         total_problems += t
         total_skipped += s
@@ -169,11 +173,15 @@ def summarize_system(system: str, results_dir: pathlib.Path) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--systems", nargs="+", default=["vulnllm", "openvul"])
+    parser.add_argument("--dataset", nargs="+",
+                        choices=["leetcodebench", "sofa", "cvebench"],
+                        default=["leetcodebench", "sofa", "cvebench"],
+                        help="Which dataset group(s) to show (default: all)")
     parser.add_argument("--results-dir", type=pathlib.Path, default=RESULTS_DIR)
     args = parser.parse_args()
 
     for system in args.systems:
-        summarize_system(system, args.results_dir)
+        summarize_system(system, args.results_dir, args.dataset)
     print()
 
 

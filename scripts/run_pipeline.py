@@ -24,6 +24,10 @@ LCB_SLUGS = [
     "7C95B6A69704", "9823AA10FA1B", "A3BC94AC32E5", "B1AC850C7E87",
 ]
 SOFA_SLUGS = ["NPD-1", "NPD-2", "NPD-3"]
+CVE_SLUGS = [
+    "NPD-CVE-01", "NPD-CVE-02", "NPD-CVE-03", "NPD-CVE-04",
+    "NPD-CVE-06", "NPD-CVE-07", "NPD-CVE-08", "NPD-CVE-10",
+]
 
 
 def run(cmd: list[str], cwd: Path | None = None, env: dict | None = None) -> None:
@@ -168,13 +172,22 @@ def adaptive_step(args) -> None:
     if args.system not in ("openvul", "vulnllm", "repoaudit", "vultrial"):
         print(f"Adaptive loop only supports openvul/vulnllm/repoaudit/vultrial. system={args.system}")
         return
-    dataset_root = args.dataset_root or str(REPO_ROOT / "benchmark" / "leetcodebench_qwen" / "context_aware")
+    if args.benchmark == "cvebench":
+        default_dataset = str(REPO_ROOT / "benchmark" / "cvebench_qwen3_27b" / "context_aware")
+        default_slugs = CVE_SLUGS
+    elif args.benchmark == "sofa":
+        default_dataset = str(REPO_ROOT / "benchmark" / "sofa_qwen3_27b" / "context_aware")
+        default_slugs = SOFA_SLUGS
+    else:
+        default_dataset = str(REPO_ROOT / "benchmark" / "leetcodebench_qwen" / "context_aware")
+        default_slugs = LCB_SLUGS
+    dataset_root = args.dataset_root or default_dataset
     run_tag = args.run_tag or f"{args.system}_adaptive"
     # If a detector URL is given (or DETECTOR_URL is set), talk to an already-served
     # detector over HTTP instead of loading one in-process. The URL takes over, so
     # the in-process --detector flag is omitted.
     detector_url = args.detector_url or os.environ.get("DETECTOR_URL")
-    for slug in (args.slugs or LCB_SLUGS):
+    for slug in (args.slugs or default_slugs):
         cmd = [
             sys.executable, str(REPO_ROOT / "attacker" / "adaptive" / "refine_loop.py"),
             "--slug", slug,
@@ -195,12 +208,14 @@ def adaptive_step(args) -> None:
             cmd += ["--detector", "vultrial"]
         if args.no_baseline_gate:
             cmd += ["--no-baseline-gate"]
+        if args.no_static_check or args.benchmark == "cvebench":
+            cmd += ["--no-static-check"]
         run(cmd)
 
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--benchmark", choices=["leetcodebench", "sofa"], default="leetcodebench")
+    parser.add_argument("--benchmark", choices=["leetcodebench", "sofa", "cvebench"], default="leetcodebench")
     parser.add_argument("--system", choices=["openvul", "vulnllm", "vultrial", "repoaudit"], required=True)
     parser.add_argument("--step", choices=["attacker", "build", "eval", "round0", "adaptive", "all"], default="eval")
     parser.add_argument("--runs-dir", default=None)
@@ -216,6 +231,9 @@ def main() -> int:
                         help="Adaptive step only: talk to an already-served detector "
                              "(scripts/serve_detector_*.sh) at this URL instead of "
                              "loading one in-process. Also read from env DETECTOR_URL.")
+    parser.add_argument("--no-static-check", dest="no_static_check", action="store_true",
+                        help="Adaptive step only: skip static-analyzer integrity check. "
+                             "Auto-enabled for --benchmark cvebench.")
     parser.add_argument("--no-baseline-gate", dest="no_baseline_gate", action="store_true",
                         help="Adaptive step only: disable the per-slug baseline pre-check "
                              "(by default the loop skips a slug whose CLEAN baseline the "

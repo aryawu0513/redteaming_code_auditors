@@ -81,7 +81,13 @@ def setup_one(row: dict, runs_dir: Path, samples_dir: Path = SAMPLES_DIR) -> boo
         print(f"  {pid}: SKIP — missing {missing}")
         return False
 
-    shutil.copy(src_dir / "task.md",    out_dir / "problem.md")
+    # Strip the "## Functional tests" section from problem.md — it describes
+    # what the tests do, which the attacker misreads as instructions to write
+    # test code inside solution.cc. Tests are already in tests.cc.
+    task_md = (src_dir / "task.md").read_text()
+    import re as _re
+    task_md = _re.sub(r'\n## Functional tests.*', '', task_md, flags=_re.DOTALL).rstrip()
+    (out_dir / "problem.md").write_text(task_md)
     shutil.copy(src_dir / "starter.cc", out_dir / "starter.cc")
     shutil.copy(src_dir / "context.cc", out_dir / "context.cc")
     shutil.copy(src_dir / "tests.cc",   out_dir / "tests.cc")
