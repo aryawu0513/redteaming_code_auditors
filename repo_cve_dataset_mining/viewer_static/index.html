@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CVE Candidate Viewer</title>
+<link rel="stylesheet" id="hljs-theme"
+  href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/cpp.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/c.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg:#0d1117; --bg2:#161b22; --bg3:#21262d; --bg4:#30363d;
+  --border:#30363d; --text:#e6edf3; --text2:#8b949e; --text3:#6e7681;
+  --accent:#58a6ff; --green:#3fb950; --red:#f85149;
+  --yellow:#d29922; --purple:#bc8cff; --orange:#f0883e;
+  --sidebar:310px;
+  --mono:'SF Mono','Fira Code','Cascadia Code',Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;
+  --radius:6px;
+}
+[data-theme="light"] {
+  --bg:#fff; --bg2:#f6f8fa; --bg3:#eaeef2; --bg4:#d0d7de;
+  --border:#d0d7de; --text:#1f2328; --text2:#656d76; --text3:#8c959f;
+  --accent:#0969da; --green:#1a7f37; --red:#d1242f;
+  --yellow:#9a6700; --purple:#8250df; --orange:#bc4c00;
+}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;}
+#app{display:flex;height:100vh;overflow:hidden;}
+
+/* Sidebar */
+#sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.sb-header{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px;}
+.sb-title{font-weight:700;font-size:13px;flex:1;}
+.sb-title span{color:var(--accent);}
+.icon-btn{background:none;border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);padding:4px 8px;cursor:pointer;font-size:12px;}
+.icon-btn:hover{background:var(--bg3);color:var(--text);}
+.sb-filters{padding:8px 10px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px;}
+.sb-search input{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);padding:5px 8px;font-size:12px;font-family:var(--mono);}
+.sb-search input:focus{outline:none;border-color:var(--accent);}
+.verdict-filters{display:flex;gap:4px;flex-wrap:wrap;}
+.vf-btn{font-size:11px;font-weight:600;padding:3px 8px;border-radius:10px;border:1px solid transparent;cursor:pointer;opacity:0.5;transition:opacity .12s;}
+.vf-btn.active{opacity:1;}
+.vf-vulnerable{background:color-mix(in srgb,var(--green) 20%,transparent);color:var(--green);border-color:var(--green);}
+.vf-safe{background:color-mix(in srgb,var(--text3) 20%,transparent);color:var(--text3);border-color:var(--text3);}
+.vf-error{background:color-mix(in srgb,var(--orange) 20%,transparent);color:var(--orange);border-color:var(--orange);}
+.vf-skip{background:color-mix(in srgb,var(--yellow) 20%,transparent);color:var(--yellow);border-color:var(--yellow);}
+.vf-unknown{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent);border-color:var(--accent);}
+.sb-count{font-size:11px;color:var(--text3);padding:0 4px;}
+#sample-list{flex:1;overflow-y:auto;padding:4px 0;}
+.sample-item{display:flex;flex-direction:column;gap:2px;padding:9px 14px;cursor:pointer;border-left:3px solid transparent;transition:background .12s;}
+.sample-item:hover{background:var(--bg3);}
+.sample-item.active{background:var(--bg3);border-left-color:var(--accent);}
+.item-row1{display:flex;align-items:center;gap:6px;}
+.item-cve{font-weight:700;font-size:12px;font-family:var(--mono);color:var(--accent);}
+.lang-badge{font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:color-mix(in srgb,var(--purple) 20%,transparent);color:var(--purple);}
+.verdict-dot{width:7px;height:7px;border-radius:50%;flex:none;margin-left:auto;}
+.vd-vulnerable{background:var(--green);}
+.vd-safe{background:var(--text3);}
+.vd-error{background:var(--orange);}
+.vd-skip{background:var(--yellow);}
+.vd-unknown{background:var(--text3);opacity:.4;}
+.item-fn{font-size:12px;font-family:var(--mono);color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.item-file{font-size:11px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.badge-added{font-size:10px;font-weight:600;padding:1px 5px;border-radius:3px;background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green);margin-left:4px;}
+
+/* Main */
+#main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+#empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;}
+#detail{display:none;flex-direction:column;height:100%;overflow:hidden;}
+#header{padding:12px 20px;border-bottom:1px solid var(--border);background:var(--bg2);display:flex;align-items:flex-start;gap:12px;flex-shrink:0;}
+#header-left{flex:1;min-width:0;}
+#header-cve{font-size:18px;font-weight:700;font-family:var(--mono);color:var(--accent);}
+#header-fn{font-size:13px;font-family:var(--mono);color:var(--text);margin-top:2px;}
+#header-file{font-size:11px;color:var(--text3);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#header-links{display:flex;gap:8px;flex-shrink:0;align-items:flex-start;}
+#tabs{display:flex;border-bottom:1px solid var(--border);background:var(--bg2);padding:0 16px;flex-shrink:0;}
+.tab{padding:10px 14px;font-size:13px;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+#content{flex:1;overflow-y:auto;padding:20px;}
+
+/* Code */
+.code-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;font-family:var(--mono);font-size:12.5px;line-height:1.6;}
+.code-line{display:flex;}
+.line-num{user-select:none;color:var(--text3);text-align:right;padding:0 12px;min-width:52px;background:var(--bg3);border-right:1px solid var(--border);flex:none;}
+.line-src{padding:0 12px;white-space:pre;flex:1;}
+.line-highlight{background:color-mix(in srgb,var(--yellow) 12%,transparent)!important;}
+.line-highlight .line-num{background:color-mix(in srgb,var(--yellow) 25%,var(--bg3));color:var(--yellow);}
+
+/* Diff */
+.diff-wrap{font-family:var(--mono);font-size:12.5px;line-height:1.6;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.diff-line{display:flex;padding:0 12px;}
+.diff-line.add{background:color-mix(in srgb,var(--green) 12%,transparent);color:var(--green);}
+.diff-line.del{background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);}
+.diff-line.ctx{color:var(--text2);}
+.diff-tag{min-width:18px;flex:none;user-select:none;font-weight:700;}
+.diff-src{white-space:pre;flex:1;}
+.diff-sep{padding:4px 12px;color:var(--text3);font-size:11px;background:var(--bg3);border-top:1px solid var(--border);border-bottom:1px solid var(--border);}
+
+/* VulnLLM-R verdict */
+.verdict-banner{display:flex;align-items:center;gap:10px;padding:12px 16px;border-radius:var(--radius);margin-bottom:16px;font-size:13px;}
+.verdict-banner.vulnerable{background:color-mix(in srgb,var(--green) 10%,transparent);border:1px solid color-mix(in srgb,var(--green) 30%,transparent);}
+.verdict-banner.safe{background:color-mix(in srgb,var(--yellow) 8%,transparent);border:1px solid color-mix(in srgb,var(--yellow) 30%,transparent);}
+.verdict-banner.error{background:color-mix(in srgb,var(--orange) 10%,transparent);border:1px solid color-mix(in srgb,var(--orange) 30%,transparent);}
+.verdict-banner.skip{background:color-mix(in srgb,var(--yellow) 10%,transparent);border:1px solid color-mix(in srgb,var(--yellow) 30%,transparent);}
+.verdict-banner.unknown{background:var(--bg2);border:1px solid var(--border);}
+.verdict-icon{font-size:18px;flex:none;}
+.verdict-label{font-weight:700;font-family:var(--mono);}
+/* final answer structured box */
+.final-answer-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:4px;}
+.answer-row{display:flex;gap:10px;align-items:baseline;margin-top:6px;}
+.answer-row:first-child{margin-top:0;}
+.answer-key{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);min-width:52px;font-family:var(--mono);}
+.answer-val{font-size:13px;font-family:var(--mono);}
+.judge-yes{color:var(--green);font-weight:700;}
+.judge-no{color:var(--yellow);font-weight:700;}
+.answer-prose{margin-top:10px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text2);border-top:1px solid var(--border);padding-top:10px;}
+/* collapsible chain-of-thought */
+.think-details{border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:4px;}
+.think-details summary{padding:9px 14px;cursor:pointer;font-size:12px;color:var(--text2);user-select:none;list-style:none;display:flex;align-items:center;gap:6px;}
+.think-details summary::-webkit-details-marker{display:none;}
+.think-details summary::before{content:'▶';font-size:9px;transition:transform .15s;flex:none;}
+.think-details[open] summary::before{transform:rotate(90deg);}
+.think-details summary:hover{color:var(--text);background:var(--bg3);}
+.think-content{padding:12px 14px;font-size:12px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--text2);max-height:520px;overflow-y:auto;border-top:1px solid var(--border);}
+/* eyeball callout for safe entries */
+.eyeball-banner{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:var(--radius);margin-bottom:16px;font-size:12px;background:color-mix(in srgb,var(--yellow) 8%,transparent);border:1px dashed color-mix(in srgb,var(--yellow) 40%,transparent);color:var(--yellow);}
+/* heuristic badge */
+.h-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:3px;flex:none;}
+.h-match{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green);}
+.h-mismatch{background:color-mix(in srgb,var(--red) 18%,transparent);color:var(--red);}
+.h-no-diff{background:color-mix(in srgb,var(--text3) 15%,transparent);color:var(--text3);}
+/* heuristic details box */
+.heuristic-box{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;font-size:12px;line-height:1.8;}
+.ptr-list{font-family:var(--mono);font-size:12px;}
+.ptr-mentioned{color:var(--green);}
+.ptr-unmentioned{color:var(--red);}
+.ptr-sep{color:var(--text3);margin:0 4px;}
+
+/* Copy */
+.copy-wrap{position:relative;}
+.copy-btn{position:absolute;top:8px;right:8px;z-index:10;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);color:var(--text2);font-size:11px;font-family:var(--sans);padding:3px 9px;cursor:pointer;opacity:0;transition:opacity .15s;}
+.copy-wrap:hover .copy-btn{opacity:1;}
+.copy-btn:hover{background:var(--bg4);color:var(--text);}
+.copy-btn.copied{color:var(--green);border-color:var(--green);}
+
+/* Meta */
+.meta-grid{display:grid;grid-template-columns:150px 1fr;gap:1px;background:var(--border);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+.meta-key{background:var(--bg2);padding:8px 12px;font-size:12px;color:var(--text2);font-weight:600;}
+.meta-val{background:var(--bg);padding:8px 12px;font-size:12px;font-family:var(--mono);word-break:break-all;}
+.meta-val a{color:var(--accent);}
+.section-label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text3);margin-bottom:8px;margin-top:20px;}
+.section-label:first-child{margin-top:0;}
+.no-content{color:var(--text3);font-size:13px;padding:20px 0;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar">
+    <div class="sb-header">
+      <div class="sb-title">CVE <span>Candidates</span></div>
+      <button class="icon-btn" onclick="toggleTheme()">☀/☾</button>
+    </div>
+    <div class="sb-filters">
+      <div class="sb-search"><input id="search" placeholder="filter CVE / function…" oninput="applyFilters()"></div>
+      <div class="verdict-filters" id="verdict-filters"></div>
+      <div class="sb-count" id="sb-count"></div>
+    </div>
+    <div id="sample-list"></div>
+  </div>
+
+  <div id="main">
+    <div id="empty">
+      <div style="font-size:48px;">🔍</div>
+      <div style="font-size:14px;">Select a candidate</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:4px;" id="count-msg"></div>
+    </div>
+    <div id="detail">
+      <div id="header">
+        <div id="header-left">
+          <div id="header-cve"></div>
+          <div id="header-fn"></div>
+          <div id="header-file"></div>
+        </div>
+        <div id="header-links"></div>
+      </div>
+      <div id="tabs">
+        <div class="tab active" data-tab="func">Vulnerable function</div>
+        <div class="tab" data-tab="diff">Diff</div>
+        <div class="tab" data-tab="vulnllmr">VulnLLM-R</div>
+        <div class="tab" data-tab="file">Full file</div>
+        <div class="tab" data-tab="meta">Metadata</div>
+      </div>
+      <div id="content"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+let allCandidates = [];
+let current = null;
+let currentTab = 'func';
+let activeVerdicts = new Set(['vulnerable','safe','error','skip','unknown']);
+
+function toggleTheme() {
+  const h = document.documentElement;
+  const next = h.dataset.theme === 'dark' ? 'light' : 'dark';
+  h.dataset.theme = next;
+  document.getElementById('hljs-theme').href = next === 'dark'
+    ? 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css'
+    : 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css';
+}
+function escHtml(s) {
+  return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const VERDICT_CONF = {
+  vulnerable: {icon:'✓', label:'VULN',   cls:'vd-vulnerable', fcls:'vf-vulnerable'},
+  safe:       {icon:'?', label:'missed', cls:'vd-safe',       fcls:'vf-skip'},
+  error:      {icon:'!', label:'error',  cls:'vd-error',      fcls:'vf-error'},
+  skip:       {icon:'—', label:'skip',   cls:'vd-skip',       fcls:'vf-skip'},
+  unknown:    {icon:'?', label:'unknown',cls:'vd-unknown',    fcls:'vf-unknown'},
+};
+
+// ── Load ─────────────────────────────────────────────────────────────────────
+async function init() {
+  const [cands, meta] = await Promise.all([
+    fetch('/api/candidates').then(r => r.json()),
+    fetch('/api/meta').then(r => r.json()),
+  ]);
+  allCandidates = cands;
+  document.getElementById('count-msg').textContent =
+    `${meta.total} candidates · ${meta.counts.vulnerable??0} hits`;
+
+  // Build verdict filter buttons
+  const vf = document.getElementById('verdict-filters');
+  const presentVerdicts = [...new Set(cands.map(c => c.verdict))];
+  for (const v of ['vulnerable','safe','error','skip','unknown']) {
+    if (!presentVerdicts.includes(v)) continue;
+    const conf = VERDICT_CONF[v] || {};
+    const n = meta.counts[v] ?? 0;
+    const btn = document.createElement('button');
+    btn.className = `vf-btn ${conf.fcls} active`;
+    btn.dataset.verdict = v;
+    btn.textContent = `${conf.label} ${n}`;
+    btn.addEventListener('click', () => {
+      if (activeVerdicts.has(v)) activeVerdicts.delete(v);
+      else activeVerdicts.add(v);
+      btn.classList.toggle('active', activeVerdicts.has(v));
+      applyFilters();
+    });
+    vf.appendChild(btn);
+  }
+
+  applyFilters();
+}
+
+// ── Filters ───────────────────────────────────────────────────────────────────
+function applyFilters() {
+  const q = document.getElementById('search').value.toLowerCase();
+  const filtered = allCandidates.filter(c => {
+    if (!activeVerdicts.has(c.verdict)) return false;
+    if (q && !c.cve_id.toLowerCase().includes(q) &&
+             !( c.func_name||'').toLowerCase().includes(q) &&
+             !(c.file_path||'').toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById('sb-count').textContent = `${filtered.length} shown`;
+  renderList(filtered);
+}
+
+function renderList(items) {
+  const list = document.getElementById('sample-list');
+  list.innerHTML = '';
+  for (const c of items) {
+    const conf = VERDICT_CONF[c.verdict] || VERDICT_CONF.unknown;
+    const el = document.createElement('div');
+    el.className = 'sample-item';
+    el.dataset.id = c.id;
+    const addedBadge = c.lines_added != null
+      ? `<span class="badge-added">+${c.lines_added}L</span>` : '';
+    const hCls = c.heuristic === 'match' ? 'h-match'
+               : c.heuristic === 'mismatch' ? 'h-mismatch'
+               : c.heuristic === 'no_diff_ptrs' ? 'h-no-diff' : '';
+    const hBadge = hCls
+      ? `<span class="h-badge ${hCls}" title="pointer coverage: ${c.heuristic}">${
+          c.heuristic === 'match' ? '✓ptr' : c.heuristic === 'mismatch' ? '✗ptr' : '~ptr'
+        }</span>` : '';
+    el.innerHTML = `
+      <div class="item-row1">
+        <div class="item-cve">${escHtml(c.cve_id)}</div>
+        <span class="lang-badge">${c.lang}</span>
+        ${hBadge}
+        <div class="verdict-dot ${conf.cls}" title="${c.verdict}" style="margin-left:auto;"></div>
+      </div>
+      <div class="item-fn">${escHtml(c.func_name||'—')}${addedBadge}</div>
+      <div class="item-file">${escHtml(c.file_path)}</div>
+    `;
+    el.addEventListener('click', () => selectCandidate(c.id));
+    list.appendChild(el);
+  }
+}
+
+// ── Selection ─────────────────────────────────────────────────────────────────
+async function selectCandidate(id) {
+  document.querySelectorAll('.sample-item').forEach(el =>
+    el.classList.toggle('active', el.dataset.id === id));
+  const res = await fetch(`/api/candidate?id=${encodeURIComponent(id)}`);
+  if (!res.ok) return;
+  current = await res.json();
+
+  document.getElementById('empty').style.display = 'none';
+  const det = document.getElementById('detail');
+  det.style.display = 'flex'; det.style.flexDirection = 'column';
+  det.style.height = '100%'; det.style.overflow = 'hidden';
+
+  const conf = VERDICT_CONF[current.verdict] || VERDICT_CONF.unknown;
+  document.getElementById('header-cve').innerHTML =
+    `${escHtml(current.cve_id)} <span style="font-size:13px;font-family:var(--mono);color:${
+      current.verdict==='vulnerable'?'var(--green)':current.verdict==='safe'?'var(--text3)':'var(--orange)'
+    }">${conf.icon} ${conf.label}</span>`;
+  document.getElementById('header-fn').textContent = current.func_name || '—';
+  document.getElementById('header-file').textContent =
+    `${current.file_path}  ·  ${(current.repo_url||'').replace('https://github.com/','')}`;
+
+  const links = document.getElementById('header-links');
+  links.innerHTML = '';
+  if (current.nvd_url) {
+    const a = document.createElement('a');
+    a.href=current.nvd_url; a.target='_blank'; a.className='icon-btn'; a.textContent='NVD ↗';
+    links.appendChild(a);
+  }
+  if (current.commit_url) {
+    const a = document.createElement('a');
+    a.href=current.commit_url; a.target='_blank'; a.className='icon-btn'; a.textContent='Commit ↗';
+    links.appendChild(a);
+  }
+
+  showTab(currentTab);
+}
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t =>
+  t.addEventListener('click', () => showTab(t.dataset.tab)));
+
+function showTab(tab) {
+  currentTab = tab;
+  document.querySelectorAll('.tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.tab === tab));
+  if (!current) return;
+  const content = document.getElementById('content');
+  content.innerHTML = '';
+  if      (tab === 'func')    renderFunc(content);
+  else if (tab === 'diff')    renderDiff(content);
+  else if (tab === 'vulnllmr')renderVulnLLMR(content);
+  else if (tab === 'file')    renderFile(content);
+  else if (tab === 'meta')    renderMeta(content);
+}
+
+// ── Copy ──────────────────────────────────────────────────────────────────────
+function makeCopyBtn(getText) {
+  const btn = document.createElement('button');
+  btn.className = 'copy-btn'; btn.textContent = 'Copy';
+  btn.addEventListener('click', async () => {
+    try { await navigator.clipboard.writeText(getText()); btn.textContent='Copied!'; btn.classList.add('copied');
+      setTimeout(()=>{btn.textContent='Copy';btn.classList.remove('copied');},1500); }
+    catch { btn.textContent='Failed'; setTimeout(()=>{btn.textContent='Copy';},1500); }
+  });
+  return btn;
+}
+
+// ── Code renderer ─────────────────────────────────────────────────────────────
+function renderCode(container, src, lang, highlightLine, label) {
+  if (!src) { container.innerHTML=`<div class="no-content">No ${label||'code'} available.</div>`; return; }
+  const hdr = document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;margin-bottom:8px;';
+  if (label) { const l=document.createElement('div'); l.className='section-label'; l.style.margin='0'; l.textContent=label; hdr.appendChild(l); }
+  const cb = makeCopyBtn(()=>src); cb.style.cssText='position:static;opacity:1;margin-left:auto;'; hdr.appendChild(cb);
+  container.appendChild(hdr);
+
+  const highlighted = hljs.highlight(src,{language:lang}).value;
+  const lines = highlighted.split('\n');
+  const wrap = document.createElement('div'); wrap.className='copy-wrap';
+  const codeWrap = document.createElement('div'); codeWrap.className='code-wrap';
+  lines.forEach((lineHtml,i) => {
+    const lineNo=i+1, isHL=highlightLine&&lineNo===highlightLine;
+    const row=document.createElement('div'); row.className='code-line'+(isHL?' line-highlight':''); row.id=`L${lineNo}`;
+    const num=document.createElement('span'); num.className='line-num'; num.textContent=lineNo;
+    const srcEl=document.createElement('span'); srcEl.className='line-src'; srcEl.innerHTML=lineHtml||' ';
+    row.appendChild(num); row.appendChild(srcEl); codeWrap.appendChild(row);
+  });
+  wrap.appendChild(codeWrap); container.appendChild(wrap);
+  if (highlightLine) setTimeout(()=>{const el=document.getElementById(`L${highlightLine}`); if(el)el.scrollIntoView({behavior:'smooth',block:'center'});},60);
+}
+
+// ── Tab: Vulnerable function ──────────────────────────────────────────────────
+function renderFunc(container) {
+  renderCode(container, current.vulnerable_code, current.lang, null,
+    `${current.func_name} — buggy version (CWE-476)`);
+}
+
+// ── Tab: Diff ─────────────────────────────────────────────────────────────────
+function renderDiff(container) {
+  const diff = current.diff;
+  if (!diff||diff.length===0) {
+    container.innerHTML='<div class="no-content">No diff data (fixed_code not available).</div>'; return;
+  }
+  const added=diff.filter(l=>l.type==='add').length, removed=diff.filter(l=>l.type==='del').length;
+  const hdr=document.createElement('div');
+  hdr.style.cssText='display:flex;align-items:center;gap:10px;margin-bottom:10px;';
+  hdr.innerHTML=`<div class="section-label" style="margin:0">What the fix added</div>
+    <span style="font-size:12px;color:var(--green)">+${added}</span>
+    <span style="font-size:12px;color:var(--red)">-${removed}</span>`;
+  container.appendChild(hdr);
+
+  const wrap=document.createElement('div'); wrap.className='diff-wrap';
+  diff.forEach((entry,i) => {
+    const prev=diff[i-1];
+    if (i>0&&entry.type==='ctx'&&prev&&prev.type!=='ctx') {
+      const sep=document.createElement('div'); sep.className='diff-sep'; sep.textContent='···'; wrap.appendChild(sep);
+    }
+    const row=document.createElement('div'); row.className=`diff-line ${entry.type}`;
+    const tag=document.createElement('span'); tag.className='diff-tag';
+    tag.textContent=entry.type==='add'?'+':entry.type==='del'?'-':' ';
+    const src=document.createElement('span'); src.className='diff-src'; src.textContent=entry.line;
+    row.appendChild(tag); row.appendChild(src); wrap.appendChild(row);
+  });
+  container.appendChild(wrap);
+}
+
+// ── Tab: VulnLLM-R ───────────────────────────────────────────────────────────
+function renderVulnLLMR(container) {
+  const v = current.verdict || 'unknown';
+  const conf = VERDICT_CONF[v] || VERDICT_CONF.unknown;
+  const colors = {
+    vulnerable:'var(--green)', safe:'var(--yellow)',
+    error:'var(--orange)', skip:'var(--yellow)', unknown:'var(--text3)'
+  };
+
+  const banner = document.createElement('div');
+  banner.className = `verdict-banner ${v}`;
+  banner.innerHTML = `
+    <span class="verdict-icon">${conf.icon}</span>
+    <div>
+      <div class="verdict-label" style="color:${colors[v]}">${conf.label.toUpperCase()}</div>
+      <div style="font-size:12px;color:var(--text2);margin-top:2px;">VulnLLM-R verdict for CWE-476</div>
+    </div>
+  `;
+  container.appendChild(banner);
+
+  // Eyeball callout for safe (missed) entries
+  if (v === 'safe') {
+    const eyeball = document.createElement('div');
+    eyeball.className = 'eyeball-banner';
+    eyeball.innerHTML = `<span style="font-size:16px;">👁</span><span><strong>VulnLLM-R did NOT flag this as NPD.</strong> Eyeball the code — it may be a false negative.</span>`;
+    container.appendChild(eyeball);
+  }
+
+  const reasoning = current.reasoning || '';
+
+  if (!reasoning) {
+    const msg = document.createElement('div'); msg.className = 'no-content';
+    msg.textContent = 'No reasoning available (server may not have returned it).';
+    container.appendChild(msg);
+    return;
+  }
+
+  if (reasoning.startsWith('scan error')) {
+    const msg = document.createElement('div'); msg.className = 'no-content';
+    msg.textContent = reasoning;
+    container.appendChild(msg);
+    return;
+  }
+
+  // Parse <think>...</think> block
+  const thinkMatch = reasoning.match(/<think>([\s\S]*?)<\/think>/i);
+  const thinkContent = thinkMatch ? thinkMatch[1].trim() : null;
+
+  // Everything after </think> is the final answer; if no <think>, whole string
+  let finalText = thinkMatch
+    ? reasoning.slice(thinkMatch.index + thinkMatch[0].length).trim()
+    : reasoning.trim();
+
+  // Extract structured fields from final answer
+  const judgeMatch  = finalText.match(/#judge:\s*(\S+)/i);
+  const typeMatch   = finalText.match(/#type:\s*(\S+)/i);
+  const judge    = judgeMatch ? judgeMatch[1] : null;
+  const cweType  = typeMatch  ? typeMatch[1]  : null;
+
+  // Prose = final answer minus the structured lines and the ## header
+  const prose = finalText
+    .replace(/^##\s*Final Answer\s*\n?/im, '')
+    .replace(/#judge:\s*\S+/i, '')
+    .replace(/#type:\s*\S+/i, '')
+    .trim();
+
+  // ── Final Answer box ──────────────────────────────────────────────────────
+  if (judge !== null || cweType !== null || finalText) {
+    const lbl = document.createElement('div'); lbl.className = 'section-label'; lbl.textContent = 'Final Answer';
+    container.appendChild(lbl);
+    const box = document.createElement('div'); box.className = 'final-answer-box';
+
+    let html = '';
+    if (judge !== null) {
+      const isYes = judge.toLowerCase() === 'yes';
+      html += `<div class="answer-row">
+        <span class="answer-key">#judge</span>
+        <span class="answer-val ${isYes ? 'judge-yes' : 'judge-no'}">${escHtml(judge)}</span>
+      </div>`;
+    }
+    if (cweType !== null) {
+      html += `<div class="answer-row">
+        <span class="answer-key">#type</span>
+        <span class="answer-val">${escHtml(cweType)}</span>
+      </div>`;
+    }
+    if (prose) {
+      html += `<div class="answer-prose">${escHtml(prose)}</div>`;
+    }
+    box.innerHTML = html;
+    container.appendChild(box);
+  }
+
+  // ── Pointer coverage heuristic ────────────────────────────────────────────
+  const h = current.heuristic;
+  if (h && h !== 'n/a') {
+    const hLbl = document.createElement('div'); hLbl.className = 'section-label'; hLbl.textContent = 'Pointer Coverage (Filter 5)';
+    container.appendChild(hLbl);
+    const hBox = document.createElement('div'); hBox.className = 'heuristic-box';
+
+    const hConf = {
+      match:        { cls: 'h-match',   icon: '✓', msg: 'Reasoning mentions the pointer(s) changed by the patch.' },
+      mismatch:     { cls: 'h-mismatch', icon: '✗', msg: 'Reasoning does NOT mention any pointer changed by the patch — possible wrong-pointer reasoning.' },
+      no_diff_ptrs: { cls: 'h-no-diff', icon: '~', msg: 'No pointer expressions extracted from diff — heuristic inconclusive.' },
+    }[h] || { cls: '', icon: '?', msg: '' };
+
+    let hHtml = `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+      <span class="h-badge ${hConf.cls}">${hConf.icon} ${h}</span>
+      <span style="color:var(--text2)">${hConf.msg}</span>
+    </div>`;
+
+    const diffPtrs  = current.diff_ptrs  || [];
+    const mentioned = current.mentioned  || [];
+    const unmentioned = current.unmentioned || [];
+
+    if (diffPtrs.length) {
+      hHtml += `<div class="ptr-list">`;
+      hHtml += `<span style="color:var(--text3);font-size:11px;">diff pointers: </span>`;
+      for (const p of diffPtrs) {
+        const isMentioned = mentioned.includes(p);
+        hHtml += `<span class="${isMentioned ? 'ptr-mentioned' : 'ptr-unmentioned'}">${escHtml(p)}</span>`;
+        hHtml += `<span class="ptr-sep">·</span>`;
+      }
+      hHtml = hHtml.replace(/·<\/span>$/, '</span>');  // trim trailing separator
+      hHtml += `</div>`;
+      if (unmentioned.length) {
+        hHtml += `<div style="margin-top:6px;color:var(--red);font-size:11px;">not in reasoning: <span class="ptr-list">${unmentioned.map(escHtml).join(', ')}</span></div>`;
+      }
+    }
+
+    hBox.innerHTML = hHtml;
+    container.appendChild(hBox);
+  }
+
+  // ── Chain of Thought (collapsible) ────────────────────────────────────────
+  if (thinkContent) {
+    const lbl = document.createElement('div'); lbl.className = 'section-label'; lbl.textContent = 'Chain of Thought';
+    container.appendChild(lbl);
+    const details = document.createElement('details');
+    details.className = 'think-details';
+    const lineCount = thinkContent.split('\n').length;
+    const summary = document.createElement('summary');
+    summary.textContent = `${lineCount} lines of reasoning — click to expand`;
+    const content = document.createElement('div');
+    content.className = 'think-content';
+    content.textContent = thinkContent;
+    details.appendChild(summary);
+    details.appendChild(content);
+    container.appendChild(details);
+  }
+}
+
+// ── Tab: Full file ────────────────────────────────────────────────────────────
+function renderFile(container) {
+  renderCode(container, current.full_file, current.lang, current.func_line,
+    `${current.file_path} (${current.full_file_lines} lines)`);
+}
+
+// ── Tab: Metadata ─────────────────────────────────────────────────────────────
+function renderMeta(container) {
+  const lbl=document.createElement('div'); lbl.className='section-label'; lbl.textContent='Provenance';
+  container.appendChild(lbl);
+  const grid=document.createElement('div'); grid.className='meta-grid';
+  const rows=[
+    ['CVE', current.nvd_url?`<a href="${escHtml(current.nvd_url)}" target="_blank">${escHtml(current.cve_id)}</a>`:escHtml(current.cve_id)],
+    ['Function',       escHtml(current.func_name||'—')],
+    ['File',           escHtml(current.file_path)],
+    ['Repo',           current.repo_url?`<a href="${escHtml(current.repo_url)}" target="_blank">${escHtml(current.repo_url)}</a>`:'—'],
+    ['Fix commit',     current.commit_url?`<a href="${escHtml(current.commit_url)}" target="_blank">${escHtml((current.commit_hash||'').slice(0,12))}…</a>`:escHtml(current.commit_hash||'—')],
+    ['VulnLLM-R',     escHtml(current.verdict||'unknown')],
+    ['Lines added in fix', current.lines_added!=null?`+${current.lines_added}`:'—'],
+    ['Full file lines', String(current.full_file_lines||0)],
+    ['Language',       escHtml(current.lang)],
+    ['Source dataset', escHtml(current.source||'—')],
+  ];
+  for (const [k,v] of rows) {
+    const key=document.createElement('div'); key.className='meta-key'; key.textContent=k;
+    const val=document.createElement('div'); val.className='meta-val'; val.innerHTML=v;
+    grid.appendChild(key); grid.appendChild(val);
+  }
+  container.appendChild(grid);
+  if (current.commit_message) {
+    const lbl2=document.createElement('div'); lbl2.className='section-label'; lbl2.textContent='Commit message';
+    container.appendChild(lbl2);
+    const pre=document.createElement('div');
+    pre.style.cssText='padding:10px 14px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;color:var(--text2);background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);';
+    pre.textContent=current.commit_message;
+    container.appendChild(pre);
+  }
+}
+
+init();
+</script>
+</body>
+</html>

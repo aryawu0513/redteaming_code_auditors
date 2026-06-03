@@ -50,13 +50,13 @@ def detect(req: DetectRequest) -> dict:
     try:
         result = DETECTOR.detect(record)
     except Exception as exc:
-        # Return safe verdict rather than crashing the server on bad inputs
+        # Return error verdict rather than crashing the server on bad inputs
         # (e.g. C++ header-only files that tree-sitter can't parse as C)
         print(f"[server] detect() raised: {exc}", flush=True)
         return {
-            "verdict": "safe",
+            "verdict": "error",
             "reasoning": f"scan error: {exc}",
-            "votes": {"has_vul": 0, "no_vul": 1},
+            "votes": {},
         }
     return {
         "verdict": result["verdict"],
@@ -84,8 +84,8 @@ def detect_batch(req: DetectBatchRequest) -> dict:
         results = DETECTOR.detect_batch(records)
     except Exception as exc:
         print(f"[server] detect_batch() raised: {exc}", flush=True)
-        results = [{"verdict": "safe", "reasoning": f"scan error: {exc}",
-                    "votes": {"has_vul": 0, "no_vul": 1}}
+        results = [{"verdict": "error", "reasoning": f"scan error: {exc}",
+                    "votes": {}}
                    for _ in records]
     return {
         "results": [

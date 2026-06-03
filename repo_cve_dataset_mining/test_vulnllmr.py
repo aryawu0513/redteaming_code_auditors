@@ -1,8 +1,16 @@
 #!/usr/bin/env python3
 """
-Test VulnLLM-R on the filter-3 candidates.
-Sends each candidate's buggy full_file to the served detector at localhost:8008.
+Test VulnLLM-R on filter-3 candidates.
+
+Usage:
+    python test_vulnllmr.py [input.jsonl] [--candidates-dir candidates/]
+
+- Streams results to <input>.results.jsonl as they arrive.
+- Writes candidate.json immediately on a hit.
+- Skips entries where buggy-file reconstruction fails.
+- No resume: always runs all entries fresh.
 """
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -10,7 +18,6 @@ from pathlib import Path
 import requests
 
 URL = "http://localhost:8008"
-IN  = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).parent / "f3_dedup.jsonl"
 
 
 def make_buggy(rec):
@@ -19,7 +26,7 @@ def make_buggy(rec):
     ff = rec.get("full_file", "")
     if fc and fc.strip() in ff:
         return ff.replace(fc.strip(), vc.strip(), 1)
-    return ff
+    return None   # reconstruction failed — skip
 
 
 def detect(code: str, func_name: str, file_path: str) -> dict:
@@ -35,45 +42,94 @@ def detect(code: str, func_name: str, file_path: str) -> dict:
     return r.json()
 
 
-def main():
-    rows = [json.loads(l) for l in IN.read_text().splitlines()]
-    print(f"Testing {len(rows)} candidates against VulnLLM-R at {URL}\n")
+def write_candidate(rec: dict, buggy: str, candidates_dir: Path):
+    candidate = {k: v for k, v in rec.items() if not k.startswith("_")}
+    candidate["full_file"] = buggy
+    fp   = rec.get("file_path", "")
+    fn   = rec.get("func_name", "")
+    cve  = rec.get("cve_id", "")
+    slug = f"{cve}_{Path(fp).stem}_{fn}"[:80].replace("/", "_").replace(" ", "_")
+    out  = candidates_dir / f"{slug}.json"
+    out.write_text(json.dumps(candidate, indent=2))
+    return out
 
-    results = []
-    for i, rec in enumerate(rows):
-        buggy = make_buggy(rec)
-        tag = f"[{i+1}/{len(rows)}]"
-        fn  = rec["func_name"]
-        fp  = rec["file_path"]
-        print(f"{tag} {rec['cve_id']:20} {fn:35} ...", end=" ", flush=True)
-        try:
-            out = detect(buggy, fn, fp)
-            verdict   = out.get("verdict", "?")
-            reasoning = out.get("reasoning", "")[:200].replace("\n", " ")
-            symbol    = "✓ VULN" if verdict == "vulnerable" else "✗ safe"
-            print(f"{symbol}")
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("input", nargs="?",
+                    default="repo_cve_dataset_mining/f3_dedup.jsonl")
+    ap.add_argument("--candidates-dir", default="repo_cve_dataset_mining/candidates")
+    args = ap.parse_args()
+
+    in_path  = Path(args.input)
+    out_path = in_path.with_suffix(".results.jsonl")
+    cand_dir = Path(args.candidates_dir)
+    cand_dir.mkdir(parents=True, exist_ok=True)
+
+    rows = [json.loads(l) for l in in_path.read_text().splitlines() if l.strip()]
+    print(f"{len(rows)} candidates from {in_path}")
+    print(f"Results → {out_path}  (overwritten each run)")
+    print(f"Hits    → {cand_dir}/\n")
+
+    try:
+        requests.get(f"{URL}/health", timeout=5).raise_for_status()
+    except Exception as e:
+        print(f"ERROR: VulnLLM-R not reachable at {URL}: {e}")
+        sys.exit(1)
+
+    hits = misses = errors = skipped = 0
+
+    with out_path.open("w") as fout:   # overwrite — no resume
+        for i, rec in enumerate(rows):
+            fn  = rec.get("func_name", "")
+            fp  = rec.get("file_path", "")
+            cve = rec.get("cve_id", "")
+            tag = f"[{i+1}/{len(rows)}]"
+
+            buggy = make_buggy(rec)
+            if buggy is None:
+                print(f"{tag} SKIP (reconstruction failed): {cve} {fn}")
+                skipped += 1
+                fout.write(json.dumps({
+                    "cve_id": cve, "func_name": fn, "file_path": fp,
+                    "verdict": "skip", "reasoning": "fixed_code not found in full_file",
+                }) + "\n")
+                fout.flush()
+                continue
+
+            print(f"{tag} {cve:20} {fn:35} ...", end=" ", flush=True)
+
+            verdict = reasoning = ""
+            try:
+                out    = detect(buggy, fn, fp)
+                verdict   = out.get("verdict", "error")
+                reasoning = out.get("reasoning", "")
+            except Exception as e:
+                verdict   = "error"
+                reasoning = str(e)
+
+            symbol = "✓ VULN" if verdict == "vulnerable" else \
+                     ("✗ safe" if verdict == "safe" else "! error")
+            print(symbol)
+
+            fout.write(json.dumps({
+                "cve_id": cve, "func_name": fn, "file_path": fp,
+                "verdict": verdict, "reasoning": reasoning,
+            }) + "\n")
+            fout.flush()
+
             if verdict == "vulnerable":
-                print(f"          {reasoning}")
-        except Exception as e:
-            print(f"ERROR: {e}")
-            out = {"verdict": "error"}
-        results.append({
-            "cve_id":    rec["cve_id"],
-            "func_name": fn,
-            "file_path": fp,
-            **out,
-        })
+                hits += 1
+                out_f = write_candidate(rec, buggy, cand_dir)
+                print(f"          → {out_f.name}")
+            elif verdict == "safe":
+                misses += 1
+            else:
+                errors += 1
 
     print(f"\n{'='*60}")
-    detected = [r for r in results if r.get("verdict") == "vulnerable"]
-    missed   = [r for r in results if r.get("verdict") != "vulnerable"]
-    print(f"VulnLLM-R detected: {len(detected)}/{len(results)}")
-    print("\nHITs:")
-    for r in detected:
-        print(f"  ✓ {r['cve_id']:20} {r['func_name']}")
-    print("\nMISSes:")
-    for r in missed:
-        print(f"  ✗ {r['cve_id']:20} {r['func_name']}  [{r.get('verdict','?')}]")
+    print(f"hits={hits}  safe={misses}  errors={errors}  skipped={skipped}")
+    print(f"Results → {out_path}")
 
 
 if __name__ == "__main__":

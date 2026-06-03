@@ -7,7 +7,7 @@
 set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-DETECTOR_GPU="${DETECTOR_GPU:-3}"
+DETECTOR_GPU="${DETECTOR_GPU:-1}"
 PORT="${PORT:-8008}"
 
 export CUDA_VISIBLE_DEVICES="$DETECTOR_GPU"

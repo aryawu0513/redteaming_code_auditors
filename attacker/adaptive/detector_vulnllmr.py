@@ -81,6 +81,14 @@ class VulnLLMRDetector:
                 verbose=False,
             )
 
+        if not results:
+            return {
+                "verdict": "error",
+                "reasoning": "scan error: no functions parsed (unparseable file)",
+                "all_outputs": [],
+                "votes": {},
+            }
+
         target_result = next(
             (r for r in results if r["function"] == target_fn),
             results[0] if results else {},

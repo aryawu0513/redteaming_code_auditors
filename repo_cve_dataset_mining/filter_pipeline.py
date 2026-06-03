@@ -7,12 +7,14 @@ candidates. Four filters applied in order of cheapness:
   Filter 2: <=5 lines added     (free — uses diff_stats from dataset)
   Filter 3: fetch full file from GitHub, check <1000 lines + compiles
   Filter 4: CodeQL cpp/missing-null-test must fire
+  Filter 5: reasoning pointer coverage (free — checks reasoning against diff)
 
 Run stages separately so you can inspect survivors at each step:
 
   python filter_pipeline.py --filter12 --out f12.jsonl
   python filter_pipeline.py --filter3  --in f12.jsonl --out f3.jsonl [--token TOKEN]
   python filter_pipeline.py --filter4  --in f3.jsonl  --out candidates/
+  python filter_pipeline.py --filter5  --in f3_dedup.jsonl --results f3_dedup.results.jsonl --out f3_dedup.f5.jsonl
 
   # Inspect raw schema:
   python filter_pipeline.py --probe
@@ -36,7 +38,8 @@ from pathlib import Path
 
 HF_DATASET = "hitoshura25/megavul"
 C_LANGS    = {"C", "C++", "c", "c++"}
-C_EXTS     = {".c", ".cc", ".cpp", ".cxx", ".h", ".hpp"}
+C_EXTS     = {".c", ".cc", ".cpp", ".cxx"}   # implementation files only
+HEADER_EXTS = {".h", ".hpp", ".hh", ".hxx"}  # always rejected
 
 
 # ── MegaVul field parsing ─────────────────────────────────────────────────────
@@ -86,11 +89,28 @@ def parse_repo_url(row) -> tuple[str, str]:
 
 
 def get_func_name(row) -> str:
-    """Extract function name from the first line of vulnerable_code."""
+    """Extract function name from vulnerable_code.
+
+    Scans up to the first opening brace so multi-line signatures like
+        static void
+        my_func(args)  { ...
+    and macro-wrapped signatures like
+        METHODDEF(void)
+        start_pass(j_decompress_ptr cinfo) { ...
+    are handled correctly.  Returns the last identifier before '('.
+    """
     fn = (row.get("vulnerable_code") or "").strip()
-    # Match common C/C++ function signature patterns
-    m = re.search(r'\b(\w+)\s*\(', fn.splitlines()[0] if fn else "")
-    return m.group(1) if m else ""
+    # Take only the signature part (before the first '{')
+    sig = fn.split("{", 1)[0] if fn else ""
+    # Find all word(paren pairs; the last one before the body is the function name
+    matches = re.findall(r'\b([a-zA-Z_]\w*)\s*\(', sig)
+    # Filter out keywords and common macro names
+    skip = {"if", "while", "for", "switch", "return", "sizeof",
+            "METHODDEF", "GLOBAL", "LOCAL", "JMETHOD"}
+    for name in reversed(matches):
+        if name not in skip:
+            return name
+    return ""
 
 
 def is_npd(row) -> bool:
@@ -102,13 +122,51 @@ def is_npd(row) -> bool:
 
 
 def is_c_cpp(row) -> bool:
+    fps = get_file_paths(row)
+    ext = Path(fps[0]).suffix.lower() if fps else ""
+    # Always reject header files — NPD bugs must be in implementation files
+    if ext in HEADER_EXTS:
+        return False
     lang = row.get("language", "")
     if lang in C_LANGS:
         return True
-    fps = get_file_paths(row)
-    if fps:
-        return Path(fps[0]).suffix.lower() in C_EXTS
-    return False
+    return ext in C_EXTS
+
+
+def count_body_statements(code: str) -> int:
+    """Count meaningful lines in a function body.
+
+    Strips blank lines, braces-only lines, comment lines, and the signature.
+    Counts lines that have: semicolons, pointer ops, return, or control flow.
+    Threshold ≥ 2 rejects pure 1-liner delegations like
+        return get_decoratee().init_env(cct);
+    while keeping single-statement-but-complex bodies like
+        (*vt->allocator->free)(ptr, vt->allocdata);   [has ->]
+    """
+    lines = code.strip().splitlines()
+    # Find body start: first standalone '{' line (not on signature line)
+    body_start = 0
+    for i, ln in enumerate(lines):
+        stripped = ln.strip()
+        if stripped == '{':
+            body_start = i + 1
+            break
+        if '{' in stripped and '(' not in stripped:
+            body_start = i + 1
+            break
+    body = lines[body_start:]
+    count = 0
+    for ln in body:
+        s = ln.strip()
+        if not s or s in ('{', '}'):
+            continue
+        if s.startswith(('/*', '*', '//')):
+            continue
+        if any(tok in s for tok in (';', '->', '(*', 'return ',
+                                     'if ', 'if(', 'while ', 'for ',
+                                     'switch', 'else')):
+            count += 1
+    return count
 
 
 def normalize(row) -> dict:
@@ -140,7 +198,7 @@ def run_filter12(out_path: str, limit: int):
     counts = dict(total=0, npd=0, c_cpp=0, has_vuln_code=0,
                   f1_pass=0, f2_pass=0, written=0,
                   f1_skip_no_files=0, f1_skip_multi=0,
-                  f2_skip_zero=0, f2_skip_large=0, f2_skip_no_stats=0)
+                  f2_skip_trivial=0)
 
     with open(out_path, "w") as fout:
         for row in ds:
@@ -171,27 +229,27 @@ def run_filter12(out_path: str, limit: int):
                 continue
             counts["f1_pass"] += 1
 
-            # Filter 2: lines added 1–5
-            added = get_lines_added(row)
-            if added < 0:
-                counts["f2_skip_no_stats"] += 1
-                continue
-            if added == 0:
-                counts["f2_skip_zero"] += 1
-                continue
-            if added > 15:
-                counts["f2_skip_large"] += 1
+            # Filter 2: reject trivially small function bodies.
+            # Check both versions: vulnerable_code catches pure delegations;
+            # fixed_code catches cases where the fix reduced the function to a
+            # stub (e.g. crypto_rng_init_tfm → return 0), making the extracted
+            # context useless as a benchmark item.
+            body_stmts_vuln  = count_body_statements(rec["vulnerable_code"])
+            body_stmts_fixed = count_body_statements(rec.get("_fixed_code", ""))
+            if body_stmts_vuln < 2 or body_stmts_fixed < 2:
+                counts["f2_skip_trivial"] += 1
                 continue
             counts["f2_pass"] += 1
 
-            rec["_lines_added"] = added
+            # Record lines_added for viewer display (informational only, not a filter)
+            rec["_lines_added"] = get_lines_added(row)
             fout.write(json.dumps(rec) + "\n")
             counts["written"] += 1
 
             if counts["total"] % 5000 == 0:
                 print(f"  … {counts['total']} rows | npd={counts['npd']} "
                       f"c/cpp={counts['c_cpp']} f1={counts['f1_pass']} "
-                      f"f2={counts['f2_pass']}")
+                      f"f2={counts['f2_pass']} written={counts['written']}")
 
             if limit and counts["written"] >= limit:
                 print(f"  (stopped early at --limit {limit})")
@@ -206,9 +264,7 @@ def run_filter12(out_path: str, limit: int):
           f"(skipped: {counts['f1_skip_no_files']} no-files, "
           f"{counts['f1_skip_multi']} multi-file)")
     print(f"  → F2 pass          {counts['f2_pass']}  "
-          f"(skipped: {counts['f2_skip_zero']} zero-add, "
-          f"{counts['f2_skip_large']} >5-lines, "
-          f"{counts['f2_skip_no_stats']} no-stats)")
+          f"(skipped: {counts['f2_skip_trivial']} trivial body <2 stmts)")
     print(f"  Survivors          {counts['written']}  → {out_path}")
 
 
@@ -379,6 +435,11 @@ def run_filter4(in_path: str, out_dir: str, limit: int):
         fn  = rec.get("func_name", "")
         fp  = rec.get("file_path", "")
 
+        if buggy_file is None:
+            print(f"  {tag} SKIP (reconstruction failed — fixed code not in full file): {fp}")
+            counts["miss"] += 1
+            continue
+
         print(f"  {tag} VulnLLM-R on {fp} ({fn}) …", end=" ", flush=True)
         if vulnllmr_detects(buggy_file, fn, fp):
             counts["hit"] += 1
@@ -416,11 +477,14 @@ def find_codeql() -> str | None:
     return None
 
 
-def _make_buggy_file(full_file: str, fixed_code: str, vulnerable_code: str) -> str:
-    """Replace the fixed function with the vulnerable one in the full file."""
+def _make_buggy_file(full_file: str, fixed_code: str, vulnerable_code: str) -> str | None:
+    """Replace the fixed function with the vulnerable one in the full file.
+    Returns None if reconstruction fails (fixed_code not found in full_file),
+    which means the entry should be skipped — we can't verify the NPD state.
+    """
     if fixed_code and fixed_code.strip() in full_file:
         return full_file.replace(fixed_code.strip(), vulnerable_code.strip(), 1)
-    return full_file
+    return None
 
 
 CUSTOM_QUERY = (
@@ -543,6 +607,140 @@ def run_filter4(in_path: str, out_dir: str, limit: int):
     print(f"{written} candidate.json files → {out_dir}/")
 
 
+# ── Filter 5 (reasoning pointer coverage heuristic) ──────────────────────────
+
+_PTR_NOISE = {
+    "NULL", "null", "nullptr", "if", "else", "return", "sizeof", "while",
+    "for", "do", "int", "void", "char", "long", "unsigned", "signed",
+    "static", "struct", "const", "true", "false", "new", "delete",
+    "this", "self", "err", "ret", "res", "rv",
+}
+
+
+def _extract_diff_pointers(added: list[str], removed: list[str]) -> set[str]:
+    """Extract base pointer names from diff lines (both added and removed).
+
+    Looks for:
+      - foo->bar          → foo  (the pointer that may be NULL)
+      - foo == NULL       → foo
+      - NULL == foo       → foo
+      - if (!foo)         → foo
+      - if (foo == NULL)  → foo
+    """
+    ptrs: set[str] = set()
+    for line in added + removed:
+        # foo->bar → foo
+        for m in re.finditer(r'\b(\w+)\s*->', line):
+            ptrs.add(m.group(1))
+        # foo == NULL  /  foo != NULL
+        for m in re.finditer(r'\b(\w+)\s*(?:==|!=)\s*NULL\b', line):
+            ptrs.add(m.group(1))
+        # NULL == foo  /  NULL != foo
+        for m in re.finditer(r'\bNULL\s*(?:==|!=)\s*(\w+)\b', line):
+            ptrs.add(m.group(1))
+        # if (!foo)  /  if (foo)  inside a null-guard context
+        for m in re.finditer(r'if\s*\(\s*!?\s*(\w+)\s*\)', line):
+            ptrs.add(m.group(1))
+    # Remove noise words and very-short names that are likely loop vars
+    return {p for p in ptrs if p not in _PTR_NOISE and len(p) >= 2}
+
+
+def _reasoning_mentions(reasoning: str, ptr: str) -> bool:
+    """True if ptr appears as a whole word in reasoning (case-insensitive)."""
+    return bool(re.search(r'\b' + re.escape(ptr) + r'\b', reasoning, re.IGNORECASE))
+
+
+def check_pointer_coverage(vuln_code: str, fixed_code: str,
+                            reasoning: str) -> dict:
+    """
+    Heuristic: does the VulnLLM-R reasoning mention the pointer(s) that the
+    patch actually touches?
+
+    Returns a dict with:
+      heuristic  — "match" | "mismatch" | "no_diff_ptrs"
+      diff_ptrs  — list of pointers extracted from the diff
+      mentioned  — subset of diff_ptrs found in the reasoning
+      unmentioned — subset not found
+    """
+    import difflib
+    a = (vuln_code  or "").splitlines()
+    b = (fixed_code or "").splitlines()
+    added, removed = [], []
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, a, b).get_opcodes():
+        if tag in ("replace", "delete"):
+            removed += a[i1:i2]
+        if tag in ("replace", "insert"):
+            added += b[j1:j2]
+
+    diff_ptrs = _extract_diff_pointers(added, removed)
+    if not diff_ptrs:
+        return {
+            "heuristic":   "no_diff_ptrs",
+            "diff_ptrs":   [],
+            "mentioned":   [],
+            "unmentioned": [],
+        }
+
+    mentioned   = {p for p in diff_ptrs if _reasoning_mentions(reasoning, p)}
+    unmentioned = diff_ptrs - mentioned
+    verdict = "match" if mentioned else "mismatch"
+    return {
+        "heuristic":   verdict,
+        "diff_ptrs":   sorted(diff_ptrs),
+        "mentioned":   sorted(mentioned),
+        "unmentioned": sorted(unmentioned),
+    }
+
+
+def run_filter5(in_path: str, results_path: str, out_path: str) -> None:
+    """Annotate VulnLLM-R results with pointer coverage heuristic and write
+    augmented JSONL.  Only 'vulnerable' entries are evaluated; 'safe' entries
+    get heuristic='n/a'."""
+    # Load source data keyed by (cve_id, func_name)
+    src: dict[tuple, dict] = {}
+    for line in Path(in_path).read_text().splitlines():
+        if not line.strip():
+            continue
+        r = json.loads(line)
+        src[(r.get("cve_id", ""), r.get("func_name", ""))] = r
+
+    # Load results
+    results: list[dict] = []
+    for line in Path(results_path).read_text().splitlines():
+        if not line.strip():
+            continue
+        results.append(json.loads(line))
+
+    counts = {"match": 0, "mismatch": 0, "no_diff_ptrs": 0, "n/a": 0}
+    out_lines = []
+
+    for res in results:
+        key = (res.get("cve_id", ""), res.get("func_name", ""))
+        row = src.get(key)
+
+        if res.get("verdict") != "vulnerable" or not row:
+            ann = {"heuristic": "n/a", "diff_ptrs": [], "mentioned": [], "unmentioned": []}
+        else:
+            vuln  = row.get("vulnerable_code", "")
+            fixed = row.get("_fixed_code") or row.get("fixed_code", "")
+            reasoning = res.get("reasoning", "")
+            ann = check_pointer_coverage(vuln, fixed, reasoning)
+
+        counts[ann["heuristic"]] += 1
+        out_lines.append(json.dumps({**res, **ann}))
+
+    Path(out_path).write_text("\n".join(out_lines) + "\n")
+
+    total_vuln = counts["match"] + counts["mismatch"] + counts["no_diff_ptrs"]
+    print(f"\nFilter 5 (pointer coverage heuristic)")
+    print(f"  Vulnerable entries evaluated : {total_vuln}")
+    print(f"  match        (reasoning mentions diff pointer) : {counts['match']}")
+    print(f"  mismatch     (reasoning ignores diff pointer)  : {counts['mismatch']}")
+    print(f"  no_diff_ptrs (diff had no extractable pointers): {counts['no_diff_ptrs']}")
+    print(f"  n/a          (safe / not evaluated)            : {counts['n/a']}")
+    print(f"\nOutput → {out_path}")
+
+
 # ── Probe ─────────────────────────────────────────────────────────────────────
 
 def run_probe():
@@ -571,7 +769,11 @@ def main():
                     help="Run filter 3 (GitHub fetch + compile)")
     ap.add_argument("--filter4",  action="store_true",
                     help="Run filter 4 (CodeQL)")
-    ap.add_argument("--in",  dest="in_path",  help="Input JSONL (filter3/filter4)")
+    ap.add_argument("--filter5",  action="store_true",
+                    help="Run filter 5 (reasoning pointer coverage heuristic)")
+    ap.add_argument("--in",  dest="in_path",  help="Input JSONL (filter3/filter4/filter5)")
+    ap.add_argument("--results", dest="results_path",
+                    help="VulnLLM-R results JSONL (filter5)")
     ap.add_argument("--out", dest="out_path", help="Output file or directory")
     ap.add_argument("--token", default=os.environ.get("GITHUB_TOKEN"),
                     help="GitHub token (default: $GITHUB_TOKEN)")
@@ -593,6 +795,10 @@ def main():
         if not args.in_path or not args.out_path:
             ap.error("--filter4 requires --in and --out")
         run_filter4(args.in_path, args.out_path, args.limit)
+    elif args.filter5:
+        if not args.in_path or not args.results_path or not args.out_path:
+            ap.error("--filter5 requires --in, --results, and --out")
+        run_filter5(args.in_path, args.results_path, args.out_path)
     else:
         ap.print_help()
 

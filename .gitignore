@@ -31,4 +31,9 @@ benchmark/
 repo_dataset_mining/harness/
 repo_dataset_mining/samples/
 _logs/
-attacker/adaptive/agentic_results/
+attacker/adaptive/agentic_results/repo_cve_dataset_mining/samples_cve*/
+repo_cve_dataset_mining/__pycache__/
+repo_cve_dataset_mining/f3*.jsonl
+repo_cve_dataset_mining/f12*.jsonl
+repo_cve_dataset_mining/pilot10.jsonl
+repo_cve_dataset_mining/candidates/
