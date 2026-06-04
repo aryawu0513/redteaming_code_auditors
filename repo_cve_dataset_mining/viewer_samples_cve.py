@@ -283,7 +283,10 @@ async function init() {
     const testBadge = s.has_tests ? '<span class="badge badge-ok">tests</span>' : '';
     const langBadge = `<span class="badge badge-lang">${esc(s.lang)}</span>`;
     el.innerHTML = `
-      <div class="s-cve">${esc(s.cve_id)}</div>
+      <div style="display:flex;align-items:baseline;gap:7px">
+        <div class="s-cve">${esc(s.cve_id)}</div>
+        <div style="font-size:10px;font-family:var(--mono);color:var(--text3)">${esc(s.id)}</div>
+      </div>
       <div class="s-fn">${esc(s.function)}</div>
       <div class="s-file">${esc(repo)}</div>
       <div class="s-badges">${langBadge}${diffBadge}${taskBadge}${testBadge}</div>`;
@@ -304,7 +307,8 @@ async function select(id) {
   det.style.height = '100%'; det.style.overflow = 'hidden';
 
   const m = s.meta;
-  document.getElementById('hdr-cve').textContent = m.cve_id || s.id;
+  document.getElementById('hdr-cve').innerHTML =
+    `${esc(m.cve_id || s.id)}<span style="font-size:12px;font-weight:400;color:var(--text3);margin-left:10px">${esc(s.id)}</span>`;
   document.getElementById('hdr-fn').textContent  = m.function || '';
   document.getElementById('hdr-file').textContent =
     `${m.file || ''}  ·  ${(m.repo_url||'').replace('https://github.com/','')}`;
@@ -340,7 +344,7 @@ function showTab(tab) {
   const c = document.getElementById('content');
   c.innerHTML = '';
   if      (tab === 'diff')    renderDiff(c);
-  else if (tab === 'buggy')   renderCode(c, current.buggy,   current.meta.lang);
+  else if (tab === 'context') renderCode(c, current.context, current.meta.lang);
   else if (tab === 'starter') renderCode(c, current.starter, current.meta.lang);
   else if (tab === 'task')      renderTask(c);
   else if (tab === 'tests')     renderCode(c, current.tests,     current.meta.lang);

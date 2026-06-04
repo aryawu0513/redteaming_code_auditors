@@ -2,9 +2,14 @@
 viewer_adaptive.py — FastAPI backend for the adaptive attacker loop viewer.
 
 Usage:
+    # Default: show vulnllmr_fromscratch + openvul_fromscratch side by side
     python attacker/adaptive/viewer_adaptive.py
-    python attacker/adaptive/viewer_adaptive.py --port 8002
-    python attacker/adaptive/viewer_adaptive.py --exp-dir attacker/adaptive/results
+
+    # Custom systems from a results root
+    python attacker/adaptive/viewer_adaptive.py --systems vulnllm openvul
+
+    # Legacy single-dir mode (system name = last path component)
+    python attacker/adaptive/viewer_adaptive.py --exp-dir attacker/adaptive/results/vulnllmr_fromscratch
 """
 import argparse
 import difflib
@@ -16,6 +21,7 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 
 STATIC_DIR = Path(__file__).parent / "adaptive_static"
+RESULTS_DIR = Path(__file__).parent / "results"
 
 
 # ---------------------------------------------------------------------------
@@ -59,32 +65,34 @@ def _load_run(type_dir: Path) -> dict:
     return {"result": result, "rounds": rounds}
 
 
-def _scan_runs(exp_dir: Path) -> list[dict]:
+def _scan_runs(systems_map: dict[str, Path]) -> list[dict]:
     runs = []
-    for slug_dir in sorted(exp_dir.glob("repository_*")):
-        slug = slug_dir.name.replace("repository_", "")
-        for type_dir in sorted(slug_dir.glob("adaptive_*")):
-            result_path = type_dir / "result.json"
-            if not result_path.exists():
-                continue
-            try:
-                result = json.loads(result_path.read_text())
-            except Exception:
-                continue
-            # Prefer annotation_type from result.json (authoritative).
-            # run_tag may be absent in older runs → default "".
-            ann_type = result.get("annotation_type") or type_dir.name.replace("adaptive_", "")
-            run_tag = result.get("run_tag", "")
-            runs.append({
-                "slug": slug,
-                "type": ann_type,
-                "run_tag": run_tag,
-                "refiner_model": result.get("refiner_model", ""),
-                "final_verdict": result.get("final_verdict", "?"),
-                "stop_reason": result.get("stop_reason", "?"),
-                "rounds_used": result.get("rounds_used", 0),
-                "dir": str(type_dir),
-            })
+    for system_name, system_dir in systems_map.items():
+        if not system_dir.exists():
+            continue
+        for slug_dir in sorted(system_dir.glob("repository_*")):
+            slug = slug_dir.name.replace("repository_", "")
+            for type_dir in sorted(slug_dir.glob("adaptive_*")):
+                result_path = type_dir / "result.json"
+                if not result_path.exists():
+                    continue
+                try:
+                    result = json.loads(result_path.read_text())
+                except Exception:
+                    continue
+                ann_type = result.get("annotation_type") or type_dir.name.replace("adaptive_", "")
+                run_tag = result.get("run_tag", "")
+                runs.append({
+                    "slug": slug,
+                    "system": system_name,
+                    "type": ann_type,
+                    "run_tag": run_tag,
+                    "refiner_model": result.get("refiner_model", ""),
+                    "final_verdict": result.get("final_verdict", "?"),
+                    "stop_reason": result.get("stop_reason", "?"),
+                    "rounds_used": result.get("rounds_used", 0),
+                    "dir": str(type_dir),
+                })
     return runs
 
 
@@ -92,8 +100,7 @@ def _scan_runs(exp_dir: Path) -> list[dict]:
 # App factory
 # ---------------------------------------------------------------------------
 
-def build_app(exp_dir: str = "attacker/adaptive/results") -> FastAPI:
-    exp_path = Path(exp_dir).resolve()
+def build_app(systems_map: dict[str, Path]) -> FastAPI:
     app = FastAPI(title="Adaptive Attacker Viewer")
 
     _cache: dict = {"runs": None}
@@ -101,15 +108,19 @@ def build_app(exp_dir: str = "attacker/adaptive/results") -> FastAPI:
     @app.get("/api/runs")
     def list_runs(refresh: bool = False):
         if refresh or _cache["runs"] is None:
-            _cache["runs"] = _scan_runs(exp_path)
+            _cache["runs"] = _scan_runs(systems_map)
         return {"runs": _cache["runs"]}
 
     @app.get("/api/run")
-    def get_run(slug: str = Query(...), type: str = Query(...), tag: str = Query("")):
+    def get_run(slug: str = Query(...), type: str = Query(...),
+                system: str = Query(...), tag: str = Query("")):
+        if system not in systems_map:
+            raise HTTPException(status_code=404, detail=f"Unknown system: {system!r}")
+        system_dir = systems_map[system]
         suffix = f"_{tag}" if tag else ""
-        type_dir = exp_path / f"repository_{slug}" / f"adaptive_{type}{suffix}"
+        type_dir = system_dir / f"repository_{slug}" / f"adaptive_{type}{suffix}"
         if not type_dir.exists():
-            raise HTTPException(status_code=404, detail=f"No adaptive run for {slug}/{type}/{tag}")
+            raise HTTPException(status_code=404, detail=f"No run for {system}/{slug}/{type}/{tag}")
         try:
             return _load_run(type_dir)
         except Exception as e:
@@ -121,14 +132,29 @@ def build_app(exp_dir: str = "attacker/adaptive/results") -> FastAPI:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Adaptive attacker loop viewer")
-    parser.add_argument("--exp-dir", default="attacker/adaptive/results",
-                        help="Root directory holding adaptive results")
+    parser.add_argument("--results-dir", type=Path, default=RESULTS_DIR,
+                        help="Root directory containing system subdirs")
+    parser.add_argument("--systems", nargs="+",
+                        default=["vulnllmr_fromscratch", "openvul_fromscratch"],
+                        help="System subdir names under --results-dir")
+    parser.add_argument("--exp-dir", type=Path, default=None,
+                        help="Legacy: single exp dir (system name = last component)")
     parser.add_argument("--port", type=int, default=8002)
     parser.add_argument("--host", default="0.0.0.0")
     args = parser.parse_args()
 
-    app = build_app(exp_dir=args.exp_dir)
+    if args.exp_dir:
+        exp_path = args.exp_dir.resolve()
+        systems_map = {exp_path.name: exp_path}
+    else:
+        results_dir = args.results_dir.resolve()
+        systems_map = {s: results_dir / s for s in args.systems}
+
+    app = build_app(systems_map=systems_map)
     print(f"Adaptive viewer at http://localhost:{args.port}")
+    for name, path in systems_map.items():
+        status = "✓" if path.exists() else "✗ (not found)"
+        print(f"  {name}: {path}  {status}")
     uvicorn.run(app, host=args.host, port=args.port)
 
 

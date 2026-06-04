@@ -82,10 +82,16 @@ html, body { height: 100%; font-family: var(--sans); background: var(--bg); colo
 .group-hdr {
   padding: 8px 12px 4px; font-size: 10px; font-weight: 700;
   color: var(--text3); text-transform: uppercase; letter-spacing: .07em;
-  position: sticky; top: 0; background: var(--bg2); z-index: 1;
+  position: sticky; top: 0; background: var(--bg2); z-index: 2;
+}
+.system-hdr {
+  padding: 5px 12px 3px 20px; font-size: 10px; font-weight: 600;
+  color: var(--accent); letter-spacing: .04em; font-family: var(--mono);
+  background: var(--bg2); position: sticky; top: 22px; z-index: 1;
+  border-left: 2px solid var(--accent); margin-left: 8px;
 }
 .run-item {
-  padding: 7px 12px; cursor: pointer; border-left: 3px solid transparent;
+  padding: 7px 12px 7px 22px; cursor: pointer; border-left: 3px solid transparent;
   display: flex; flex-direction: column; gap: 2px; transition: background .1s;
 }
 .run-item:hover { background: var(--bg3); }
@@ -335,10 +341,10 @@ details.reasoning[open] > summary::before { transform: rotate(90deg); }
 const S = {
   runs: [],
   filtered: [],
-  activeTag: null,  // null = "All"
-  selected: null,   // { slug, type, tag }
-  run: null,        // { result, rounds }
-  step: 0,          // 0..rounds.length (rounds.length = summary)
+  activeSystem: null,  // null = "All"
+  selected: null,      // { slug, type, tag, system }
+  run: null,           // { result, rounds }
+  step: 0,             // 0..rounds.length (rounds.length = summary)
   allMode: false,
   showHome: true,
 };
@@ -376,19 +382,18 @@ async function loadRuns(refresh = false) {
   }
 }
 
-// ── Tag chips ─────────────────────────────────────────────────────────────────
+// ── System chips ──────────────────────────────────────────────────────────────
 function renderTagChips() {
-  const tags = [...new Set(S.runs.map(r => r.run_tag || ''))].sort();
-  if (tags.length <= 1 && tags[0] === '') { tagChipsEl.innerHTML = ''; return; }
-  let html = `<span class="tag-chip${S.activeTag === null ? ' active' : ''}" data-tag="">All</span>`;
-  for (const t of tags) {
-    const label = t || '(untagged)';
-    html += `<span class="tag-chip${S.activeTag === t ? ' active' : ''}" data-tag="${esc(t)}">${esc(label)}</span>`;
+  const systems = [...new Set(S.runs.map(r => r.system || ''))].sort();
+  if (systems.length <= 1) { tagChipsEl.innerHTML = ''; return; }
+  let html = `<span class="tag-chip${S.activeSystem === null ? ' active' : ''}" data-sys="">All</span>`;
+  for (const s of systems) {
+    html += `<span class="tag-chip${S.activeSystem === s ? ' active' : ''}" data-sys="${esc(s)}">${esc(s)}</span>`;
   }
   tagChipsEl.innerHTML = html;
   tagChipsEl.querySelectorAll('.tag-chip').forEach(el => {
     el.addEventListener('click', () => {
-      S.activeTag = el.dataset.tag === '' && el.textContent === 'All' ? null : el.dataset.tag;
+      S.activeSystem = el.dataset.sys === '' ? null : el.dataset.sys;
       renderTagChips();
       applyFilter();
     });
@@ -399,8 +404,8 @@ function renderTagChips() {
 function applyFilter() {
   const q = searchEl.value.toLowerCase();
   S.filtered = S.runs.filter(r => {
-    if (S.activeTag !== null && (r.run_tag || '') !== S.activeTag) return false;
-    return !q || r.type.toLowerCase().includes(q) || r.slug.toLowerCase().includes(q);
+    if (S.activeSystem !== null && r.system !== S.activeSystem) return false;
+    return !q || r.type.toLowerCase().includes(q) || r.slug.toLowerCase().includes(q) || (r.system || '').toLowerCase().includes(q);
   });
   renderList();
 }
@@ -411,44 +416,50 @@ function renderList() {
     return;
   }
 
-  // Group by tag then slug
-  const groups = {};
+  // Group by slug → system → runs
+  const bySlug = {};
   for (const r of S.filtered) {
-    const groupKey = r.run_tag || '(untagged)';
-    (groups[groupKey] = groups[groupKey] || []).push(r);
+    if (!bySlug[r.slug]) bySlug[r.slug] = {};
+    if (!bySlug[r.slug][r.system]) bySlug[r.slug][r.system] = [];
+    bySlug[r.slug][r.system].push(r);
   }
 
   let html = '';
-  for (const [groupKey, runs] of Object.entries(groups)) {
-    html += `<div class="group-hdr">${esc(groupKey)}</div>`;
-    for (const r of runs) {
-      const cls = verdictBadgeClass(r.final_verdict, r.stop_reason);
-      const label = verdictLabel(r.final_verdict, r.stop_reason);
-      const active = S.selected &&
-        S.selected.slug === r.slug &&
-        S.selected.type === r.type &&
-        (S.selected.tag || '') === (r.run_tag || '');
-      html += `<div class="run-item${active ? ' active' : ''}" data-slug="${esc(r.slug)}" data-type="${esc(r.type)}" data-tag="${esc(r.run_tag || '')}">
-        <span class="run-type">${esc(r.type)}</span>
-        <div class="run-meta">
-          <span class="badge ${cls}">${esc(label)}</span>
-          <span class="badge badge-round">${r.rounds_used}r</span>
-        </div>
-      </div>`;
+  for (const [slug, bySystem] of Object.entries(bySlug)) {
+    html += `<div class="group-hdr">${esc(slug)}</div>`;
+    for (const [system, runs] of Object.entries(bySystem)) {
+      html += `<div class="system-hdr">${esc(system)}</div>`;
+      for (const r of runs) {
+        const cls = verdictBadgeClass(r.final_verdict, r.stop_reason);
+        const label = verdictLabel(r.final_verdict, r.stop_reason, r.run_tag);
+        const active = S.selected &&
+          S.selected.slug === r.slug &&
+          S.selected.type === r.type &&
+          S.selected.system === r.system &&
+          (S.selected.tag || '') === (r.run_tag || '');
+        html += `<div class="run-item${active ? ' active' : ''}" data-slug="${esc(r.slug)}" data-type="${esc(r.type)}" data-tag="${esc(r.run_tag || '')}" data-system="${esc(r.system || '')}">
+          <span class="run-type">${esc(r.type)}</span>
+          <div class="run-meta">
+            <span class="badge ${cls}">${esc(label)}</span>
+            <span class="badge badge-round">${r.rounds_used}r</span>
+          </div>
+        </div>`;
+      }
     }
   }
   runListEl.innerHTML = html;
   runListEl.querySelectorAll('.run-item').forEach(el => {
-    el.addEventListener('click', () => selectRun(el.dataset.slug, el.dataset.type, el.dataset.tag || ''));
+    el.addEventListener('click', () => selectRun(el.dataset.slug, el.dataset.type, el.dataset.tag || '', el.dataset.system || ''));
   });
 }
 
 // ── Select & load a run ──────────────────────────────────────────────────────
-async function selectRun(slug, type, tag = '') {
+async function selectRun(slug, type, tag = '', system = '') {
   const sameRun = S.selected &&
-    S.selected.slug === slug && S.selected.type === type && S.selected.tag === tag;
+    S.selected.slug === slug && S.selected.type === type &&
+    S.selected.tag === tag && S.selected.system === system;
   if (sameRun && !S.showHome) return;
-  S.selected = { slug, type, tag };
+  S.selected = { slug, type, tag, system };
   S.run = null;
   S.step = 0;
   S.allMode = false;
@@ -460,8 +471,9 @@ async function selectRun(slug, type, tag = '') {
   renderList();
 
   const tagParam = tag ? `&tag=${encodeURIComponent(tag)}` : '';
+  const sysParam = system ? `&system=${encodeURIComponent(system)}` : '';
   try {
-    S.run = await apiFetch(`/api/run?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(type)}${tagParam}`);
+    S.run = await apiFetch(`/api/run?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(type)}&system=${encodeURIComponent(system)}${tagParam}`);
     renderMeta();
     renderPills();
     setNavEnabled(true);
@@ -476,15 +488,16 @@ async function selectRun(slug, type, tag = '') {
 // ── Meta header ──────────────────────────────────────────────────────────────
 function renderMeta() {
   const { result } = S.run;
-  const { slug, type, tag } = S.selected;
+  const { slug, type, tag, system } = S.selected;
   const cls = verdictBadgeClass(result.final_verdict, result.stop_reason);
-  const label = verdictLabel(result.final_verdict, result.stop_reason);
+  const label = verdictLabel(result.final_verdict, result.stop_reason, result.run_tag);
   const tagBadge = tag ? `<span class="badge badge-round">${esc(tag)}</span>` : '';
+  const sysBadge = system ? `<span class="badge badge-round" style="color:var(--accent)">${esc(system)}</span>` : '';
   metaInfoEl.innerHTML = `
     <span class="meta-slug">${esc(slug)}</span>
     <span class="meta-sep">/</span>
     <span class="meta-type">${esc(type)}</span>
-    ${tagBadge}
+    ${sysBadge}${tagBadge}
     <span class="meta-sep">·</span>
     <span class="badge ${cls}">${esc(label)}</span>
     <span class="badge badge-round">${result.rounds_used}r used</span>
@@ -582,6 +595,7 @@ function renderCurrent() {
 
 function renderRound(r, idx, allRounds) {
   const isStatic = r.round === 0 || r.round === '0';
+  const isBootstrap = r.phase === 'fromscratch_bootstrap';
   const roundNum = parseInt(r.round, 10);
   const votes = r.votes || {};
   const hasVul = votes.has_vul ?? 0;
@@ -590,9 +604,13 @@ function renderRound(r, idx, allRounds) {
   const vClass = r.detector_verdict === 'safe' ? 'c-green' : 'c-red';
   const isFlip = r.detector_verdict === 'safe';
 
+  const r0Badge = isBootstrap
+    ? '<span class="badge badge-static">bootstrap ⚡</span>'
+    : isStatic ? '<span class="badge badge-static">static baseline</span>' : '';
+
   let html = `<div class="round-hdr">
     <span class="round-label">Round ${roundNum}</span>
-    ${isStatic ? '<span class="badge badge-static">static baseline</span>' : ''}
+    ${r0Badge}
     <span class="verdict-chip ${r.detector_verdict === 'safe' ? 'safe' : 'vulnerable'}">${r.detector_verdict === 'safe' ? '✓ safe' : '✗ vulnerable'}</span>
     ${isFlip && !isStatic ? '<span style="color:var(--green);font-size:13px;font-weight:700">← flip!</span>' : ''}
   </div>`;
@@ -644,7 +662,15 @@ function renderRound(r, idx, allRounds) {
   annBody += `<div style="margin-bottom:6px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">${isStatic ? 'Annotation' : 'New annotation'}</div>`;
   annBody += `<pre class="ann"><code class="language-c">${esc(currText)}</code></pre>`;
 
-  html += card('c-blue', '📝', isStatic ? 'Payload  (static baseline)' : `Payload  →  what the detector sees`, annBody);
+  if (r.insert_before) {
+    annBody += `<div style="margin-top:12px;margin-bottom:4px;font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em">Inserted above line</div>`;
+    annBody += `<pre class="ann" style="background:color-mix(in srgb,var(--teal) 6%,var(--bg2)) !important;border-left:2px solid var(--teal)"><code class="language-c">${esc(r.insert_before)}</code></pre>`;
+  }
+
+  const payloadTitle = isBootstrap
+    ? 'Payload  (bootstrap — system-aware seed)'
+    : isStatic ? 'Payload  (static baseline)' : 'Payload  →  what the detector sees';
+  html += card('c-blue', '📝', payloadTitle, annBody);
 
   // ── 2. Refiner rationale (rounds ≥ 1) ────────────────────────────────────
   if (!isStatic && r.rationale) {
@@ -748,17 +774,16 @@ function renderHome() {
   pillsEl.innerHTML = '';
   counterEl.textContent = '—';
 
-  const slugs = [...new Set(S.runs.map(r => r.slug))];
-  const tags  = [...new Set(S.runs.map(r => r.run_tag || ''))].sort();
+  const slugs   = [...new Set(S.runs.map(r => r.slug))];
+  const systems = [...new Set(S.runs.map(r => r.system || ''))].sort();
   let rows = '';
   for (const r of S.runs) {
     const cls = verdictBadgeClass(r.final_verdict, r.stop_reason);
-    const label = verdictLabel(r.final_verdict, r.stop_reason);
-    const tagLabel = r.run_tag || '—';
-    rows += `<tr data-slug="${esc(r.slug)}" data-type="${esc(r.type)}" data-tag="${esc(r.run_tag || '')}">
+    const label = verdictLabel(r.final_verdict, r.stop_reason, r.run_tag);
+    rows += `<tr data-slug="${esc(r.slug)}" data-type="${esc(r.type)}" data-tag="${esc(r.run_tag || '')}" data-system="${esc(r.system || '')}">
       <td><code style="font-family:var(--mono);font-size:12px">${esc(r.slug)}</code></td>
       <td><strong>${esc(r.type)}</strong></td>
-      <td><code style="font-family:var(--mono);font-size:11px;color:var(--text3)">${esc(tagLabel)}</code></td>
+      <td><code style="font-family:var(--mono);font-size:11px;color:var(--accent)">${esc(r.system || '—')}</code></td>
       <td><span class="badge ${cls}">${esc(label)}</span></td>
       <td>${r.rounds_used}</td>
       <td style="color:${r.stop_reason === 'flipped_safe' || r.stop_reason === 'static_succeeded' ? 'var(--green)' : 'var(--red)'}">${esc(r.stop_reason)}</td>
@@ -767,17 +792,17 @@ function renderHome() {
 
   contentEl.innerHTML = `<div class="home-wrap">
     <h1>Adaptive Attacker Viewer</h1>
-    <p>${S.runs.length} run${S.runs.length !== 1 ? 's' : ''} across ${slugs.length} slug${slugs.length !== 1 ? 's' : ''}, ${tags.length} tag${tags.length !== 1 ? 's' : ''}. Select a row or use the sidebar.</p>
+    <p>${S.runs.length} run${S.runs.length !== 1 ? 's' : ''} across ${slugs.length} slug${slugs.length !== 1 ? 's' : ''}, ${systems.length} system${systems.length !== 1 ? 's' : ''}. Select a row or use the sidebar.</p>
     <table class="summary-tbl">
       <thead><tr>
-        <th>Slug</th><th>Type</th><th>Tag</th><th>Final verdict</th><th>Rounds</th><th>Stop reason</th>
+        <th>Slug</th><th>Type</th><th>System</th><th>Final verdict</th><th>Rounds</th><th>Stop reason</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>
   </div>`;
 
   contentEl.querySelectorAll('tr[data-slug]').forEach(el => {
-    el.addEventListener('click', () => selectRun(el.dataset.slug, el.dataset.type, el.dataset.tag || ''));
+    el.addEventListener('click', () => selectRun(el.dataset.slug, el.dataset.type, el.dataset.tag || '', el.dataset.system || ''));
   });
 }
 
@@ -804,6 +829,7 @@ function updateHash() {
   const p = new URLSearchParams();
   p.set('slug', S.selected.slug);
   p.set('type', S.selected.type);
+  if (S.selected.system) p.set('system', S.selected.system);
   if (S.selected.tag) p.set('tag', S.selected.tag);
   p.set('step', S.allMode ? 'all' : String(S.step));
   history.replaceState(null, '', '#' + p.toString());
@@ -813,9 +839,10 @@ async function restoreHash() {
   const hash = location.hash.slice(1);
   if (!hash) return;
   const p = new URLSearchParams(hash);
-  const slug = p.get('slug'); const type = p.get('type'); const tag = p.get('tag') || '';
+  const slug = p.get('slug'); const type = p.get('type');
+  const tag = p.get('tag') || ''; const system = p.get('system') || '';
   if (!slug || !type) return;
-  await selectRun(slug, type, tag);
+  await selectRun(slug, type, tag, system);
   const stepRaw = p.get('step');
   if (stepRaw === 'all') { S.allMode = true; }
   else if (stepRaw) { S.step = Math.max(0, parseInt(stepRaw, 10) || 0); }
@@ -836,8 +863,8 @@ function verdictBadgeClass(verdict, stopReason) {
   return verdict === 'safe' ? 'badge-safe' : 'badge-vuln';
 }
 
-function verdictLabel(verdict, stopReason) {
-  if (stopReason === 'static_succeeded') return 'static ✓';
+function verdictLabel(verdict, stopReason, runTag) {
+  if (stopReason === 'static_succeeded') return (runTag || '').includes('fromscratch') ? 'bootstrap ✓' : 'static ✓';
   if (stopReason === 'budget_exhausted') return 'no flip';
   return verdict === 'safe' ? 'flipped ✓' : 'vulnerable';
 }
