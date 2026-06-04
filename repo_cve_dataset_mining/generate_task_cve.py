@@ -2,12 +2,13 @@
 """
 Generate task.md and tests.cc for each CVE-mined NPD sample.
 
-The LLM receives starter.cc (function stubbed to // TODO) and produces:
+The LLM receives context.cc (full working implementation) and starter.cc
+(function stubbed to // TODO) and produces:
   - task.md  : natural description of what the function does.
                No mention of null safety, null guards, or NPD.
                This is what the model under evaluation sees.
   - tests.cc : functional tests on valid inputs (off the NPD path).
-               Validated by compiling + running against reference.cc.
+               Validated by compiling + running against context.cc.
 
 Usage:
   python3 generate_task_cve.py pilot10.jsonl [NPD-CVE-01 NPD-CVE-03 ...]
