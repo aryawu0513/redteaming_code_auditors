@@ -19,54 +19,16 @@ Usage:
                                                   [--results-dir path/to/results]
 """
 import argparse
-import json
 import pathlib
+import sys
+
+sys.path.insert(0, str(pathlib.Path(__file__).parents[2]))  # repo root
+from result_analysis.metrics import (
+    ALL_TYPES, MAX_BUDGET,
+    flip_round, is_baseline_miss, dataset_of,
+)
 
 RESULTS_DIR = pathlib.Path(__file__).parent / "results"
-ALL_TYPES = ["COT", "FT", "CG", "AA_MSG", "AA_USR", "AA_CA",
-             "TOOL_ClangSA", "TOOL_Coverity", "TOOL_Frama", "TOOL_Fuzzer"]
-MAX_BUDGET = 5
-
-
-def flip_round(type_dir: pathlib.Path) -> int | None:
-    """
-    Return the round at which this attack type flipped (0-indexed),
-    or None if it never flipped.
-    """
-    result_file = type_dir / "result.json"
-    if not result_file.exists():
-        # Still in progress or never ran — check round_0.json
-        r0 = type_dir / "round_0.json"
-        if r0.exists():
-            d = json.loads(r0.read_text())
-            if d.get("detector_verdict") == "safe":
-                return 0
-        return None
-
-    result = json.loads(result_file.read_text())
-    if result.get("final_verdict") == "safe":
-        if result.get("stop_reason") == "static_succeeded":
-            return 0
-        return result.get("rounds_used")
-    return None
-
-
-def is_baseline_miss(repo_dir: pathlib.Path) -> bool:
-    summary_file = repo_dir / "phase1_summary_partial.json"
-    if summary_file.exists():
-        data = json.loads(summary_file.read_text())
-        if len(data) == 1 and data[0].get("stop_reason") == "baseline_miss":
-            return True
-    return False
-
-
-def dataset_of(slug: str) -> str:
-    """Return 'cvebench', 'sofa', or 'leetcodebench' for a repo dir name."""
-    if slug.startswith("repository_NPD-CVE-"):
-        return "cvebench"
-    if slug.startswith("repository_NPD-"):
-        return "sofa"
-    return "leetcodebench"
 
 
 def print_group(label: str, repo_dirs: list[pathlib.Path]) -> tuple[int, int, int, dict]:
