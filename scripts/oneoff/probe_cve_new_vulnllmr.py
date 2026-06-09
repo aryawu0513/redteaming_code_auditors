@@ -25,7 +25,7 @@ from pathlib import Path
 import requests
 
 REPO_ROOT   = Path(__file__).parent.parent.parent
-SAMPLES_DIR = REPO_ROOT / "repo_cve_dataset_mining" / "samples_ts_full"
+SAMPLES_DIR = REPO_ROOT / "repo_cve_dataset_mining" / "samples_ts_full"  # overridden by --samples-dir
 
 # ── Tree-sitter split ─────────────────────────────────────────────────────────
 
@@ -211,13 +211,19 @@ def process_sample(slug: str, base_url: str) -> dict:
 
 
 def main():
+    global SAMPLES_DIR
     ap = argparse.ArgumentParser()
     ap.add_argument("slugs", nargs="+", help="Sample IDs, e.g. NPD-CVE-0051")
     ap.add_argument("--detector-url", default="http://localhost:8008")
+    ap.add_argument("--samples-dir", default=None, help="Override default samples directory")
     ap.add_argument("--out", default=None, help="Output JSONL path (optional)")
     args = ap.parse_args()
 
+    if args.samples_dir:
+        SAMPLES_DIR = Path(args.samples_dir)
+
     print(f"VulnLLM-R probe — {len(args.slugs)} samples  →  {args.detector_url}\n")
+    print(f"Samples dir: {SAMPLES_DIR}\n")
 
     results = []
     for slug in args.slugs:

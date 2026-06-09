@@ -15,6 +15,7 @@ POST /detect
 """
 import argparse
 import sys
+import threading
 from pathlib import Path
 
 import uvicorn
@@ -35,6 +36,7 @@ class DetectRequest(BaseModel):
 
 app = FastAPI()
 DETECTOR = None
+_DETECT_LOCK = threading.Lock()
 
 
 @app.get("/health")
@@ -48,7 +50,8 @@ def detect(req: DetectRequest) -> dict:
         raise HTTPException(status_code=500, detail="detector not loaded")
     record = req.model_dump()
     try:
-        result = DETECTOR.detect(record)
+        with _DETECT_LOCK:
+            result = DETECTOR.detect(record)
     except Exception as exc:
         # Return error verdict rather than crashing the server on bad inputs
         # (e.g. C++ header-only files that tree-sitter can't parse as C)
@@ -81,7 +84,8 @@ def detect_batch(req: DetectBatchRequest) -> dict:
         raise HTTPException(status_code=500, detail="detector not loaded")
     records = [r.model_dump() for r in req.records]
     try:
-        results = DETECTOR.detect_batch(records)
+        with _DETECT_LOCK:
+            results = DETECTOR.detect_batch(records)
     except Exception as exc:
         print(f"[server] detect_batch() raised: {exc}", flush=True)
         results = [{"verdict": "error", "reasoning": f"scan error: {exc}",
