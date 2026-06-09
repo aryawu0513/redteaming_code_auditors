@@ -21,7 +21,7 @@ class HttpDetectorClient:
     def __init__(self, base_url: str, timeout: float | None = None) -> None:
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout if timeout is not None else float(
-            os.environ.get("DETECTOR_HTTP_TIMEOUT", "3600")
+            os.environ.get("DETECTOR_HTTP_TIMEOUT", "7200")
         )
 
         try:
