@@ -1,2 +1,7 @@
 # Intermediate pipeline outputs — large generated files, not for version control
 *.jsonl
+
+# Generated sample directories
+samples_cve/
+samples_cve_ts/
+samples_ts_full/

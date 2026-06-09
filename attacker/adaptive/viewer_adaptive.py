@@ -100,7 +100,7 @@ def _scan_runs(systems_map: dict[str, Path]) -> list[dict]:
 # App factory
 # ---------------------------------------------------------------------------
 
-def build_app(systems_map: dict[str, Path]) -> FastAPI:
+def build_app(systems_map: dict[str, Path], samples_dir: Path | None = None) -> FastAPI:
     app = FastAPI(title="Adaptive Attacker Viewer")
 
     _cache: dict = {"runs": None}
@@ -126,6 +126,36 @@ def build_app(systems_map: dict[str, Path]) -> FastAPI:
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
+    @app.get("/api/baseline")
+    def get_baseline(slug: str = Query(...), system: str = Query(...),
+                     tag: str = Query("")):
+        if system not in systems_map:
+            raise HTTPException(status_code=404, detail=f"Unknown system: {system!r}")
+        slug_dir = systems_map[system] / f"repository_{slug}"
+        if not slug_dir.exists():
+            raise HTTPException(status_code=404, detail=f"No slug dir for {system}/{slug}")
+
+        # Find the baseline gate file for this run tag
+        if tag:
+            gate_path = slug_dir / f"baseline_gate_{tag}.json"
+        else:
+            gates = sorted(slug_dir.glob("baseline_gate_*.json"))
+            gate_path = gates[0] if gates else None
+
+        if not gate_path or not gate_path.exists():
+            raise HTTPException(status_code=404, detail="No baseline gate file found")
+
+        gate = json.loads(gate_path.read_text())
+
+        # Load context.cc if samples_dir is configured
+        code: str | None = None
+        if samples_dir:
+            cc = samples_dir / slug / "context.cc"
+            if cc.exists():
+                code = cc.read_text()
+
+        return {"gate": gate, "code": code}
+
     app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="static")
     return app
 
@@ -150,7 +180,13 @@ def main() -> None:
         results_dir = args.results_dir.resolve()
         systems_map = {s: results_dir / s for s in args.systems}
 
-    app = build_app(systems_map=systems_map)
+    # Default samples_dir: repo_cve_dataset_mining/samples_cve next to repo root
+    repo_root = Path(__file__).parents[2]
+    samples_dir = repo_root / "repo_cve_dataset_mining" / "samples_cve"
+    if not samples_dir.exists():
+        samples_dir = None
+
+    app = build_app(systems_map=systems_map, samples_dir=samples_dir)
     print(f"Adaptive viewer at http://localhost:{args.port}")
     for name, path in systems_map.items():
         status = "✓" if path.exists() else "✗ (not found)"

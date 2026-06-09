@@ -320,24 +320,42 @@ def try_compile(src: str, suffix: str) -> bool:
         os.unlink(fname)
 
 
-def run_filter3(in_path: str, out_path: str, token: str | None, limit: int):
+def run_filter3(in_path: str, out_path: str, token: str | None, limit: int,
+                max_lines: int = 2000, skip_existing: bool = False):
     lines = Path(in_path).read_text().splitlines()
     total = len(lines)
     print(f"\nFilter 3: {total} candidates from {in_path}")
+    if max_lines == 0:
+        print("  (no line-count limit)")
+    else:
+        print(f"  line limit: {max_lines}")
     if not token:
         print("WARNING: no GitHub token — rate-limited to ~60 req/hr. "
               "Set GITHUB_TOKEN or pass --token.")
 
+    # Build skip set from existing output to avoid re-fetching already-done entries
+    existing_keys: set[tuple] = set()
+    if skip_existing and Path(out_path).exists():
+        for el in Path(out_path).read_text().splitlines():
+            r = json.loads(el)
+            existing_keys.add((r["cve_id"], r["func_name"]))
+        print(f"  skipping {len(existing_keys)} already-fetched entries")
+
     delay   = 0.05 if token else 0.72
-    counts  = dict(fetch_ok=0, size_ok=0, compile_ok=0)
-    written = 0
+    counts  = dict(fetch_ok=0, size_ok=0, compile_ok=0, skipped_existing=0)
+    written = len(existing_keys)
 
-    with open(out_path, "w") as fout:
+    open_mode = "a" if skip_existing and existing_keys else "w"
+    with open(out_path, open_mode) as fout:
         for i, line in enumerate(lines):
-            rec    = json.loads(line)
-            url    = _github_raw_url(rec["repo_url"], rec["commit_hash"], rec["file_path"])
-            tag    = f"[{i+1}/{total}]"
+            rec = json.loads(line)
+            tag = f"[{i+1}/{total}]"
 
+            if (rec["cve_id"], rec["func_name"]) in existing_keys:
+                counts["skipped_existing"] += 1
+                continue
+
+            url = _github_raw_url(rec["repo_url"], rec["commit_hash"], rec["file_path"])
             if not url:
                 print(f"  {tag} SKIP (bad URL): {rec['repo_url']}")
                 continue
@@ -350,7 +368,7 @@ def run_filter3(in_path: str, out_path: str, token: str | None, limit: int):
             counts["fetch_ok"] += 1
 
             n_lines = len(content.splitlines())
-            if n_lines > 2000:
+            if max_lines and n_lines > max_lines:
                 print(f"  {tag} TOO LARGE ({n_lines} lines): {rec['file_path']}")
                 continue
             counts["size_ok"] += 1
@@ -779,6 +797,10 @@ def main():
                     help="GitHub token (default: $GITHUB_TOKEN)")
     ap.add_argument("--limit", type=int, default=0,
                     help="Stop after N survivors (for testing)")
+    ap.add_argument("--max-lines", type=int, default=2000,
+                    help="Max lines per fetched file (0 = no limit, default: 2000)")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="Append to --out, skipping entries already present (resume)")
     args = ap.parse_args()
 
     if args.probe:
@@ -790,7 +812,8 @@ def main():
     elif args.filter3:
         if not args.in_path or not args.out_path:
             ap.error("--filter3 requires --in and --out")
-        run_filter3(args.in_path, args.out_path, args.token, args.limit)
+        run_filter3(args.in_path, args.out_path, args.token, args.limit,
+                    max_lines=args.max_lines, skip_existing=args.skip_existing)
     elif args.filter4:
         if not args.in_path or not args.out_path:
             ap.error("--filter4 requires --in and --out")

@@ -344,7 +344,9 @@ const S = {
   activeSystem: null,  // null = "All"
   selected: null,      // { slug, type, tag, system }
   run: null,           // { result, rounds }
+  baseline: null,      // { gate: {verdict, votes, reasoning}, code: str|null }
   step: 0,             // 0..rounds.length (rounds.length = summary)
+  showBaseline: false,
   allMode: false,
   showHome: true,
 };
@@ -461,7 +463,9 @@ async function selectRun(slug, type, tag = '', system = '') {
   if (sameRun && !S.showHome) return;
   S.selected = { slug, type, tag, system };
   S.run = null;
+  S.baseline = null;
   S.step = 0;
+  S.showBaseline = false;
   S.allMode = false;
   S.showHome = false;
 
@@ -471,9 +475,11 @@ async function selectRun(slug, type, tag = '', system = '') {
   renderList();
 
   const tagParam = tag ? `&tag=${encodeURIComponent(tag)}` : '';
-  const sysParam = system ? `&system=${encodeURIComponent(system)}` : '';
   try {
-    S.run = await apiFetch(`/api/run?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(type)}&system=${encodeURIComponent(system)}${tagParam}`);
+    [S.run, S.baseline] = await Promise.all([
+      apiFetch(`/api/run?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(type)}&system=${encodeURIComponent(system)}${tagParam}`),
+      apiFetch(`/api/baseline?slug=${encodeURIComponent(slug)}&system=${encodeURIComponent(system)}${tagParam}`).catch(() => null),
+    ]);
     renderMeta();
     renderPills();
     setNavEnabled(true);
@@ -509,27 +515,38 @@ function renderPills() {
   if (!S.run) { pillsEl.innerHTML = ''; return; }
   const rounds = S.run.rounds;
   let html = '';
+
+  // Baseline pill
+  if (S.baseline) {
+    const bv = S.baseline.gate?.verdict || 'vulnerable';
+    const bActive = S.showBaseline && !S.allMode;
+    html += `<div class="rpill ${bv === 'safe' ? 'verdict-safe' : 'verdict-vulnerable'}${bActive ? ' active' : ''}" data-i="baseline">
+      Baseline <span style="font-size:9px">${bv === 'safe' ? '✓' : '✗'}</span>
+    </div>`;
+  }
+
   for (let i = 0; i < rounds.length; i++) {
     const r = rounds[i];
     const vClass = r.detector_verdict === 'safe' ? 'verdict-safe' : 'verdict-vulnerable';
-    const active = !S.allMode && i === S.step;
+    const active = !S.allMode && !S.showBaseline && i === S.step;
     html += `<div class="rpill ${vClass}${active ? ' active' : ''}" data-i="${i}">
       R${r.round} <span style="font-size:9px">${r.detector_verdict === 'safe' ? '✓' : '✗'}</span>
     </div>`;
   }
   // Summary pill
-  const sumActive = S.allMode || S.step >= rounds.length;
+  const sumActive = S.allMode || (!S.showBaseline && S.step >= rounds.length);
   html += `<div class="rpill${sumActive ? ' active' : ''}" data-i="${rounds.length}">Summary</div>`;
   pillsEl.innerHTML = html;
   pillsEl.querySelectorAll('.rpill').forEach(el => {
     el.addEventListener('click', () => {
-      const i = +el.dataset.i;
-      if (i >= S.run.rounds.length) {
+      const i = el.dataset.i;
+      if (i === 'baseline') {
+        S.showBaseline = true;
         S.allMode = false;
-        S.step = S.run.rounds.length;
       } else {
+        S.showBaseline = false;
         S.allMode = false;
-        S.step = i;
+        S.step = +i >= S.run.rounds.length ? S.run.rounds.length : +i;
       }
       updateNav();
       renderCurrent();
@@ -540,12 +557,19 @@ function renderPills() {
 
 function updatePills() {
   const pills = pillsEl.querySelectorAll('.rpill');
+  const hasBaseline = !!S.baseline;
+  const offset = hasBaseline ? 1 : 0;  // baseline pill is first if present
   pills.forEach((el, i) => {
-    const atSummary = i >= S.run.rounds.length;
+    if (hasBaseline && i === 0) {
+      el.classList.toggle('active', S.showBaseline && !S.allMode);
+      return;
+    }
+    const ri = i - offset;  // round index
+    const atSummary = ri >= S.run.rounds.length;
     if (atSummary) {
-      el.classList.toggle('active', S.allMode || S.step >= S.run.rounds.length);
+      el.classList.toggle('active', !S.showBaseline && (S.allMode || S.step >= S.run.rounds.length));
     } else {
-      el.classList.toggle('active', !S.allMode && i === S.step);
+      el.classList.toggle('active', !S.showBaseline && !S.allMode && ri === S.step);
     }
   });
   const active = pillsEl.querySelector('.rpill.active');
@@ -560,18 +584,31 @@ function setNavEnabled(on) {
 function updateNav() {
   if (!S.run) return;
   const n = S.run.rounds.length;
-  btnPrev.disabled = S.allMode || S.step <= 0;
-  btnNext.disabled = S.allMode || S.step >= n;
+  const hasBaseline = !!S.baseline;
+  btnPrev.disabled = S.allMode || (S.showBaseline) || (!S.showBaseline && S.step <= 0 && !hasBaseline);
+  btnNext.disabled = S.allMode || (!S.showBaseline && S.step >= n);
   btnAll.classList.toggle('active', S.allMode);
-  counterEl.textContent = S.allMode ? `All ${n} rounds` : (S.step >= n ? 'Summary' : `Round ${S.step + 1} / ${n}`);
+  counterEl.textContent = S.allMode ? `All ${n} rounds`
+    : S.showBaseline ? 'Baseline'
+    : S.step >= n ? 'Summary'
+    : `Round ${S.step + 1} / ${n}`;
   updatePills();
 }
 
 function navigate(delta) {
   if (!S.run || S.allMode) return;
-  const next = Math.max(0, Math.min(S.run.rounds.length, S.step + delta));
-  if (next === S.step) return;
-  S.step = next;
+  if (delta < 0 && !S.showBaseline && S.step === 0 && S.baseline) {
+    S.showBaseline = true;
+  } else if (delta > 0 && S.showBaseline) {
+    S.showBaseline = false;
+    S.step = 0;
+  } else if (!S.showBaseline) {
+    const next = Math.max(0, Math.min(S.run.rounds.length, S.step + delta));
+    if (next === S.step) return;
+    S.step = next;
+  } else {
+    return;
+  }
   updateNav();
   renderCurrent();
   updateHash();
@@ -582,7 +619,9 @@ function renderCurrent() {
   if (!S.run) return;
   const { rounds, result } = S.run;
 
-  if (S.allMode) {
+  if (S.showBaseline && S.baseline) {
+    contentEl.innerHTML = renderBaseline(S.baseline);
+  } else if (S.allMode) {
     contentEl.innerHTML = rounds.map((r, i) => renderRound(r, i, rounds)).join('') + renderSummary(result, rounds);
   } else if (S.step >= rounds.length) {
     contentEl.innerHTML = renderSummary(result, rounds);
@@ -591,6 +630,69 @@ function renderCurrent() {
   }
   contentEl.scrollTop = 0;
   contentEl.querySelectorAll('pre code').forEach(el => hljs.highlightElement(el));
+}
+
+function renderBaseline(b) {
+  const gate = b.gate || {};
+  const verdict = gate.verdict || 'unknown';
+  const votes = gate.votes || {};
+  const hasVul = votes.has_vul ?? 0;
+  const noVul  = votes.no_vul  ?? 0;
+  const total  = hasVul + noVul || 1;
+  const vClass = verdict === 'safe' ? 'c-green' : 'c-red';
+
+  let html = `<div class="round-hdr">
+    <span class="round-label">Baseline</span>
+    <span class="verdict-chip ${verdict === 'safe' ? 'safe' : 'vulnerable'}">${verdict === 'safe' ? '✓ safe' : '✗ vulnerable'}</span>
+    <span style="color:var(--text3);font-size:12px">unmodified context.cc — no adversarial payload</span>
+  </div>`;
+
+  // Code card
+  if (b.code) {
+    const codeBody = `<pre class="ann"><code class="language-c">${esc(b.code)}</code></pre>`;
+    html += card('c-blue', '📄', 'Code fed to auditor  (context.cc)', codeBody);
+  } else {
+    html += card('c-gray', '📄', 'Code fed to auditor  (context.cc)', '<div style="color:var(--text3);font-style:italic">context.cc not found — configure --samples-dir</div>');
+  }
+
+  // Verdict card
+  let detBody = `
+    <div class="vote-bar-wrap">
+      <div class="vote-row">
+        <span class="vote-label">HAS_VUL</span>
+        <div class="vote-track"><div class="vote-fill has-vul" style="width:${(hasVul/total*100).toFixed(0)}%"></div></div>
+        <span class="vote-count has-vul">${hasVul}</span>
+      </div>
+      <div class="vote-row">
+        <span class="vote-label">NO_VUL</span>
+        <div class="vote-track"><div class="vote-fill no-vul" style="width:${(noVul/total*100).toFixed(0)}%"></div></div>
+        <span class="vote-count no-vul">${noVul}</span>
+      </div>
+    </div>`;
+
+  const reasoning = gate.reasoning || '';
+  // Strip <think>…</think> block into collapsible, show the answer part directly
+  const thinkMatch = reasoning.match(/^<think>([\s\S]*?)<\/think>\s*([\s\S]*)$/);
+  if (thinkMatch) {
+    const thinkPart  = thinkMatch[1].trim();
+    const answerPart = thinkMatch[2].trim();
+    if (answerPart) {
+      detBody += `<div style="margin-bottom:10px;font-size:13px;white-space:pre-wrap;line-height:1.6">${esc(answerPart)}</div>`;
+    }
+    detBody += `<details class="reasoning">
+      <summary>Full chain-of-thought reasoning</summary>
+      <div class="reasoning-body">${esc(thinkPart)}</div>
+    </details>`;
+  } else if (reasoning) {
+    detBody += `<details class="reasoning" open>
+      <summary>Detector reasoning</summary>
+      <div class="reasoning-body">${esc(reasoning)}</div>
+    </details>`;
+  }
+
+  html += card(vClass, '🔍', `Baseline detector response  (${hasVul + noVul} votes)`, detBody);
+
+  return `<div style="margin-bottom:28px">${html}</div>`;
 }
 
 function renderRound(r, idx, allRounds) {
@@ -831,7 +933,7 @@ function updateHash() {
   p.set('type', S.selected.type);
   if (S.selected.system) p.set('system', S.selected.system);
   if (S.selected.tag) p.set('tag', S.selected.tag);
-  p.set('step', S.allMode ? 'all' : String(S.step));
+  p.set('step', S.allMode ? 'all' : S.showBaseline ? 'baseline' : String(S.step));
   history.replaceState(null, '', '#' + p.toString());
 }
 
@@ -845,6 +947,7 @@ async function restoreHash() {
   await selectRun(slug, type, tag, system);
   const stepRaw = p.get('step');
   if (stepRaw === 'all') { S.allMode = true; }
+  else if (stepRaw === 'baseline') { S.showBaseline = true; }
   else if (stepRaw) { S.step = Math.max(0, parseInt(stepRaw, 10) || 0); }
   updateNav(); renderCurrent(); updateHash();
 }

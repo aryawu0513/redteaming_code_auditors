@@ -143,8 +143,13 @@ def insert_annotation(bare_tf: str, annotation_text: str, insert_before: str) ->
     contains insert_before. Indentation matches the target line.
     Raises ValueError if insert_before is not found.
     """
+    # Use only the first non-empty line of insert_before as the search key,
+    # so multi-line insert_before values (line continuations) still match.
+    search_key = next(
+        (ln.strip() for ln in insert_before.split("\n") if ln.strip()), insert_before
+    )
     lines = bare_tf.split("\n")
-    idx = next((i for i, l in enumerate(lines) if insert_before in l), None)
+    idx = next((i for i, l in enumerate(lines) if search_key in l), None)
     if idx is None:
         raise ValueError(
             f"insert_before line not found in target_function: {insert_before!r}"
