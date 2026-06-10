@@ -201,16 +201,20 @@ def context_compiles(sample_dir: Path, lang: str, extra_flags: list[str]) -> boo
 # ---------------------------------------------------------------------------
 
 def process_sample(pid: str, sample_dir: Path, lang: str,
-                   include_flags: list[str]) -> str:
-    """Returns: 'validated'|'already_validated'|'context_fail'|'tests_fail'|'skip'"""
+                   include_flags: list[str]) -> dict:
+    """Returns a result dict with 'outcome' and optional 'error'."""
+    def result(outcome: str, error: str = "") -> dict:
+        return {"pid": pid, "outcome": outcome, "error": error,
+                "include_flags": include_flags}
+
     if not sample_dir.exists():
-        return "skip"
+        return result("skip")
     if not (sample_dir / "context.cc").exists():
-        return "skip"
+        return result("skip")
     if not (sample_dir / "tests.cc").exists():
-        return "skip"
+        return result("skip")
     if (sample_dir / "tests_validated").exists():
-        return "already_validated"
+        return result("already_validated")
 
     tests_src = (sample_dir / "tests.cc").read_text()
     err = try_compile(sample_dir, tests_src, lang, include_flags, pid)
@@ -218,19 +222,19 @@ def process_sample(pid: str, sample_dir: Path, lang: str,
     if err is None:
         if not stub_discriminates(sample_dir, tests_src, lang, include_flags):
             print(f"  {pid}: tests too weak (stub passes)")
-            return "tests_fail"
+            return result("tests_fail", "stub passes all tests")
         (sample_dir / "tests_validated").touch()
         (sample_dir / "tests_unvalidated").unlink(missing_ok=True)
         print(f"  {pid}: VALIDATED ✓")
-        return "validated"
+        return result("validated")
 
-    first_err = err.splitlines()[0][:100] if err else "(unknown)"
+    first_err = err.splitlines()[0][:120] if err else "(unknown)"
     if context_compiles(sample_dir, lang, include_flags):
         print(f"  {pid}: context OK, tests fail — {first_err}")
-        return "tests_fail"
+        return result("tests_fail", first_err)
     else:
         print(f"  {pid}: context fail — {first_err}")
-        return "context_fail"
+        return result("context_fail", first_err)
 
 
 # ---------------------------------------------------------------------------
@@ -246,6 +250,8 @@ def main():
     ap.add_argument("--workers",     type=int, default=1)
     ap.add_argument("--dry-run",     action="store_true",
                     help="Clone and show include flags, but skip compilation")
+    ap.add_argument("--out", default=None,
+                    help="Write JSON results summary (default: <samples-dir>/repo_headers_results.json)")
     args = ap.parse_args()
 
     samples_dir = Path(args.samples_dir)
@@ -267,13 +273,18 @@ def main():
     print(f"Samples dir: {samples_dir}")
     print(f"Clone dir:   {clone_dir}\n")
 
-    counts = {"validated": 0, "already_validated": 0,
-              "context_fail": 0, "tests_fail": 0, "skip": 0, "repo_skip": 0}
+    out_path = Path(args.out) if args.out else samples_dir / "repo_headers_results.json"
+    counts   = {"validated": 0, "already_validated": 0,
+                "context_fail": 0, "tests_fail": 0, "skip": 0, "repo_skip": 0}
+    all_results: list[dict] = []
 
     for slug, repo_rows in sorted(by_repo.items(), key=lambda x: -len(x[1])):
         if slug in skip_repos:
             print(f"[SKIP] {slug} ({len(repo_rows)} samples)")
             counts["repo_skip"] += len(repo_rows)
+            for row in repo_rows:
+                all_results.append({"pid": row["pilot_id"], "outcome": "repo_skip",
+                                    "repo": slug, "error": "", "include_flags": []})
             continue
 
         commits = [r.get("commit_hash", "") for r in repo_rows if r.get("commit_hash")]
@@ -286,6 +297,9 @@ def main():
         repo_path = clone_repo(url, clone_dir, commit)
         if repo_path is None:
             counts["repo_skip"] += len(repo_rows)
+            for row in repo_rows:
+                all_results.append({"pid": row["pilot_id"], "outcome": "repo_skip",
+                                    "repo": slug, "error": "clone failed", "include_flags": []})
             continue
 
         include_flags = get_include_flags(repo_path)
@@ -300,14 +314,22 @@ def main():
             lang = row.get("lang") or (
                 "cpp" if Path(row.get("file_path", row.get("file", ""))).suffix.lower()
                          in (".cpp", ".cc", ".cxx", ".hpp", ".hh") else "c")
-            outcome = process_sample(pid, samples_dir / pid, lang, include_flags)
-            counts[outcome] = counts.get(outcome, 0) + 1
+            r = process_sample(pid, samples_dir / pid, lang, include_flags)
+            r["repo"] = slug
+            all_results.append(r)
+            counts[r["outcome"]] = counts.get(r["outcome"], 0) + 1
+
+    if not args.dry_run:
+        out_path.write_text(json.dumps(all_results, indent=2))
+        print(f"\nResults saved → {out_path}")
 
     print(f"\n{'='*60}")
     print(f"Summary:")
     for k, v in counts.items():
         print(f"  {k:20s}: {v}")
     print(f"\n  total validated: {counts['validated'] + counts['already_validated']}")
+    print(f"\nNext step for context_fail repos: run with --llm-fix (not yet implemented)")
+    print(f"Next step for tests_fail samples:  regenerate tests.cc via generate_task_cve.py --force")
 
 
 if __name__ == "__main__":
