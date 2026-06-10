@@ -55,8 +55,8 @@ agent:
 
     Start with `cat problem.md`.
 
-  step_limit: 60
-  cost_limit: 5
+  step_limit: 40
+  cost_limit: 1
 
 model:
   cost_tracking: ignore_errors
