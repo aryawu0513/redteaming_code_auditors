@@ -216,8 +216,8 @@ def validate_tests(pid: str, lang: str, tests_src: str) -> str | None:
             err = "\n".join(r.stderr.splitlines()[:20])
             first = r.stderr.splitlines()[0][:120] if r.stderr.strip() else "(no output)"
             if "No such file" in r.stderr:
-                print(f"    SKIP validation (missing project headers — expected)")
-                return None
+                print(f"    UNVALIDATED (missing project headers — tests cannot compile)")
+                return err
             print(f"    COMPILE FAILED:\n      {first}")
             return err
 
