@@ -782,6 +782,9 @@ def build_one(row: dict, client: OpenAI, skip_extract: bool = False,
 
     if ok:
         log(f"  {pid}: compile OK ✓")
+        (out_dir / "portability_ok").touch()
+    else:
+        (out_dir / "portability_ok").unlink(missing_ok=True)
 
     with _PRINT_LOCK:
         print(buf.getvalue(), end="")

@@ -281,6 +281,10 @@ def process_one(row: dict, client: OpenAI, force: bool = False) -> bool:
         print(f"  ERROR: starter.cc / context.cc not found — run build_harness_cve.py first")
         return False
 
+    if not (out_dir / "portability_ok").exists():
+        print(f"  SKIP — portability pass did not succeed (no portability_ok flag)")
+        return False
+
     starter_cc   = starter.read_text()
     context_cc   = buggy.read_text()
     auxiliary_cc = aux_path.read_text() if aux_path.exists() else None
