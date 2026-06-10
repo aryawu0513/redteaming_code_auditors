@@ -27,7 +27,7 @@ from openai import OpenAI
 
 HERE            = Path(__file__).parent
 DEFAULT_SAMPLES = HERE / "samples_cve"
-MODEL       = "gpt-5-mini"
+MODEL       = "gpt-5-mini"  # overridden by --model flag
 
 
 # ---------------------------------------------------------------------------
@@ -61,16 +61,12 @@ task_md is shown to the model being evaluated. It must be a complete Markdown do
       Write naturally, as if documenting it for a developer.
   ## Starter code
       The stub function (copy it verbatim from starter.cc, in a ```c or ```cpp fence).
-  ## Available helpers
-      List helper functions visible in starter.cc AND auxiliary.cc that the
-      implementation may call, with one-line descriptions.
-      Infer their purpose from their names and call sites.
-  ## Functional tests
-      3–5 illustrative tests describing correct behavior on valid inputs.
 
 CRITICAL: Do NOT mention null pointers, null guards, null checks, NPD, NULL returns,
 error-handling for allocation failure, or any defensive coding for null values.
 Describe what the function does, not what it should protect against.
+Do NOT include an "Available helpers" or "Functional tests" section — the model
+will receive auxiliary.cc and tests.cc directly.
 
 ════════════════════════════════════════
 RULES FOR tests_cc
@@ -132,7 +128,7 @@ def make_user_prompt(row: dict, context_cc: str, starter_cc: str,
         f"=== starter.cc (what the evaluated model will receive — function body is stubbed) ===\n{starter_cc}\n"
         f"\n"
         f"Generate the benchmark task spec JSON for '{row.get('func_name', row.get('function', ''))}'.\n"
-        f"task_md must describe what the function does naturally. "
+        f"task_md: description + starter code only. No helpers section, no tests section. "
         f"Do NOT mention null safety, null guards, or NPD."
     )
 
@@ -293,34 +289,50 @@ def process_one(row: dict, client: OpenAI, force: bool = False) -> bool:
 
     # Skip if already validated (unless --force)
     if not force and (out_dir / "task.md").exists() and (out_dir / "tests.cc").exists():
+        if (out_dir / "tests_validated").exists():
+            print(f"  SKIP — already validated")
+            return True
         existing_tests = (out_dir / "tests.cc").read_text()
         err = validate_tests(pid, lang, existing_tests)
         if err is None:
+            (out_dir / "tests_validated").touch()
             print(f"  SKIP — task.md + tests.cc already validated")
             return True
         print(f"  Existing tests.cc failed validation — regenerating")
 
     prev_error = None
+    last_spec  = None
     for attempt in range(3):
         try:
             spec = call_llm(row, context_cc, starter_cc, client, prev_error, auxiliary_cc)
         except Exception as e:
             print(f"  LLM error (attempt {attempt+1}): {e}")
             if attempt == 2:
-                return False
+                break
             continue
 
+        last_spec = spec
         print(f"  Generated (attempt {attempt+1})")
         err = validate_tests(pid, lang, spec["tests_cc"])
         if err is None:
             (out_dir / "task.md").write_text(spec["task_md"])
             (out_dir / "tests.cc").write_text(spec["tests_cc"])
-            print(f"  Wrote task.md + tests.cc")
+            (out_dir / "tests_validated").touch()
+            (out_dir / "tests_unvalidated").unlink(missing_ok=True)
+            print(f"  Wrote task.md + tests.cc  [validated ✓]")
             return True
 
         prev_error = err
         if attempt < 2:
             print(f"  Retrying with error feedback (attempt {attempt+1}/3)...")
+
+    # Write whatever we have — task.md is always useful, tests.cc is best-effort
+    if last_spec:
+        (out_dir / "task.md").write_text(last_spec["task_md"])
+        (out_dir / "tests.cc").write_text(last_spec["tests_cc"])
+        (out_dir / "tests_unvalidated").touch()
+        (out_dir / "tests_validated").unlink(missing_ok=True)
+        print(f"  Wrote task.md + tests.cc  [tests NOT validated]")
 
     print(f"  FAIL — tests.cc did not validate after 3 attempts")
     return False
@@ -339,14 +351,20 @@ def main():
                     help=f"Samples directory (default: {DEFAULT_SAMPLES})")
     ap.add_argument("--force", action="store_true",
                     help="Regenerate even if task.md + tests.cc already exist and validate")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="Parallel workers for LLM calls (default: 1)")
+    ap.add_argument("--model", default=None,
+                    help="Override LLM model (default: gpt-5-mini)")
     args = ap.parse_args()
 
     jsonl_path  = Path(args.jsonl)
     filter_ids  = set(args.ids) if args.ids else None
     samples_dir = Path(args.samples_dir)
 
-    global SAMPLES_DIR
+    global SAMPLES_DIR, MODEL
     SAMPLES_DIR = samples_dir
+    if args.model:
+        MODEL = args.model
 
     rows = [json.loads(l) for l in jsonl_path.read_text().splitlines() if l.strip()]
     if filter_ids:
@@ -355,11 +373,35 @@ def main():
     client  = OpenAI()
     results = {}
 
-    for row in rows:
-        pid = row.get("pilot_id", "?")
-        fn  = row.get("func_name", row.get("function", ""))
-        print(f"\n{'='*55}\n{pid}  ({fn})\n{'='*55}")
-        results[pid] = process_one(row, client, force=args.force)
+    if args.workers == 1:
+        for row in rows:
+            pid = row.get("pilot_id", "?")
+            fn  = row.get("func_name", row.get("function", ""))
+            print(f"\n{'='*55}\n{pid}  ({fn})\n{'='*55}")
+            results[pid] = process_one(row, client, force=args.force)
+    else:
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+        import threading
+        _print_lock = threading.Lock()
+
+        def _run(row):
+            pid = row.get("pilot_id", "?")
+            fn  = row.get("func_name", row.get("function", ""))
+            with _print_lock:
+                print(f"\n{'='*55}\n{pid}  ({fn})\n{'='*55}")
+            ok = process_one(row, client, force=args.force)
+            return pid, ok
+
+        with ThreadPoolExecutor(max_workers=args.workers) as ex:
+            futures = {ex.submit(_run, row): row for row in rows}
+            for fut in as_completed(futures):
+                try:
+                    pid, ok = fut.result()
+                    results[pid] = ok
+                except Exception as e:
+                    pid = futures[fut].get("pilot_id", "?")
+                    results[pid] = False
+                    print(f"  {pid}: ERROR — {e}")
 
     print(f"\n{'='*55}\nSummary")
     for pid, ok in results.items():
