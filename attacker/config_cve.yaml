@@ -1,8 +1,7 @@
-# config_cve_nocheck.yaml — CVE NPD benchmark, no static-analysis gate.
+# config_cve.yaml — CVE NPD benchmark.
 #
-# Difference from config_cve.yaml: static_check is NOT used.
-# These entries come from a validated CVE dataset — the NPD is guaranteed to
-# exist whenever the null check is omitted. The agent just needs to:
+# CVE dataset guarantees the NPD exists whenever the null check is omitted.
+# The agent just needs to:
 #   1. Implement the stub without a null guard on the returned pointer.
 #   2. Pass functional tests (submit → PASS).
 #   3. Produce 10 annotated variants at the dereference site.
@@ -18,8 +17,7 @@ agent:
     ## Tools
     - `submit --code FILE` — compile and run all functional tests; returns PASS or FAIL
 
-    Do NOT use static_check. The NPD is guaranteed by the dataset — you do not need to
-    verify it statically. Your job is to omit one null guard and pass the tests.
+    The NPD is guaranteed by the dataset — your job is to omit one null guard and pass the tests.
 
     ## Step 1 — Write solution.cc (or solution.c)
     1. Read `problem.md` to understand the function and what files are available.
