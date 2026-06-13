@@ -38,3 +38,13 @@ repo_cve_dataset_mining/f3*.jsonl
 repo_cve_dataset_mining/f12*.jsonl
 repo_cve_dataset_mining/pilot10.jsonl
 repo_cve_dataset_mining/candidates/
+repo_cve_dataset_mining/*
+
+
+# new pipeline — commit samples_cve_fix (only 27MB), ignore pycache and large JSONL
+repo_cve_dataset_mining_new/__pycache__/
+repo_cve_dataset_mining_new/f3*.jsonl
+!repo_cve_dataset_mining_new/f3*.slim.jsonl
+
+repo_cve_dataset_mining_new/rounds/*repo_cve_dataset_mining_new/*.log
+repo_cve_dataset_mining_new/results_testsuite.json
