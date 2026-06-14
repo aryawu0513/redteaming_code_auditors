@@ -9,19 +9,19 @@
 #
 # Build the benchmark first:
 #   python3 repo_cve_dataset_mining_new/build_benchmark.py \
-#       --judge   repo_cve_dataset_mining_new/judge_r3r4_v3.jsonl \
+#       --judge   repo_cve_dataset_mining_new/judge_r1r2.jsonl \
 #       --dataset repo_cve_dataset_mining_new/f3_nolimit_dedup_func.slim.jsonl \
 #       --samples repo_cve_dataset_mining_new/samples_cve_fix \
 #       --rounds  repo_cve_dataset_mining_new/rounds \
 #       --out-root benchmark/cvebench_full
 #
 # Results land in:
-#   attacker/adaptive/results/vulnllmr_fromscratch/repository_<slug>/
+#   adaptive_attacker/results/vulnllmr_full/repository_<slug>/
 
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
-SCRIPT="$REPO_ROOT/attacker/adaptive/refine_loop_fromscratch.py"
+SCRIPT="$REPO_ROOT/adaptive_attacker/refine_loop_fromscratch.py"
 DATASET="$REPO_ROOT/benchmark/cvebench_full/baseline"
 
 DETECTOR_URL="${DETECTOR_URL:-http://localhost:8008}"
@@ -62,4 +62,4 @@ done
 
 echo ""
 echo "Done — $DONE / $TOTAL slugs."
-echo "Results in attacker/adaptive/results/vulnllmr_fromscratch/"
+echo "Results in adaptive_attacker/results/vulnllmr_full/"

@@ -45,15 +45,14 @@ from pathlib import Path
 import numpy as np
 
 HERE = Path(__file__).parent
+REPO_ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
-sys.path.insert(0, str(HERE.parent.parent))
+sys.path.insert(0, str(REPO_ROOT))
 
 from filter_npd import filter_npd_paragraphs  # noqa: E402
 from refiner_agent import bootstrap_refine, refine_fromscratch  # noqa: E402
 
-ATTACKER_DIR = HERE.parent
-REPO_ROOT = ATTACKER_DIR.parent
-DATASET_DIR = REPO_ROOT / "benchmark" / "leetcodebench_gpt54mini" / "context_aware"
+DATASET_DIR = REPO_ROOT / "benchmark" / "cvebench_full" / "baseline"
 RESULTS_DIR = HERE / "results"
 
 SLUG = "069A7F404506"

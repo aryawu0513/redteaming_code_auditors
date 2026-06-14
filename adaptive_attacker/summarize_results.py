@@ -22,7 +22,7 @@ import argparse
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).parents[2]))  # repo root
+sys.path.insert(0, str(pathlib.Path(__file__).parents[1]))  # repo root
 from result_analysis.metrics import (
     ALL_TYPES, MAX_BUDGET,
     flip_round, is_baseline_miss, dataset_of,

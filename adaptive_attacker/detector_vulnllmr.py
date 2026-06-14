@@ -15,7 +15,7 @@ import sys
 import tempfile
 from pathlib import Path
 
-VULNLLMR_ROOT = Path(__file__).parent.parent.parent / "VulnLLM-R"
+VULNLLMR_ROOT = Path(__file__).parent.parent / "VulnLLM-R"
 sys.path.insert(0, str(VULNLLMR_ROOT))
 sys.path.insert(0, str(VULNLLMR_ROOT / "vulscan" / "model_zoo" / "src"))
 

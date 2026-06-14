@@ -7,7 +7,7 @@ Load once via OpenVulDetector(), call detect() many times.
 import sys
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+REPO_ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 # vllm 0.8.x + transformers 5.x compat shim (mirrors OpenVul/run.py)
