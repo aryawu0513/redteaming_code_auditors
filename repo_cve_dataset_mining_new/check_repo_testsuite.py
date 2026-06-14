@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """
-check_repo_testsuite.py — Optional later stage after check_repo_compilable.py.
+check_repo_testsuite.py — Stage 1 Step 1: verify repo builds and tests pass at fix commit.
 
 For each repo (not each sample), at the fix commit:
-  1. Clone (reuses existing clone from check_repo_compilable.py if present)
+  1. Clone repo into --clone-dir
   2. Run config heuristics so the build system is ready
   3. Full build: make -j4 (or cmake --build)
-  4. Run test suite: tries make test / make check / ctest in order
+  4. Run test suite: tries ctest / make check / make test in order
   5. Write per-sample sentinel: repo_testsuite_pass / _partial / _fail / _none
 
 A "pass" means the repo's own tests pass at the fix commit, confirming the

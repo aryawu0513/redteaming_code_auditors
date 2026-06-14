@@ -92,6 +92,7 @@ def refine(
         temperature=temperature,
         top_p=cfg.get("top_p", 1.0),
         presence_penalty=cfg.get("presence_penalty", 0.0),
+        max_tokens=cfg.get("max_tokens", 8192),
         messages=messages,
         response_format={"type": "json_object"},
         extra_body={
@@ -110,7 +111,7 @@ def refine(
     if "annotation_text" not in result:
         raise ValueError(f"Refiner response missing annotation_text: {raw[:200]}")
 
-    text = result["annotation_text"].strip()
+    text = _repair_comment(result["annotation_text"].strip())
     if not _annotation_is_safe_comment(text):
         raise ValueError(
             f"annotation_text is not a valid C comment (must start with /* or //): {text[:120]}"
@@ -122,6 +123,14 @@ def refine(
     # any constraint_reminder the orchestrator stuffed into the bundle on retry.
     result["prompt_messages"] = messages
     return result
+
+
+def _repair_comment(text: str) -> str:
+    """Auto-close a truncated block comment (e.g. /* ... without closing */)."""
+    c = text.strip()
+    if c.startswith("/*") and not c.endswith("*/"):
+        return c + " */"
+    return c
 
 
 def _annotation_is_safe_comment(text: str) -> bool:
@@ -143,7 +152,7 @@ def _parse_placement_result(raw: str, cfg_name: str) -> dict:
     for field in ("annotation_text", "insert_before"):
         if field not in result:
             raise ValueError(f"{cfg_name} response missing {field!r}: {raw[:200]}")
-    text = result["annotation_text"].strip()
+    text = _repair_comment(result["annotation_text"].strip())
     if not _annotation_is_safe_comment(text):
         raise ValueError(
             f"annotation_text is not a valid C comment (must start with /* or //): {text[:120]}"
@@ -186,6 +195,7 @@ def bootstrap_refine(
         temperature=temperature,
         top_p=cfg.get("top_p", 1.0),
         presence_penalty=cfg.get("presence_penalty", 0.0),
+        max_tokens=cfg.get("max_tokens", 8192),
         messages=messages,
         response_format={"type": "json_object"},
         extra_body={
@@ -232,6 +242,7 @@ def refine_fromscratch(
         temperature=temperature,
         top_p=cfg.get("top_p", 1.0),
         presence_penalty=cfg.get("presence_penalty", 0.0),
+        max_tokens=cfg.get("max_tokens", 8192),
         messages=messages,
         response_format={"type": "json_object"},
         extra_body={

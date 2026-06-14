@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-Generate task.md and starter.cc for each CVE-mined NPD sample.
+generate_task_only.py — Stage 1 Step 4: generate task.md and starter.cc for each CVE NPD sample.
 
-No compilation or test generation — only a natural-language task description
-is produced. A separate LLM judge (judge_cve.py) evaluates attacker outputs.
+LLM (gpt-5-mini) sees raw_primary.cc + raw_auxiliary.cc and produces a
+natural-language task description. starter.cc is built programmatically
+by replacing the target function body with a // TODO stub.
 
 The LLM sees:
   - Full source file from the repo clone (fix commit)

@@ -82,9 +82,11 @@ def call_llm(cfg: dict, task_md: str, starter: str, auxiliary: str, headers: str
 
 
 def process_one(pid: str, row: dict, samples_dir: Path, output_dir: Path,
-                client: OpenAI, cfg: dict, force: bool, with_error: bool = False) -> str:
+                client: OpenAI, cfg: dict, force: bool, with_error: bool = False,
+                prev_output_dir: Path | None = None) -> str:
     d       = samples_dir / pid   # read inputs from here
     out_d   = output_dir / pid    # write outputs here
+    prev_d  = (prev_output_dir / pid) if prev_output_dir else out_d
     out_path = out_d / "attacker_output.cc"
 
     if not force and out_path.exists():
@@ -113,10 +115,11 @@ def process_one(pid: str, row: dict, samples_dir: Path, output_dir: Path,
 
     prev_code    = ""
     error_output = ""
-    if with_error and (out_d / "attacker_result.json").exists() and out_path.exists():
-        prev = json.loads((out_d / "attacker_result.json").read_text())
+    prev_out_path = prev_d / "attacker_output.cc"
+    if with_error and (prev_d / "attacker_result.json").exists() and prev_out_path.exists():
+        prev = json.loads((prev_d / "attacker_result.json").read_text())
         error_output = prev.get("error_output", "") or ""
-        prev_code    = out_path.read_text() if error_output else ""
+        prev_code    = prev_out_path.read_text() if error_output else ""
 
     try:
         output = call_llm(cfg, task_md, starter, auxiliary, headers, client, lang,
@@ -153,6 +156,8 @@ def main():
     ap.add_argument("--force",       action="store_true")
     ap.add_argument("--with-error",  action="store_true",
                     help="Append error_output from attacker_result.json as feedback")
+    ap.add_argument("--prev-output-dir", default=None,
+                    help="Round dir to read previous attacker_output.cc + attacker_result.json from (default: --output-dir)")
     ap.add_argument("--config",      default=str(DEFAULT_CONFIG),
                     help="YAML config file for prompts")
     args = ap.parse_args()
@@ -160,8 +165,9 @@ def main():
     MODEL = args.model
     cfg   = load_config(Path(args.config))
 
-    samples_dir = Path(args.samples_dir)
-    output_dir  = Path(args.output_dir) if args.output_dir else samples_dir
+    samples_dir     = Path(args.samples_dir)
+    output_dir      = Path(args.output_dir) if args.output_dir else samples_dir
+    prev_output_dir = Path(args.prev_output_dir) if args.prev_output_dir else None
     rows = {json.loads(l)["pilot_id"]: json.loads(l)
             for l in Path(args.jsonl).read_text().splitlines() if l.strip()}
 
@@ -186,13 +192,13 @@ def main():
 
     if args.workers == 1:
         for pid in pids:
-            status = process_one(pid, rows[pid], samples_dir, output_dir, client, cfg, args.force, args.with_error)
+            status = process_one(pid, rows[pid], samples_dir, output_dir, client, cfg, args.force, args.with_error, prev_output_dir)
             counts[status] = counts.get(status, 0) + 1
     else:
         from concurrent.futures import ThreadPoolExecutor, as_completed
 
         def _run(pid):
-            return pid, process_one(pid, rows[pid], samples_dir, output_dir, client, cfg, args.force, args.with_error)
+            return pid, process_one(pid, rows[pid], samples_dir, output_dir, client, cfg, args.force, args.with_error, prev_output_dir)
 
         with ThreadPoolExecutor(max_workers=args.workers) as ex:
             for fut in as_completed(ex.submit(_run, p) for p in pids):

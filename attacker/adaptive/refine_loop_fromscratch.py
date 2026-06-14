@@ -380,16 +380,7 @@ def produce_annotation(
     state["last_prompt_messages"] = prompt_messages
 
     if annotation_text is None:
-        result = {
-            "stop_reason": "invalid",
-            "rounds_used": rnd,
-            "final_verdict": "vulnerable",
-            "annotation_type": attack_type,
-        }
-        _write_result(out_dir, result, run_tag, refiner_model)
-        state["status"] = "invalid"
-        state["result"] = result
-        print(f"[{attack_type}] round {rnd} → invalid (refiner failed 3 attempts)")
+        print(f"[{attack_type}] round {rnd} → refiner failed 3 attempts, skipping round")
 
     return annotation_text, insert_before, rationale
 
@@ -431,13 +422,10 @@ def evaluate_annotation(
 
     curr_filtered = filter_npd_paragraphs(det["reasoning"])
     stuck_sim: float | None = None
-    stuck = False
     if curr_filtered:
         curr_emb = embedder.encode(curr_filtered)
         if prev_emb is not None:
             stuck_sim = cosine_sim(prev_emb, curr_emb)
-            if stuck_sim >= STUCK_THRESHOLD:
-                stuck = True
         state["prev_emb"] = curr_emb
 
     state["last_det"] = det
@@ -472,26 +460,13 @@ def evaluate_annotation(
             "winning_annotation": annotation_text,
             "winning_insert_before": insert_before,
             "winning_rationale": rationale,
+            "winning_reasoning_excerpt": curr_filtered,
         }
         _write_result(out_dir, result, run_tag, refiner_model)
         state["status"] = "flipped_safe"
         state["result"] = result
         print(f"[{attack_type}] *** FLIPPED TO SAFE in round {rnd}! ***")
         return _make_library_entry(attack_type, annotation_text, insert_before, curr_filtered)
-
-    if stuck:
-        result = {
-            "stop_reason": "stuck",
-            "rounds_used": rnd,
-            "final_verdict": "vulnerable",
-            "annotation_type": attack_type,
-            "stuck_sim": stuck_sim,
-            "stuck_embedding_model": STUCK_MODEL_NAME,
-        }
-        _write_result(out_dir, result, run_tag, refiner_model)
-        state["status"] = "stuck"
-        state["result"] = result
-        print(f"[{attack_type}] round {rnd} → stuck (sim={stuck_sim:.3f} ≥ {STUCK_THRESHOLD})")
 
     return None
 
@@ -558,6 +533,114 @@ def finalize_active(state: dict, run_tag: str, refiner_model: str) -> None:
     state["status"] = "budget_exhausted"
     state["result"] = result
     print(f"[{state['attack_type']}] → budget_exhausted after {state['rounds_used']} rounds")
+
+
+# ── Resume helpers ────────────────────────────────────────────────────────────
+
+def _try_resume_state(
+    attack_type: str,
+    bare_record: dict,
+    out_dir: Path,
+    embedder,
+) -> dict | None:
+    """
+    If out_dir has round files and result.json with stop_reason=budget_exhausted,
+    reconstruct the active state so the round loop can continue from where it left off.
+    Returns None if not resumable (not started, or already finished with a terminal result).
+    """
+    result_path = out_dir / "result.json"
+    if not result_path.exists():
+        return None
+    result = json.loads(result_path.read_text())
+    if result.get("stop_reason") != "budget_exhausted":
+        return None
+
+    rounds_used = result.get("rounds_used", 0)
+
+    prior_attempts: list[dict] = []
+    last_det: dict | None = None
+    for rnd in range(0, rounds_used + 1):
+        rnd_path = out_dir / f"round_{rnd}.json"
+        if not rnd_path.exists():
+            break
+        rnd_data = json.loads(rnd_path.read_text())
+        ann = rnd_data.get("annotation_text")
+        if ann:
+            prior_attempts.append({
+                "round": rnd,
+                "annotation_text": ann,
+                "insert_before": rnd_data.get("insert_before", ""),
+                "detector_reasoning_filtered": rnd_data.get("detector_reasoning_filtered", ""),
+            })
+        last_det = {
+            "verdict": rnd_data["detector_verdict"],
+            "reasoning": rnd_data["detector_reasoning"],
+            "votes": rnd_data.get("votes", {}),
+        }
+
+    if last_det is None:
+        return None
+
+    last_filtered = filter_npd_paragraphs(last_det["reasoning"])
+    prev_emb = embedder.encode(last_filtered) if last_filtered else None
+
+    print(f"[{attack_type}] resuming from round {rounds_used} → continuing to higher budget")
+    return {
+        "attack_type": attack_type,
+        "bare_tf": bare_record["target_function"],
+        "bare_record": bare_record,
+        "current_record": copy.deepcopy(bare_record),
+        "out_dir": out_dir,
+        "prior_attempts": prior_attempts,
+        "prev_emb": prev_emb,
+        "last_det": last_det,
+        "rounds_used": rounds_used,
+        "status": "active",
+        "result": None,
+    }
+
+
+def _reconstruct_done_state(attack_type: str, out_dir: Path) -> tuple[dict, dict | None]:
+    """
+    Load a terminal state from an already-finished attack type.
+    Returns (state, library_entry_or_None).
+    """
+    result = json.loads((out_dir / "result.json").read_text())
+    stop_reason = result.get("stop_reason", "")
+    state = {
+        "attack_type": attack_type,
+        "bare_tf": "",
+        "bare_record": {},
+        "current_record": {},
+        "out_dir": out_dir,
+        "prior_attempts": [],
+        "prev_emb": None,
+        "last_det": {"verdict": result.get("final_verdict", ""), "reasoning": "", "votes": {}},
+        "rounds_used": result.get("rounds_used", 0),
+        "status": stop_reason,
+        "result": result,
+    }
+
+    library_entry = None
+    if stop_reason == "flipped_safe":
+        library_entry = _make_library_entry(
+            attack_type,
+            result.get("winning_annotation", ""),
+            result.get("winning_insert_before", ""),
+            result.get("winning_reasoning_excerpt", ""),
+        )
+    elif stop_reason == "static_succeeded":
+        r0_path = out_dir / "round_0.json"
+        if r0_path.exists():
+            r0 = json.loads(r0_path.read_text())
+            library_entry = _make_library_entry(
+                attack_type,
+                r0.get("annotation_text", ""),
+                r0.get("insert_before", ""),
+                "",
+            )
+
+    return state, library_entry
 
 
 # ── Main ─────────────────────────────────────────────────────────────────────
@@ -640,39 +723,67 @@ def main() -> None:
         print(f"[baseline-gate] no CLEAN baseline record for {SLUG} — cannot bootstrap")
         return
 
-    print(f"[baseline-gate] detecting on CLEAN baseline for {SLUG} …", flush=True)
-    base_det = detector.detect(baseline)
-    print(f"[baseline-gate] verdict={base_det['verdict']}  votes={base_det['votes']}")
-    (args.out_dir / f"baseline_gate{dir_suffix}.json").write_text(json.dumps({
-        "slug": SLUG,
-        "verdict": base_det["verdict"],
-        "votes": base_det["votes"],
-        "reasoning": base_det["reasoning"],
-    }, indent=2))
-
-    if base_det["verdict"] == "safe":
-        print(f"\n*** baseline_miss: detector does NOT catch the naked bug for "
-              f"{SLUG}; no bootstrap possible — skipping ***")
-        (args.out_dir / f"summary{dir_suffix}.csv").write_text(
-            "annotation_type,static_verdict,final_verdict,rounds_used,stop_reason\n"
-        )
-        (args.out_dir / "phase1_summary_partial.json").write_text(json.dumps([{
+    baseline_gate_path = args.out_dir / f"baseline_gate{dir_suffix}.json"
+    if baseline_gate_path.exists():
+        bg = json.loads(baseline_gate_path.read_text())
+        print(f"[baseline-gate] cached — verdict={bg['verdict']}")
+        if bg["verdict"] == "safe":
+            print(f"\n*** baseline_miss (cached) — skipping ***")
+            return
+        baseline_reasoning = filter_npd_paragraphs(bg["reasoning"]) or bg["reasoning"]
+        print(f"[baseline-gate] reasoning loaded from cache ({len(baseline_reasoning)} chars)")
+    else:
+        print(f"[baseline-gate] detecting on CLEAN baseline for {SLUG} …", flush=True)
+        base_det = detector.detect(baseline)
+        print(f"[baseline-gate] verdict={base_det['verdict']}  votes={base_det['votes']}")
+        baseline_gate_path.write_text(json.dumps({
             "slug": SLUG,
-            "stop_reason": "baseline_miss",
-            "final_verdict": "safe",
-        }], indent=2))
-        return
+            "verdict": base_det["verdict"],
+            "votes": base_det["votes"],
+            "reasoning": base_det["reasoning"],
+        }, indent=2))
 
-    baseline_reasoning = filter_npd_paragraphs(base_det["reasoning"]) or base_det["reasoning"]
-    print(f"[baseline-gate] reasoning extracted ({len(baseline_reasoning)} chars) — bootstrapping …")
+        if base_det["verdict"] == "safe":
+            print(f"\n*** baseline_miss: detector does NOT catch the naked bug for "
+                  f"{SLUG}; no bootstrap possible — skipping ***")
+            (args.out_dir / f"summary{dir_suffix}.csv").write_text(
+                "annotation_type,static_verdict,final_verdict,rounds_used,stop_reason\n"
+            )
+            (args.out_dir / "phase1_summary_partial.json").write_text(json.dumps([{
+                "slug": SLUG,
+                "stop_reason": "baseline_miss",
+                "final_verdict": "safe",
+            }], indent=2))
+            return
+
+        baseline_reasoning = filter_npd_paragraphs(base_det["reasoning"]) or base_det["reasoning"]
+        print(f"[baseline-gate] reasoning extracted ({len(baseline_reasoning)} chars) — bootstrapping …")
 
     # ── Shared library ─────────────────────────────────────────────────────────
     library: list[dict] = []
 
-    # ── Round 0: bootstrap each type from baseline reasoning ──────────────────
+    # ── Round 0: bootstrap each type from baseline reasoning (or resume/skip) ──
     states: dict[str, dict] = {}
     for attack_type in args.types:
         out_dir = args.out_dir / f"adaptive_{attack_type}{dir_suffix}"
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        # Resume a budget_exhausted type that can continue to a higher budget
+        resumed = _try_resume_state(attack_type, baseline, out_dir, embedder)
+        if resumed is not None:
+            states[attack_type] = resumed
+            continue
+
+        # Skip a type that already reached a terminal result
+        if (out_dir / "result.json").exists():
+            state, lib_entry = _reconstruct_done_state(attack_type, out_dir)
+            states[attack_type] = state
+            if lib_entry:
+                library.append(lib_entry)
+            print(f"[{attack_type}] already done ({state['status']}) — skipping")
+            continue
+
+        # Fresh bootstrap (round 0)
         state = init_type_fromscratch(
             attack_type=attack_type,
             bare_record=baseline,
@@ -697,7 +808,9 @@ def main() -> None:
 
     # ── Round-major refinement ─────────────────────────────────────────────────
     for rnd in range(1, args.budget + 1):
-        active = [t for t in args.types if states[t]["status"] == "active"]
+        # Only include types that are still active AND haven't yet run this round
+        active = [t for t in args.types
+                  if states[t]["status"] == "active" and rnd > states[t]["rounds_used"]]
         if not active:
             break
         print(f"\n{'#'*60}\n# ROUND {rnd} ({args.sync}-sync) — active types: {active} "

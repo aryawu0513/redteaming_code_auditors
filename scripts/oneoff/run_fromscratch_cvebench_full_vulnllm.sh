@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# run_fromscratch_cvebench_full_vulnllm.sh
+#
+# From-scratch adaptive attack on all 128 cvebench_full samples against VulnLLM-R.
+#
+# Requires:
+#   - VulnLLM-R served at $DETECTOR_URL  (default: http://localhost:8008)
+#   - Qwen refiner served at $OPENAI_BASE_URL (default: http://localhost:8007/v1)
+#
+# Build the benchmark first:
+#   python3 repo_cve_dataset_mining_new/build_benchmark.py \
+#       --judge   repo_cve_dataset_mining_new/judge_r3r4_v3.jsonl \
+#       --dataset repo_cve_dataset_mining_new/f3_nolimit_dedup_func.slim.jsonl \
+#       --samples repo_cve_dataset_mining_new/samples_cve_fix \
+#       --rounds  repo_cve_dataset_mining_new/rounds \
+#       --out-root benchmark/cvebench_full
+#
+# Results land in:
+#   attacker/adaptive/results/vulnllmr_fromscratch/repository_<slug>/
+
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+SCRIPT="$REPO_ROOT/attacker/adaptive/refine_loop_fromscratch.py"
+DATASET="$REPO_ROOT/benchmark/cvebench_full/baseline"
+
+DETECTOR_URL="${DETECTOR_URL:-http://localhost:8008}"
+export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8007/v1}"
+export OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}"
+REFINER_MODEL="${REFINER_MODEL:-Qwen/Qwen3.6-27B-FP8}"
+BUDGET="${BUDGET:-10}"
+RUN_TAG="fromscratch_v1"
+
+BASELINE_DIR="$REPO_ROOT/benchmark/cvebench_full/baseline"
+
+if [ ! -d "$BASELINE_DIR" ]; then
+    echo "ERROR: $BASELINE_DIR not found — run build_benchmark.py first."
+    exit 1
+fi
+
+mapfile -t SLUGS < <(ls "$BASELINE_DIR" | sed 's/^repository_//' | sort)
+TOTAL=${#SLUGS[@]}
+echo "Found $TOTAL slugs in $BASELINE_DIR"
+
+DONE=0
+for slug in "${SLUGS[@]}"; do
+    echo ""
+    echo "========================================"
+    echo "  [$((DONE+1))/$TOTAL] $slug"
+    echo "========================================"
+    python "$SCRIPT" \
+        --slug                "$slug" \
+        --dataset             "$DATASET" \
+        --detector-url        "$DETECTOR_URL" \
+        --system              vulnllmr_full \
+        --refiner-model       "$REFINER_MODEL" \
+        --refiner-temperature 1.0 \
+        --budget              "$BUDGET" \
+        --run-tag             "$RUN_TAG"
+    (( DONE++ )) || true
+done
+
+echo ""
+echo "Done — $DONE / $TOTAL slugs."
+echo "Results in attacker/adaptive/results/vulnllmr_fromscratch/"

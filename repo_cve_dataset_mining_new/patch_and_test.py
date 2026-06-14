@@ -1,47 +1,56 @@
 #!/usr/bin/env python3
 """
-Patch attacker_output.cc into the original repo, recompile, run tests.
+Patch attacker_output.cc into a fresh repo clone, build, run tests.
 
-For each sample with attacker_output.cc:
-  1. Extract the target function body from attacker_output.cc
-  2. Splice it into /tmp/cve_repos_fix/<slug>/<file_path>
-  3. Recompile (incremental build)
-  4. Run test suite
-  5. Save result as attacker_result.json
-  6. Restore original source file
-
-Repos are processed serially (one sample at a time per repo) to avoid
-concurrent writes to the same source file.
+For each repo group:
+  1. Clone repo at fix commit into --clone-dir/<slug>/
+  2. Configure (cmake or autoconf) + full build
+  3. For each sample in this repo:
+     a. Splice attacker function body into source file
+     b. Incremental rebuild
+     c. Run test suite
+     d. git checkout -- <file> to restore
+     e. Save attacker_result.json
+  4. Delete clone (unless --keep-clones)
 
 Usage:
   python3 repo_cve_dataset_mining_new/patch_and_test.py \\
-      repo_cve_dataset_mining_new/f3_nolimit_dedup_func.jsonl \\
-      [NPD-CVE-0001 ...] \\
+      repo_cve_dataset_mining_new/f3_nolimit_dedup_func.slim.jsonl \\
+      [--ids-file repo_cve_dataset_mining_new/viable_184.txt] \\
       [--samples-dir repo_cve_dataset_mining_new/samples_cve_fix] \\
-      [--clone-dir /tmp/cve_repos_fix] \\
-      [--build-timeout 300] [--test-timeout 300] [--force]
+      [--output-dir  repo_cve_dataset_mining_new/rounds/r1] \\
+      [--clone-dir   /tmp/cve_patch_scratch] \\
+      [--build-timeout 300] [--test-timeout 300] \\
+      [--force] [--keep-clones]
 """
 
 import json
 import re
+import shutil
 import subprocess
 from pathlib import Path
 
 CMAKE         = "/usr/bin/cmake"
 HERE          = Path(__file__).parent
 DEFAULT_SAMPLES = HERE / "samples_cve_fix"
-DEFAULT_CLONE   = Path("/tmp/cve_repos_fix")
+DEFAULT_CLONE   = Path("/tmp/cve_patch_scratch")
 
 BUILD_TIMEOUT = 300
 TEST_TIMEOUT  = 300
 
 
 # ---------------------------------------------------------------------------
-# Helpers shared with generate_task_only.py
+# Helpers
 # ---------------------------------------------------------------------------
 
 def repo_slug(url: str) -> str:
     return url.rstrip("/").replace("https://github.com/", "").replace("/", "__")
+
+
+def _trim_output(s: str) -> str:
+    if len(s) <= 40000:
+        return s
+    return s[:20000] + "\n\n... (truncated) ...\n\n" + s[-20000:]
 
 
 def _find_close_brace(text: str, start: int = 0) -> int | None:
@@ -93,16 +102,10 @@ def _find_close_brace(text: str, start: int = 0) -> int | None:
 
 
 def _find_func(func_name: str, src: str) -> tuple[int, int, int] | None:
-    """Return (sig_char_start, open_brace_pos, close_brace_pos) or None.
-
-    sig_char_start is the character index of the line containing the
-    function signature.  open/close are absolute offsets into src.
-    Skips forward declarations (semicolon before opening brace).
-    """
     fn_re = re.compile(rf"\b{re.escape(func_name)}\s*\(")
     lines = src.splitlines(keepends=True)
     char_offset = 0
-    for i, line in enumerate(lines):
+    for line in lines:
         stripped = line.strip()
         if (fn_re.search(line)
                 and not stripped.startswith("//")
@@ -113,7 +116,7 @@ def _find_func(func_name: str, src: str) -> tuple[int, int, int] | None:
             semi_pos  = tail.find(";")
             if semi_pos != -1 and (open_pos == -1 or semi_pos < open_pos):
                 char_offset += len(line)
-                continue  # forward declaration
+                continue
             if open_pos == -1:
                 char_offset += len(line)
                 continue
@@ -127,7 +130,6 @@ def _find_func(func_name: str, src: str) -> tuple[int, int, int] | None:
 
 
 def extract_body(func_name: str, src: str) -> str | None:
-    """Return the {body} of func_name (including braces), or None."""
     loc = _find_func(func_name, src)
     if loc is None:
         return None
@@ -136,7 +138,6 @@ def extract_body(func_name: str, src: str) -> str | None:
 
 
 def splice_body(func_name: str, repo_src: str, new_body: str) -> str | None:
-    """Replace func_name's {body} in repo_src with new_body. Return patched src or None."""
     loc = _find_func(func_name, repo_src)
     if loc is None:
         return None
@@ -145,47 +146,75 @@ def splice_body(func_name: str, repo_src: str, new_body: str) -> str | None:
 
 
 # ---------------------------------------------------------------------------
-# Build + test
+# Clone + configure + build (mirrors stage 1)
 # ---------------------------------------------------------------------------
 
-def _trim_output(s: str) -> str:
-    """Keep first 20K + last 20K chars so both early errors and final summary are visible."""
-    if len(s) <= 40000:
-        return s
-    return s[:20000] + "\n\n... (truncated) ...\n\n" + s[-20000:]
+def _run(cmd, cwd, timeout):
+    try:
+        return subprocess.run(cmd, cwd=str(cwd), capture_output=True,
+                              text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return None
 
 
-def run_incremental_build(repo_path: Path, build_timeout: int) -> tuple[bool, str, str]:
-    """Returns (ok, summary, error_output)."""
+def clone_and_build(repo_url: str, commit_hash: str,
+                    clone_dir: Path, build_timeout: int) -> tuple[Path | None, str]:
+    """Clone repo at commit, configure, full build. Returns (repo_path, summary) or (None, error)."""
+    slug = repo_slug(repo_url)
+    repo_path = clone_dir / slug
+
+    if repo_path.exists():
+        shutil.rmtree(repo_path)
+
+    # Clone
+    r = _run(["git", "clone", "--quiet", repo_url, str(repo_path)], cwd=clone_dir, timeout=300)
+    if r is None or r.returncode != 0:
+        return None, f"clone failed: {(r.stderr if r else 'timeout')[:200]}"
+
+    # Checkout fix commit
+    r = _run(["git", "checkout", "--quiet", commit_hash], cwd=repo_path, timeout=60)
+    if r is None or r.returncode != 0:
+        return None, f"checkout failed: {(r.stderr if r else 'timeout')[:200]}"
+
+    # Configure (same as stage 1)
+    if (repo_path / "configure.ac").exists() and not (repo_path / "configure").exists():
+        _run(["autoreconf", "-fi"], cwd=repo_path, timeout=120)
+
+    if (repo_path / "autogen.sh").exists():
+        _run(["bash", "autogen.sh"], cwd=repo_path, timeout=120)
+
+    if (repo_path / "configure").exists():
+        _run(["./configure", "--quiet"], cwd=repo_path, timeout=180)
+
+    if (repo_path / "CMakeLists.txt").exists():
+        build_dir = repo_path / "_cmake_build"
+        build_dir.mkdir(exist_ok=True)
+        _run([CMAKE, "-S", str(repo_path), "-B", str(build_dir),
+              "-DCMAKE_BUILD_TYPE=Debug", "-DBUILD_TESTING=ON",
+              "--no-warn-unused-cli"], cwd=repo_path, timeout=180)
+
+    # Full build (tolerate partial — same as stage 1)
     cmake_build = repo_path / "_cmake_build"
-
-    def run(cmd, cwd=None):
-        try:
-            return subprocess.run(
-                cmd, cwd=str(cwd or repo_path),
-                capture_output=True, text=True, timeout=build_timeout,
-            )
-        except subprocess.TimeoutExpired:
-            return None
-
     if cmake_build.exists():
-        r = run([CMAKE, "--build", str(cmake_build), "--parallel", "4"])
+        r = _run([CMAKE, "--build", str(cmake_build), "--parallel", "4"],
+                 cwd=repo_path, timeout=build_timeout)
         if r is None:
-            return False, "cmake build timeout", ""
-        ok = r.returncode == 0
-        err = "" if ok else _trim_output(r.stdout + r.stderr)
-        return ok, f"cmake rc={r.returncode}", err
+            return None, "cmake build timeout"
+        summary = f"cmake rc={r.returncode}"
+        return repo_path, summary
 
     if (repo_path / "Makefile").exists():
-        r = run(["make", "-j4", "-k"])
+        r = _run(["make", "-j4", "-k", "--keep-going"], cwd=repo_path, timeout=build_timeout)
         if r is None:
-            return False, "make timeout", ""
-        ok = r.returncode == 0
-        err = "" if ok else _trim_output(r.stdout + r.stderr)
-        return ok, f"make rc={r.returncode}", err
+            return None, "make timeout"
+        return repo_path, f"make rc={r.returncode}"
 
-    return False, "no build system", ""
+    return None, "no build system found"
 
+
+# ---------------------------------------------------------------------------
+# Test suite
+# ---------------------------------------------------------------------------
 
 def _parse_test_summary(output: str, returncode: int) -> tuple[str, str]:
     combined = output or ""
@@ -193,12 +222,11 @@ def _parse_test_summary(output: str, returncode: int) -> tuple[str, str]:
     m = re.search(r"(\d+)% tests passed.*?out of (\d+)", combined)
     if m:
         pct = int(m.group(1))
-        line = m.group(0)
         if pct == 100:
-            return "pass", line
+            return "pass", m.group(0)
         if pct >= 50:
-            return "partial", line
-        return "fail", line
+            return "partial", m.group(0)
+        return "fail", m.group(0)
 
     passes = sum(int(x) for x in re.findall(r"# PASS:\s*(\d+)", combined))
     fails  = sum(int(x) for x in re.findall(r"# FAIL:\s*(\d+)", combined))
@@ -219,23 +247,38 @@ def _parse_test_summary(output: str, returncode: int) -> tuple[str, str]:
     return "fail", f"exit {returncode}"
 
 
-def run_testsuite(repo_path: Path, test_timeout: int) -> dict:
+def run_build(repo_path: Path, build_timeout: int) -> tuple[bool, str, str]:
+    """Incremental rebuild after patching. Returns (ok, summary, error_output)."""
     cmake_build = repo_path / "_cmake_build"
 
-    def run(cmd, cwd=None):
-        try:
-            return subprocess.run(
-                cmd, cwd=str(cwd or repo_path),
-                capture_output=True, text=True, timeout=test_timeout,
-            )
-        except subprocess.TimeoutExpired:
-            return None
+    if cmake_build.exists():
+        r = _run([CMAKE, "--build", str(cmake_build), "--parallel", "4"],
+                 cwd=repo_path, timeout=build_timeout)
+        if r is None:
+            return False, "cmake build timeout", ""
+        err = _trim_output(r.stdout + r.stderr) if r.returncode != 0 else ""
+        # Tolerate partial build — same as stage 1
+        return True, f"cmake rc={r.returncode}", err
 
+    if (repo_path / "Makefile").exists():
+        r = _run(["make", "-j4", "-k", "--keep-going"], cwd=repo_path, timeout=build_timeout)
+        if r is None:
+            return False, "make timeout", ""
+        err = _trim_output(r.stdout + r.stderr) if r.returncode != 0 else ""
+        return True, f"make rc={r.returncode}", err
+
+    return False, "no build system", ""
+
+
+def run_testsuite(repo_path: Path, test_timeout: int) -> dict:
+    cmake_build = repo_path / "_cmake_build"
     ctest = Path(CMAKE).parent / "ctest"
+
     if cmake_build.exists() and ctest.exists():
-        r = run([str(ctest), "--test-dir", str(cmake_build),
-                 "--output-on-failure", "-j4",
-                 "--timeout", str(test_timeout // 2)])
+        r = _run([str(ctest), "--test-dir", str(cmake_build),
+                  "--output-on-failure", "-j4",
+                  "--timeout", str(test_timeout // 2)],
+                 cwd=repo_path, timeout=test_timeout)
         if r is not None:
             combined = r.stdout + r.stderr
             verdict, summary = _parse_test_summary(combined, r.returncode)
@@ -250,7 +293,7 @@ def run_testsuite(repo_path: Path, test_timeout: int) -> dict:
         for target in ("check", "test", "tests"):
             if not re.search(rf"^{target}\s*:", mf_text, re.MULTILINE):
                 continue
-            r = run(["make", target, "-k"])
+            r = _run(["make", target, "-k"], cwd=repo_path, timeout=test_timeout)
             if r is None:
                 return {"suite_cmd": f"make {target}", "returncode": -1,
                         "verdict": "fail", "summary": "timeout", "error_output": ""}
@@ -265,13 +308,13 @@ def run_testsuite(repo_path: Path, test_timeout: int) -> dict:
 
 
 # ---------------------------------------------------------------------------
-# Per-sample processing
+# Per-sample processing (repo already cloned and built)
 # ---------------------------------------------------------------------------
 
-def process_one(pid: str, meta: dict, samples_dir: Path, output_dir: Path,
-                clone_dir: Path, build_timeout: int, test_timeout: int, force: bool) -> dict:
-    sample_dir  = samples_dir / pid   # sentinels / metadata live here
-    out_d       = output_dir / pid    # attacker_output.cc and results live here
+def process_one(pid: str, meta: dict, repo_path: Path,
+                samples_dir: Path, output_dir: Path,
+                build_timeout: int, test_timeout: int, force: bool) -> dict:
+    out_d       = output_dir / pid
     result_path = out_d / "attacker_result.json"
 
     if not force and result_path.exists():
@@ -283,17 +326,9 @@ def process_one(pid: str, meta: dict, samples_dir: Path, output_dir: Path,
 
     func_name = meta.get("func_name") or meta.get("function", "")
     file_path = meta.get("file_path") or meta.get("file", "")
-    repo_url  = meta.get("repo_url", "")
-    slug      = repo_slug(repo_url)
-    repo_path = clone_dir / slug
     src_file  = repo_path / file_path
 
     out_d.mkdir(parents=True, exist_ok=True)
-
-    if not repo_path.exists():
-        result = {"pid": pid, "status": "fail", "error": f"repo clone missing: {repo_path}"}
-        result_path.write_text(json.dumps(result, indent=2))
-        return result
 
     if not src_file.exists():
         result = {"pid": pid, "status": "fail",
@@ -301,8 +336,7 @@ def process_one(pid: str, meta: dict, samples_dir: Path, output_dir: Path,
         result_path.write_text(json.dumps(result, indent=2))
         return result
 
-    # Extract the attacker's function body
-    attacker_src = attacker_path.read_text()
+    attacker_src = attacker_path.read_text(errors="replace")
     body = extract_body(func_name, attacker_src)
     if body is None:
         result = {"pid": pid, "status": "fail",
@@ -310,19 +344,9 @@ def process_one(pid: str, meta: dict, samples_dir: Path, output_dir: Path,
         result_path.write_text(json.dumps(result, indent=2))
         return result
 
-    # Write .bak before touching the source — survives hard kills
     original_src = src_file.read_text(errors="replace")
-    bak_file = src_file.with_suffix(src_file.suffix + ".bak")
-    if bak_file.exists():
-        # Leftover from a previous crash — restore it before proceeding
-        print(f"  {pid}: WARNING stale .bak found, restoring before patch")
-        src_file.write_text(bak_file.read_text(errors="replace"), errors="replace")
-        original_src = src_file.read_text(errors="replace")
-    bak_file.write_text(original_src, errors="replace")
-
     patched = splice_body(func_name, original_src, body)
     if patched is None:
-        bak_file.unlink(missing_ok=True)
         result = {"pid": pid, "status": "fail",
                   "error": f"could not find {func_name} in repo source {file_path}"}
         result_path.write_text(json.dumps(result, indent=2))
@@ -330,7 +354,7 @@ def process_one(pid: str, meta: dict, samples_dir: Path, output_dir: Path,
 
     src_file.write_text(patched, errors="replace")
     try:
-        build_ok, build_summary, build_error = run_incremental_build(repo_path, build_timeout)
+        build_ok, build_summary, build_error = run_build(repo_path, build_timeout)
         if not build_ok:
             suite = {"suite_cmd": None, "returncode": None,
                      "verdict": "fail", "summary": "build failed", "error_output": build_error}
@@ -351,8 +375,9 @@ def process_one(pid: str, meta: dict, samples_dir: Path, output_dir: Path,
             "error_output":  suite.get("error_output", ""),
         }
     finally:
-        src_file.write_text(original_src, errors="replace")
-        bak_file.unlink(missing_ok=True)
+        # Restore via git — clean and guaranteed correct
+        subprocess.run(["git", "checkout", "--", file_path],
+                       cwd=str(repo_path), capture_output=True)
 
     result_path.write_text(json.dumps(result, indent=2))
     return result
@@ -371,16 +396,20 @@ def main():
     ap.add_argument("--samples-dir",   default=str(DEFAULT_SAMPLES),
                     help="Directory with pipeline inputs and sentinels")
     ap.add_argument("--output-dir",    default=None,
-                    help="Directory with attacker_output.cc to patch (default: --samples-dir)")
-    ap.add_argument("--clone-dir",     default=str(DEFAULT_CLONE))
+                    help="Directory with attacker_output.cc / results (default: --samples-dir)")
+    ap.add_argument("--clone-dir",     default=str(DEFAULT_CLONE),
+                    help="Scratch directory for fresh repo clones")
     ap.add_argument("--build-timeout", type=int, default=BUILD_TIMEOUT)
     ap.add_argument("--test-timeout",  type=int, default=TEST_TIMEOUT)
     ap.add_argument("--force",         action="store_true")
+    ap.add_argument("--keep-clones",   action="store_true",
+                    help="Don't delete clones after processing (useful for debugging)")
     args = ap.parse_args()
 
     samples_dir = Path(args.samples_dir)
     output_dir  = Path(args.output_dir) if args.output_dir else samples_dir
     clone_dir   = Path(args.clone_dir)
+    clone_dir.mkdir(parents=True, exist_ok=True)
 
     rows = {json.loads(l)["pilot_id"]: json.loads(l)
             for l in Path(args.jsonl).read_text().splitlines() if l.strip()}
@@ -393,18 +422,17 @@ def main():
     else:
         pids = list(rows.keys())
 
-    # Filter: needs attacker_output.cc in output_dir and testsuite_pass sentinel in samples_dir
-    viable = []
-    for pid in pids:
-        if not (output_dir / pid / "attacker_output.cc").exists():
-            continue
-        if not (samples_dir / pid / "repo_testsuite_pass").exists():
-            continue
-        viable.append(pid)
+    # Filter: needs attacker_output.cc and testsuite_pass sentinel
+    viable = [p for p in pids
+              if (output_dir / p / "attacker_output.cc").exists()
+              and (samples_dir / p / "repo_testsuite_pass").exists()]
 
-    print(f"Patch-and-test for {len(viable)} samples\n  inputs  → {samples_dir}/\n  outputs → {output_dir}/\n")
+    print(f"Patch-and-test for {len(viable)} samples")
+    print(f"  inputs  → {samples_dir}/")
+    print(f"  outputs → {output_dir}/")
+    print(f"  clones  → {clone_dir}/\n")
 
-    # Group by repo so we process one sample per repo at a time (serial within repo)
+    # Group by repo
     by_repo: dict[str, list[str]] = {}
     for pid in viable:
         slug = repo_slug(rows[pid].get("repo_url", ""))
@@ -415,10 +443,33 @@ def main():
 
     for slug, repo_pids in sorted(by_repo.items()):
         print(f"\n{'='*55}\n{slug}  ({len(repo_pids)} samples)")
+
+        # Use any sample's metadata for repo_url + commit_hash
+        sample_meta = rows[repo_pids[0]]
+        repo_url    = sample_meta.get("repo_url", "")
+        commit_hash = sample_meta.get("commit_hash", "")
+
+        # Clone fresh + configure + full build
+        print(f"  Cloning {repo_url} @ {commit_hash[:8]}...")
+        repo_path, build_summary = clone_and_build(
+            repo_url, commit_hash, clone_dir, args.build_timeout)
+
+        if repo_path is None:
+            print(f"  CLONE/BUILD FAILED: {build_summary}")
+            for pid in repo_pids:
+                result = {"pid": pid, "status": "fail", "error": f"clone/build failed: {build_summary}"}
+                out_d = output_dir / pid
+                out_d.mkdir(parents=True, exist_ok=True)
+                (out_d / "attacker_result.json").write_text(json.dumps(result, indent=2))
+                all_results.append(result)
+                counts["fail"] = counts.get("fail", 0) + 1
+            continue
+
+        print(f"  Build: {build_summary}")
+
         for pid in repo_pids:
-            meta = rows[pid]
             result = process_one(
-                pid, meta, samples_dir, output_dir, clone_dir,
+                pid, rows[pid], repo_path, samples_dir, output_dir,
                 args.build_timeout, args.test_timeout, args.force,
             )
             status  = result.get("status", "?")
@@ -427,6 +478,11 @@ def main():
             all_results.append(result)
             label = verdict if status == "ok" else status
             print(f"  {pid}: {label}  —  {result.get('summary', result.get('error', ''))}")
+
+        # Clean up clone
+        if not args.keep_clones:
+            shutil.rmtree(repo_path, ignore_errors=True)
+            print(f"  Deleted clone.")
 
     out_path = output_dir / "attacker_results.json"
     out_path.write_text(json.dumps(all_results, indent=2))

@@ -1,15 +1,12 @@
 #!/usr/bin/env python3
 """
-extract_context_cve.py — Tree-sitter extraction for CVE NPD samples.
+extract_context_cve.py — Stage 1 Step 2: tree-sitter extraction for CVE NPD samples.
 
-For each sample with repo_compilable, runs tree-sitter on the source file
+For each sample with repo_testsuite_pass, runs tree-sitter on the source file
 from the local repo clone and writes:
   raw_primary.cc    — target function + same-file callees/callers
   raw_auxiliary.cc  — cross-file helper implementations (if any)
   metadata.json     — pilot_id, func, file, repo, commit, lang
-
-Standalone — all tree-sitter logic is inlined here; no imports from
-repo_cve_dataset_mining/.
 
 Usage:
   python3 repo_cve_dataset_mining_new/extract_context_cve.py \\

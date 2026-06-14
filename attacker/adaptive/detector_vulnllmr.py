@@ -73,6 +73,13 @@ class VulnLLMRDetector:
             code = _re.sub(r'^\s*(public|private|protected)\s*:\s*\n', '', code)
             (Path(tmpdir) / file_name).write_text(code)
 
+            # Write auxiliary context as a separate file so VulnLLM-R's
+            # rglob traversal can see it alongside the main file.
+            context = record.get("context", "").strip()
+            if context:
+                aux_name = "auxiliary.cc" if language == "cpp" else "auxiliary.c"
+                (Path(tmpdir) / aux_name).write_text(context)
+
             results = scan_project(
                 repo_dir=tmpdir,
                 language=language,
