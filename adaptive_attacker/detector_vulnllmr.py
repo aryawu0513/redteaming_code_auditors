@@ -59,7 +59,9 @@ class VulnLLMRDetector:
         target_fn = record.get("function_name") or None
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Reconstruct clean source file from context + target_function.
+            # Reconstruct source file from context + target_function so the
+            # detector always sees the current target_function (which may have
+            # annotations injected during the attack loop).
             context = record.get("context", "")
             target_function = record.get("target_function", "")
             code = (context + "\n\n" + target_function).strip()

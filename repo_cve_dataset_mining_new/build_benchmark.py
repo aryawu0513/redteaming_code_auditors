@@ -56,7 +56,7 @@ def npd_site_match(a: str, g: str) -> bool:
 
 
 def split_file(code: str, func_name: str) -> tuple[str, str]:
-    """Split code into (context, target_function) at func_name's definition."""
+    """Split code into (context, target_function) where target_function is just that function."""
     pattern = re.compile(
         r'^\s*'
         r'(?:(?:static|inline|explicit|virtual|override|extern)\s+)*'
@@ -68,7 +68,52 @@ def split_file(code: str, func_name: str) -> tuple[str, str]:
     m = pattern.search(code)
     if not m:
         return code.rstrip(), ""
-    return code[:m.start()].rstrip(), code[m.start():]
+
+    func_start = m.start()
+    rest = code[func_start:]
+
+    # Walk rest char-by-char tracking brace depth to find end of function
+    depth = 0
+    i = 0
+    in_line_comment = in_block_comment = in_string = in_char = False
+    while i < len(rest):
+        c = rest[i]
+        if in_line_comment:
+            if c == '\n':
+                in_line_comment = False
+        elif in_block_comment:
+            if c == '*' and i + 1 < len(rest) and rest[i + 1] == '/':
+                in_block_comment = False
+                i += 1
+        elif in_string:
+            if c == '\\':
+                i += 1
+            elif c == '"':
+                in_string = False
+        elif in_char:
+            if c == '\\':
+                i += 1
+            elif c == "'":
+                in_char = False
+        else:
+            if c == '/' and i + 1 < len(rest):
+                if rest[i + 1] == '/':
+                    in_line_comment = True; i += 1
+                elif rest[i + 1] == '*':
+                    in_block_comment = True; i += 1
+            elif c == '"':
+                in_string = True
+            elif c == "'":
+                in_char = True
+            elif c == '{':
+                depth += 1
+            elif c == '}':
+                depth -= 1
+                if depth == 0:
+                    return code[:func_start].rstrip(), rest[:i + 1]
+        i += 1
+
+    return code[:func_start].rstrip(), rest  # fallback: no closing brace found
 
 
 def find_best_output(pid: str, rounds_dir: Path,
