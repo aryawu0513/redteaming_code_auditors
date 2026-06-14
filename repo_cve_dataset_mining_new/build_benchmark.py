@@ -163,17 +163,20 @@ def main():
         # Split spliced file into context (before func) and target_function
         context_part, target_part = split_file(spliced, func_name)
 
-        # Prepend raw_auxiliary.cc to context if present
+        # Load auxiliary file separately (cross-file helpers)
         aux_path = d / "raw_auxiliary.cc"
+        auxiliary_file = ""
         if aux_path.exists():
-            aux = aux_path.read_text(errors="replace").strip()
-            if aux:
-                context_part = f"// auxiliary context\n{aux}\n\n// same-file context\n{context_part}"
+            auxiliary_file = aux_path.read_text(errors="replace").strip()
 
-        code = f"// context\n{context_part}\n\n// target function\n{target_part}"
+        # Load task description
+        task_path = d / "task.md"
+        task_description = task_path.read_text(errors="replace").strip() if task_path.exists() else ""
 
         entry = {
-            "code":               code,
+            "primary_file":       spliced,
+            "auxiliary_file":     auxiliary_file,
+            "task_description":   task_description,
             "context":            context_part,
             "target_function":    target_part,
             "function_name":      func_name,

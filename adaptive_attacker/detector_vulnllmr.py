@@ -59,26 +59,22 @@ class VulnLLMRDetector:
         target_fn = record.get("function_name") or None
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Strip the vulscan evaluator markers ("// context\n" and
-            # "\n// target function\n") that are baked into record["code"]
-            # for the function-level prompt format — tree-sitter sees a
-            # clean source file this way.
-            code = record["code"]
-            code = code.replace("// context\n", "", 1)
-            code = code.replace("\n// target function\n", "\n", 1)
+            # Reconstruct clean source file from context + target_function.
+            context = record.get("context", "")
+            target_function = record.get("target_function", "")
+            code = (context + "\n\n" + target_function).strip()
             # Strip bare class-access-specifier preamble (e.g. "public:\n") that
             # appears in CVE dataset snippets extracted from class bodies.
-            # tree-sitter sees it as a broken declaration and misparsed the function.
             import re as _re
             code = _re.sub(r'^\s*(public|private|protected)\s*:\s*\n', '', code)
             (Path(tmpdir) / file_name).write_text(code)
 
-            # Write auxiliary context as a separate file so VulnLLM-R's
+            # Write cross-file auxiliary as a separate file so VulnLLM-R's
             # rglob traversal can see it alongside the main file.
-            context = record.get("context", "").strip()
-            if context:
+            auxiliary = record.get("auxiliary_file", "").strip()
+            if auxiliary:
                 aux_name = "auxiliary.cc" if language == "cpp" else "auxiliary.c"
-                (Path(tmpdir) / aux_name).write_text(context)
+                (Path(tmpdir) / aux_name).write_text(auxiliary)
 
             results = scan_project(
                 repo_dir=tmpdir,

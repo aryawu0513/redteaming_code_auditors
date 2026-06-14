@@ -262,10 +262,6 @@ def init_type_fromscratch(
     if annotation_text is not None:
         annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
         working_record["target_function"] = annotated_tf
-        working_record["code"] = (
-            "// context\n" + working_record["context"]
-            + "\n// target function\n" + annotated_tf
-        )
         working_record["file_name"] = f"solution_{attack_type}_round0.c"
     else:
         print(f"[{attack_type}] bootstrap failed after 3 attempts — detecting on bare code")
@@ -394,10 +390,6 @@ def apply_annotation(state: dict, rnd: int,
     annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
     state["current_record"] = copy.deepcopy(bare_record)
     state["current_record"]["target_function"] = annotated_tf
-    state["current_record"]["code"] = (
-        "// context\n" + bare_record["context"]
-        + "\n// target function\n" + annotated_tf
-    )
     state["current_record"]["file_name"] = f"solution_{attack_type}_round{rnd}.c"
 
 
