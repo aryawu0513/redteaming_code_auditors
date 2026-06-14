@@ -13,7 +13,7 @@ if [[ -z "${OPENAI_API_KEY:-}" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
   exit 1
 fi
 
-python "$REPO_ROOT/attacker/adaptive/detector_server.py" \
+python "$REPO_ROOT/adaptive_attacker/detector_server.py" \
   --detector vultrial \
   --model "$MODEL" \
   --port "$PORT"

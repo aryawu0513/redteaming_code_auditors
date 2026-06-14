@@ -23,7 +23,7 @@ export MKL_SERVICE_FORCE_INTEL=1
 
 echo "Serving OpenVul detector on GPU $DETECTOR_GPU, port $PORT"
 
-python "$REPO_ROOT/attacker/adaptive/detector_server.py" \
+python "$REPO_ROOT/adaptive_attacker/detector_server.py" \
     --detector openvul \
     --port "$PORT" \
     --tp 1
