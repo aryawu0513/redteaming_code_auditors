@@ -175,6 +175,7 @@ def main():
 
         entry = {
             "primary_file":       spliced,
+            "attacker_output":    attacker_clean,
             "auxiliary_file":     auxiliary_file,
             "task_description":   task_description,
             "context":            context_part,
