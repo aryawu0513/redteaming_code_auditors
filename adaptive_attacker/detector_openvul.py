@@ -52,10 +52,13 @@ class OpenVulDetector:
         )
 
     def _build_prompt(self, record: dict, mode: str) -> str:
-        # Prepend auxiliary_file to context so OpenVul sees cross-file helpers
+        # Build context: auxiliary + same-file before + same-file after
         auxiliary = record.get("auxiliary_file", "").strip()
-        if auxiliary:
-            record = {**record, "context": auxiliary + "\n\n" + record.get("context", "")}
+        before    = record.get("context_before", record.get("context", ""))
+        after     = record.get("context_after", "")
+        ctx_parts = [p for p in [auxiliary, before, after] if p]
+        if ctx_parts:
+            record = {**record, "context": "\n\n".join(ctx_parts)}
         user_prompt = build_user_prompt(record, mode)
         return self.tokenizer.apply_chat_template(
             [

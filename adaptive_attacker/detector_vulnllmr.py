@@ -59,12 +59,14 @@ class VulnLLMRDetector:
         target_fn = record.get("function_name") or None
 
         with tempfile.TemporaryDirectory() as tmpdir:
-            # Reconstruct source file from context + target_function so the
-            # detector always sees the current target_function (which may have
-            # annotations injected during the attack loop).
-            context = record.get("context", "")
+            # Reconstruct source file so the detector always sees the current
+            # target_function (which may have annotations injected during the
+            # attack loop). Sandwich the function between before/after context.
+            before = record.get("context_before", record.get("context", ""))
+            after  = record.get("context_after", "")
             target_function = record.get("target_function", "")
-            code = (context + "\n\n" + target_function).strip()
+            parts = [p for p in [before, target_function, after] if p]
+            code = "\n\n".join(parts).strip()
             # Strip bare class-access-specifier preamble (e.g. "public:\n") that
             # appears in CVE dataset snippets extracted from class bodies.
             import re as _re

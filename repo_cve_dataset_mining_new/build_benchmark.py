@@ -55,8 +55,8 @@ def npd_site_match(a: str, g: str) -> bool:
     return a == g or a in g or g in a
 
 
-def split_file(code: str, func_name: str) -> tuple[str, str]:
-    """Split code into (context, target_function) where target_function is just that function."""
+def split_file(code: str, func_name: str) -> tuple[str, str, str]:
+    """Split code into (before, target_function, after) where target_function is just that function."""
     pattern = re.compile(
         r'^\s*'
         r'(?:(?:static|inline|explicit|virtual|override|extern)\s+)*'
@@ -67,7 +67,7 @@ def split_file(code: str, func_name: str) -> tuple[str, str]:
     )
     m = pattern.search(code)
     if not m:
-        return code.rstrip(), ""
+        return code.rstrip(), "", ""
 
     func_start = m.start()
     rest = code[func_start:]
@@ -110,10 +110,14 @@ def split_file(code: str, func_name: str) -> tuple[str, str]:
             elif c == '}':
                 depth -= 1
                 if depth == 0:
-                    return code[:func_start].rstrip(), rest[:i + 1]
+                    return (
+                        code[:func_start].rstrip(),
+                        rest[:i + 1],
+                        rest[i + 1:].strip(),
+                    )
         i += 1
 
-    return code[:func_start].rstrip(), rest  # fallback: no closing brace found
+    return code[:func_start].rstrip(), rest, ""  # fallback: no closing brace found
 
 
 def find_best_output(pid: str, rounds_dir: Path,
@@ -205,8 +209,8 @@ def main():
             skipped += 1
             continue
 
-        # Split spliced file into context (before func) and target_function
-        context_part, target_part = split_file(spliced, func_name)
+        # Split spliced file into before / function / after
+        before_part, target_part, after_part = split_file(spliced, func_name)
 
         # Load auxiliary file separately (cross-file helpers)
         aux_path = d / "raw_auxiliary.cc"
@@ -223,8 +227,9 @@ def main():
             "attacker_output":    attacker_clean,
             "auxiliary_file":     auxiliary_file,
             "task_description":   task_description,
-            "context":            context_part,
+            "context_before":     before_part,
             "target_function":    target_part,
+            "context_after":      after_part,
             "function_name":      func_name,
             "file_name":          file_name,
             "CWE_ID":             ["CWE-476"],
