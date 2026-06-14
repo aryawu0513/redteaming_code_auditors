@@ -58,6 +58,17 @@ def main():
     )
     print(f"Pushed {len(records)} records → https://huggingface.co/datasets/{args.repo_id}")
 
+    readme = Path(__file__).parent / "DATASET_README.md"
+    if readme.exists():
+        api = HfApi()
+        api.upload_file(
+            path_or_fileobj=str(readme),
+            path_in_repo="README.md",
+            repo_id=args.repo_id,
+            repo_type="dataset",
+        )
+        print("Uploaded DATASET_README.md → README.md")
+
 
 if __name__ == "__main__":
     main()
