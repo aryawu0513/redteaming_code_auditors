@@ -48,10 +48,14 @@ class VulnLLMRDetector:
         self.model_fn, self.model_fn_diverse = make_vllm_fns(model_id, max_tokens=max_tokens)
 
     def detect(self, record: dict) -> dict:
-        lang = record.get("language", "c").lower()
-        language = "cpp" if lang == "cpp" else "c"
-        # VulnLLM-R rglobs only .c/.cpp/.h — use .cpp not .cc for C++ files
-        file_name = "solution.cpp" if language == "cpp" else "solution.c"
+        file_name = record.get("file_name", "solution.c")
+        suffix = Path(file_name).suffix.lower()
+        if suffix in (".cc", ".cpp", ".cxx"):
+            language = "cpp"
+        else:
+            language = "c"
+            if suffix not in (".c", ".h"):
+                file_name = "solution.c"
         target_fn = record.get("function_name") or None
 
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -73,7 +77,7 @@ class VulnLLMRDetector:
             # rglob traversal can see it alongside the main file.
             auxiliary = record.get("auxiliary_file", "").strip()
             if auxiliary:
-                aux_name = "auxiliary.cpp" if language == "cpp" else "auxiliary.c"
+                aux_name = "auxiliary.cc" if language == "cpp" else "auxiliary.c"
                 (Path(tmpdir) / aux_name).write_text(auxiliary)
 
             results = scan_project(
