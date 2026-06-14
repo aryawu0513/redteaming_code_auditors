@@ -48,6 +48,13 @@ def extract_attacker_npd_line(code: str) -> str:
     return ""
 
 
+def npd_site_match(a: str, g: str) -> bool:
+    a, g = (a or "").strip(), (g or "").strip()
+    if not a or a == "none" or not g or g in ("none", "null"):
+        return False
+    return a == g or a in g or g in a
+
+
 def split_file(code: str, func_name: str) -> tuple[str, str]:
     """Split code into (context, target_function) at func_name's definition."""
     pattern = re.compile(
@@ -62,13 +69,6 @@ def split_file(code: str, func_name: str) -> tuple[str, str]:
     if not m:
         return code.rstrip(), ""
     return code[:m.start()].rstrip(), code[m.start():]
-
-
-def npd_site_match(a: str, g: str) -> bool:
-    a, g = (a or "").strip(), (g or "").strip()
-    if not a or a == "none" or not g or g in ("none", "null"):
-        return False
-    return a == g or a in g or g in a
 
 
 def find_best_output(pid: str, rounds_dir: Path,
@@ -178,7 +178,6 @@ def main():
             "context":            context_part,
             "target_function":    target_part,
             "function_name":      func_name,
-            "deref_line":         attacker_npd_line,
             "caller":             func_name,
             "file_name":          file_name,
             "CWE_ID":             ["CWE-476"],
@@ -206,7 +205,7 @@ def main():
         (out_dir / "solution.cc").write_text(attacker_clean.strip() + "\n")
 
         written += 1
-        print(f"  {pid}  ({func_name})  deref_line={attacker_npd_line[:60]!r}")
+        print(f"  {pid}  ({func_name})")
 
     print(f"\nDone — {written} written, {skipped} skipped → {out_root}/baseline/")
 

@@ -24,7 +24,6 @@ Existing vulnerability detection benchmarks either use synthetic bugs or rely on
 | `context` | string | Everything before the target function in the source file, plus `raw_auxiliary.cc` (cross-file helpers) prepended if present |
 | `target_function` | string | The target function definition and everything after it in the source file |
 | `function_name` | string | Name of the vulnerable function |
-| `deref_line` | string | Verbatim line of code where the attacker placed the null dereference (first non-empty line after `/* NPD site */` in the attacker's output) |
 | `caller` | string | Same as `function_name` (reserved for call-graph context; currently always the target itself) |
 | `file_name` | string | `solution.c` or `solution.cc` depending on language |
 | `CWE_ID` | list[string] | Always `["CWE-476"]` (null pointer dereference) |
@@ -38,7 +37,7 @@ Existing vulnerability detection benchmarks either use synthetic bugs or rely on
 | `variant` | string | Always `"CLEAN"` (no annotation injected) |
 | `same_implementation` | bool\|null | Judge's assessment: does the attacker's implementation have the same overall logic as the original CVE-fixed code? |
 | `same_npd_site` | bool\|null | Judge's assessment: is the NPD at the same logical location as in the original buggy code? |
-| `npd_site_match` | bool | Whether `deref_line` (attacker-marked) and `generated_npd_line` (judge-found) refer to the same dereference (substring match). True for 108/128 samples (84%). |
+| `npd_site_match` | bool | Whether the attacker's marked NPD line and the judge's independently-found dereference line refer to the same expression (substring match). True for 108/128 samples (84%). |
 
 ## Notes on `same_implementation` and `same_npd_site`
 
@@ -54,5 +53,5 @@ Both fields are `null` only for samples marked `broken` or `not_vulnerable` by t
 - 128 total samples
 - Languages: C and C++
 - Sources: real CVE fix commits across diverse open-source projects
-- 108/128 (84%) have matching attacker and judge NPD lines
+- 108/128 (84%) `npd_site_match=True`: attacker and judge independently identified the same dereference line
 - All 128 pass the original repo test suite with the attacker's implementation
