@@ -49,6 +49,23 @@ Existing vulnerability detection benchmarks either use synthetic bugs or rely on
 
 `same_implementation` and `same_npd_site` are `null` only for samples excluded from this dataset (marked `broken` or `not_vulnerable`).
 
+## Using the dataset with detectors
+
+The fields are designed so each detector can construct its own input without any preprocessing baked into the dataset.
+
+**VulnLLM-R (agent scaffold)**
+Write `primary_file` as `file_name` (e.g. `solution.c`) and `auxiliary_file` as `auxiliary.c`/`auxiliary.cc` into a temp directory. Pass `function_name` as the target. VulnLLM-R runs tree-sitter over the directory, builds a call graph, and does its own context collection — no `// context` / `// target function` markers needed (those are a legacy format from the function-level vulscan evaluator, not the agentic scaffold).
+
+**OpenVul**
+Builds an LLM prompt with a `{context}` block and a `{target_function}` block. Construct `context` as `context_before + context_after` (same-file surroundings); prepend `auxiliary_file` for cross-file helpers.
+> **TODO**: experiment with auxiliary included vs. excluded — unclear whether it helps or hurts OpenVul's NPD reasoning.
+
+**VulTrial**
+Takes a single `code` string passed to a multi-agent LLM debate. Construct `code` as `primary_file` (or `context_before + annotated_target_function + context_after` during adaptive attack). Also needs `target=1` (all samples vulnerable) and `idx` (any sequential integer) for bookkeeping.
+
+**RepoAudit**
+Like VulnLLM-R: write `primary_file` as `file_name` and `auxiliary_file` as `auxiliary.c`/`auxiliary.cc` into a temp project directory. RepoAudit runs its own inter-procedural dataflow analysis over the directory.
+
 ## Statistics
 
 - 128 total samples
