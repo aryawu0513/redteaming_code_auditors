@@ -8,11 +8,11 @@
 #   - Qwen refiner served at $OPENAI_BASE_URL (default: http://localhost:8007/v1)
 #
 # Build the benchmark first:
-#   python3 repo_cve_dataset_mining_new/build_benchmark.py \
-#       --judge   repo_cve_dataset_mining_new/judge_r1r2.jsonl \
-#       --dataset repo_cve_dataset_mining_new/f3_nolimit_dedup_func.slim.jsonl \
-#       --samples repo_cve_dataset_mining_new/samples_cve_fix \
-#       --rounds  repo_cve_dataset_mining_new/rounds \
+#   python3 cvebench/build_benchmark.py \
+#       --judge   cvebench/judge_r1r2.jsonl \
+#       --dataset cvebench/f3_nolimit_dedup_func.slim.jsonl \
+#       --samples cvebench/samples_cve_fix \
+#       --rounds  cvebench/rounds \
 #       --out-root benchmark/cvebench_full
 #
 # Results land in:
