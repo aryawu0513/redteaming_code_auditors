@@ -20,23 +20,10 @@ OpenVul/results/
 defenses/texts/
 adaptive_attacker/results/
 benchmark/
-*.plist
-repo_dataset_mining/harness/
-repo_dataset_mining/samples/
 _logs/
-repo_cve_dataset_mining/samples_cve*/
-repo_cve_dataset_mining/__pycache__/
-repo_cve_dataset_mining/f3*.jsonl
-repo_cve_dataset_mining/f12*.jsonl
-repo_cve_dataset_mining/pilot10.jsonl
-repo_cve_dataset_mining/candidates/
-repo_cve_dataset_mining/*
 
-
-# new pipeline — commit samples_cve_fix (only 27MB), ignore pycache and large JSONL
+# cvebench pipeline — commit samples_cve_fix and slim JSONL, ignore large files
 cvebench/__pycache__/
 cvebench/f3*.jsonl
 !cvebench/f3*.slim.jsonl
-
-cvebench/rounds/*cvebench/*.log
 cvebench/results_testsuite.json
