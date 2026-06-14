@@ -42,8 +42,6 @@ import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-import numpy as np
-
 HERE = Path(__file__).parent
 REPO_ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
@@ -57,9 +55,6 @@ RESULTS_DIR = HERE / "results"
 
 SLUG = "069A7F404506"
 BUDGET = 5
-STUCK_THRESHOLD = 0.95
-STUCK_MODEL_NAME = "all-MiniLM-L6-v2"
-
 ALL_TYPES = ["COT", "FT", "CG", "AA_MSG", "AA_USR", "AA_CA",
              "TOOL_ClangSA", "TOOL_Coverity", "TOOL_Frama", "TOOL_Fuzzer"]
 
@@ -158,17 +153,11 @@ def insert_annotation(bare_tf: str, annotation_text: str, insert_before: str) ->
     return "\n".join(lines[:idx] + indented + lines[idx:])
 
 
-# ── Stuck detection ──────────────────────────────────────────────────────────
-
-def cosine_sim(a: "np.ndarray", b: "np.ndarray") -> float:
-    denom = float(np.linalg.norm(a) * np.linalg.norm(b))
-    return float(np.dot(a, b) / denom) if denom > 0 else 0.0
-
-
 # ── Dataset loading ──────────────────────────────────────────────────────────
 
-def load_baseline_record(slug: str) -> dict | None:
-    baseline_dir = DATASET_DIR.parent / "baseline" / f"repository_{slug}"
+def load_baseline_record(slug: str, dataset_dir: Path | None = None) -> dict | None:
+    base = (dataset_dir if dataset_dir is not None else DATASET_DIR)
+    baseline_dir = base.parent / "baseline" / f"repository_{slug}"
     matches = sorted(baseline_dir.glob("*CLEAN*.json"))
     if not matches:
         return None
@@ -288,7 +277,7 @@ def init_type_fromscratch(
         "current_record": working_record,
         "out_dir": out_dir,
         "prior_attempts": [],
-        "prev_emb": None,
+
         "last_det": det0,
         "rounds_used": 0,
         "status": "active",
@@ -400,25 +389,16 @@ def evaluate_annotation(
     insert_before: str,
     rationale: str,
     det: dict,
-    embedder,
     run_tag: str,
     refiner_model: str,
 ) -> dict | None:
     attack_type = state["attack_type"]
     out_dir = state["out_dir"]
     prior_attempts = state["prior_attempts"]
-    prev_emb = state["prev_emb"]
 
     print(f"[{attack_type}] round {rnd}: verdict={det['verdict']}  votes={det['votes']}")
 
     curr_filtered = filter_npd_paragraphs(det["reasoning"])
-    stuck_sim: float | None = None
-    if curr_filtered:
-        curr_emb = embedder.encode(curr_filtered)
-        if prev_emb is not None:
-            stuck_sim = cosine_sim(prev_emb, curr_emb)
-        state["prev_emb"] = curr_emb
-
     state["last_det"] = det
 
     round_data = {
@@ -430,7 +410,6 @@ def evaluate_annotation(
         "detector_reasoning": det["reasoning"],
         "detector_reasoning_filtered": curr_filtered,
         "votes": det["votes"],
-        "stuck_sim": stuck_sim,
         "prompt_messages": state.get("last_prompt_messages"),
     }
     (out_dir / f"round_{rnd}.json").write_text(json.dumps(round_data, indent=2))
@@ -463,7 +442,7 @@ def evaluate_annotation(
 
 
 def run_round_sequential(
-    state: dict, rnd: int, library: list[dict], embedder, detector,
+    state: dict, rnd: int, library: list[dict], detector,
     refiner_model: str, refiner_temperature: float, run_tag: str,
 ) -> dict | None:
     print(f"\n[{state['attack_type']}] round {rnd} — refining …")
@@ -474,11 +453,11 @@ def run_round_sequential(
         return None
     apply_annotation(state, rnd, ann, ins)
     det = detector.detect(state["current_record"])
-    return evaluate_annotation(state, rnd, ann, ins, rat, det, embedder, run_tag, refiner_model)
+    return evaluate_annotation(state, rnd, ann, ins, rat, det, run_tag, refiner_model)
 
 
 def run_round_batched(
-    active_states: list[dict], rnd: int, library: list[dict], embedder, detector,
+    active_states: list[dict], rnd: int, library: list[dict], detector,
     refiner_model: str, refiner_temperature: float, run_tag: str,
 ) -> None:
     snapshot = list(library)
@@ -503,7 +482,7 @@ def run_round_batched(
     new_entries: list[dict] = []
     for (st, ann, ins, rat), det in zip(valid, dets):
         entry = evaluate_annotation(
-            st, rnd, ann, ins, rat, det, embedder, run_tag, refiner_model
+            st, rnd, ann, ins, rat, det, run_tag, refiner_model
         )
         if entry is not None:
             new_entries.append(entry)
@@ -532,7 +511,6 @@ def _try_resume_state(
     attack_type: str,
     bare_record: dict,
     out_dir: Path,
-    embedder,
 ) -> dict | None:
     """
     If out_dir has round files and result.json with stop_reason=budget_exhausted,
@@ -572,9 +550,6 @@ def _try_resume_state(
     if last_det is None:
         return None
 
-    last_filtered = filter_npd_paragraphs(last_det["reasoning"])
-    prev_emb = embedder.encode(last_filtered) if last_filtered else None
-
     print(f"[{attack_type}] resuming from round {rounds_used} → continuing to higher budget")
     return {
         "attack_type": attack_type,
@@ -583,7 +558,6 @@ def _try_resume_state(
         "current_record": copy.deepcopy(bare_record),
         "out_dir": out_dir,
         "prior_attempts": prior_attempts,
-        "prev_emb": prev_emb,
         "last_det": last_det,
         "rounds_used": rounds_used,
         "status": "active",
@@ -605,7 +579,7 @@ def _reconstruct_done_state(attack_type: str, out_dir: Path) -> tuple[dict, dict
         "current_record": {},
         "out_dir": out_dir,
         "prior_attempts": [],
-        "prev_emb": None,
+
         "last_det": {"verdict": result.get("final_verdict", ""), "reasoning": "", "votes": {}},
         "rounds_used": result.get("rounds_used", 0),
         "status": stop_reason,
@@ -672,8 +646,6 @@ def main() -> None:
     print(f"Detector: {args.detector} | Refiner: {args.refiner_model} T={args.refiner_temperature}")
     print(f"Budget: {args.budget} rounds | Tag: {args.run_tag!r} | Output: {args.out_dir}")
 
-    from sentence_transformers import SentenceTransformer
-
     if args.detector_url:
         from detector_http import HttpDetectorClient
         detector = HttpDetectorClient(base_url=args.detector_url)
@@ -690,9 +662,6 @@ def main() -> None:
         from detector_openvul import OpenVulDetector
         detector = OpenVulDetector(model_id=args.model, tp=args.tp)
 
-    print(f"[embedder] Loading {STUCK_MODEL_NAME} …", flush=True)
-    embedder = SentenceTransformer(STUCK_MODEL_NAME)
-
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
     (args.out_dir / f"run_config{dir_suffix}.txt").write_text(
@@ -701,7 +670,6 @@ def main() -> None:
         f"Types: {', '.join(args.types)}\n"
         f"Detector: {args.detector}\n"
         f"Refiner: {args.refiner_model} T={args.refiner_temperature}\n"
-        f"Stuck threshold: {STUCK_THRESHOLD} ({STUCK_MODEL_NAME})\n"
         f"Budget: {args.budget}\n"
         f"Sync policy: {args.sync}\n"
         f"Mode: from-scratch (LLM chooses placement, may drift each round)\n"
@@ -709,7 +677,7 @@ def main() -> None:
     )
 
     # ── Baseline gate ─────────────────────────────────────────────────────────
-    baseline = load_baseline_record(SLUG)
+    baseline = load_baseline_record(SLUG, dataset_dir=args.dataset)
     if baseline is None:
         print(f"[baseline-gate] no CLEAN baseline record for {SLUG} — cannot bootstrap")
         return
@@ -760,7 +728,7 @@ def main() -> None:
         out_dir.mkdir(parents=True, exist_ok=True)
 
         # Resume a budget_exhausted type that can continue to a higher budget
-        resumed = _try_resume_state(attack_type, baseline, out_dir, embedder)
+        resumed = _try_resume_state(attack_type, baseline, out_dir)
         if resumed is not None:
             states[attack_type] = resumed
             continue
@@ -809,7 +777,7 @@ def main() -> None:
         if args.sync == "round":
             run_round_batched(
                 active_states=[states[t] for t in active],
-                rnd=rnd, library=library, embedder=embedder, detector=detector,
+                rnd=rnd, library=library, detector=detector,
                 refiner_model=args.refiner_model,
                 refiner_temperature=args.refiner_temperature,
                 run_tag=args.run_tag,
@@ -818,7 +786,7 @@ def main() -> None:
             for attack_type in active:
                 entry = run_round_sequential(
                     state=states[attack_type],
-                    rnd=rnd, library=library, embedder=embedder, detector=detector,
+                    rnd=rnd, library=library, detector=detector,
                     refiner_model=args.refiner_model,
                     refiner_temperature=args.refiner_temperature,
                     run_tag=args.run_tag,
