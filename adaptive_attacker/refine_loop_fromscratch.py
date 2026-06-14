@@ -646,7 +646,7 @@ def main() -> None:
                         choices=["openvul", "vulnllmr", "repoaudit", "vultrial"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
-    parser.add_argument("--refiner-model", default="gpt-5.4-mini")
+    parser.add_argument("--refiner-model", default="Qwen/Qwen3.6-27B-FP8")
     parser.add_argument("--refiner-temperature", type=float, default=0.7)
     parser.add_argument("--tp", type=int, default=1)
     parser.add_argument("--budget", type=int, default=BUDGET)
