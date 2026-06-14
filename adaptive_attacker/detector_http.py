@@ -45,13 +45,7 @@ class HttpDetectorClient:
 
     @staticmethod
     def _body(record: dict) -> dict:
-        return {
-            "code": record.get("code", ""),
-            "context": record.get("context", ""),
-            "target_function": record["target_function"],
-            "function_name": record["function_name"],
-            "file_name": record.get("file_name", "solution.c"),
-        }
+        return record
 
     @staticmethod
     def _normalize(data: dict) -> dict:

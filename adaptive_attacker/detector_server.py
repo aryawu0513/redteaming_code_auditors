@@ -19,19 +19,10 @@ import threading
 from pathlib import Path
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from fastapi import FastAPI, HTTPException, Request
 
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
-
-
-class DetectRequest(BaseModel):
-    code: str
-    context: str = ""
-    target_function: str
-    function_name: str
-    file_name: str = "solution.c"
 
 
 app = FastAPI()
@@ -45,62 +36,35 @@ def health() -> dict:
 
 
 @app.post("/detect")
-def detect(req: DetectRequest) -> dict:
+async def detect(request: Request) -> dict:
     if DETECTOR is None:
         raise HTTPException(status_code=500, detail="detector not loaded")
-    record = req.model_dump()
+    record = await request.json()
     try:
         with _DETECT_LOCK:
             result = DETECTOR.detect(record)
     except Exception as exc:
-        # Return error verdict rather than crashing the server on bad inputs
-        # (e.g. C++ header-only files that tree-sitter can't parse as C)
         print(f"[server] detect() raised: {exc}", flush=True)
-        return {
-            "verdict": "error",
-            "reasoning": f"scan error: {exc}",
-            "votes": {},
-        }
-    return {
-        "verdict": result["verdict"],
-        "reasoning": result["reasoning"],
-        "votes": result.get("votes", {}),
-    }
-
-
-class DetectBatchRequest(BaseModel):
-    records: list[DetectRequest]
+        return {"verdict": "error", "reasoning": f"scan error: {exc}", "votes": {}}
+    return {"verdict": result["verdict"], "reasoning": result["reasoning"],
+            "votes": result.get("votes", {})}
 
 
 @app.post("/detect_batch")
-def detect_batch(req: DetectBatchRequest) -> dict:
-    """
-    Batched detect — one server call covers N records. For OpenVul this maps to
-    a single LLM.generate(prompts) and benefits from vLLM continuous batching;
-    for VulnLLM-R it loops internally (the agent scaffold doesn't batch across
-    records).
-    """
+async def detect_batch(request: Request) -> dict:
     if DETECTOR is None:
         raise HTTPException(status_code=500, detail="detector not loaded")
-    records = [r.model_dump() for r in req.records]
+    body = await request.json()
+    records = body.get("records", [])
     try:
         with _DETECT_LOCK:
             results = DETECTOR.detect_batch(records)
     except Exception as exc:
         print(f"[server] detect_batch() raised: {exc}", flush=True)
-        results = [{"verdict": "error", "reasoning": f"scan error: {exc}",
-                    "votes": {}}
+        results = [{"verdict": "error", "reasoning": f"scan error: {exc}", "votes": {}}
                    for _ in records]
-    return {
-        "results": [
-            {
-                "verdict": r["verdict"],
-                "reasoning": r["reasoning"],
-                "votes": r.get("votes", {}),
-            }
-            for r in results
-        ]
-    }
+    return {"results": [{"verdict": r["verdict"], "reasoning": r["reasoning"],
+                         "votes": r.get("votes", {})} for r in results]}
 
 
 def main() -> None:
