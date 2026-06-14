@@ -47,7 +47,11 @@ class RepoAuditDetector:
         self.files = files
 
     def detect(self, record: dict) -> dict:
-        code = (record.get("context", "") + "\n" + record.get("target_function", "")).strip()
+        before = record.get("context_before", record.get("context", ""))
+        after  = record.get("context_after", "")
+        tf     = record.get("target_function", "")
+        parts  = [p for p in [before, tf, after] if p]
+        code   = "\n\n".join(parts).strip()
         file_name = record.get("file_name") or "solution.c"
         case_stem = Path(file_name).stem
 

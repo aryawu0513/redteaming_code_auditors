@@ -33,8 +33,20 @@ class VulTrialDetector:
             # Name file so VulTrial parses attack type cleanly.
             slug = record.get("slug") or "record"
             attack = record.get("variant") or "CLEAN"
+            # VulTrial reads `code`, `target`, `idx` from the record JSON.
+            # Construct code from separate fields; inject defaults for the rest.
+            before = record.get("context_before", record.get("context", ""))
+            after  = record.get("context_after", "")
+            tf     = record.get("target_function", "")
+            parts  = [p for p in [before, tf, after] if p]
+            vultrial_record = {
+                **record,
+                "code":   "\n\n".join(parts),
+                "target": record.get("target", 1),
+                "idx":    record.get("idx", 0),
+            }
             ds_path = ds_dir / f"{slug}_{attack}.json"
-            ds_path.write_text(json.dumps([record], indent=2))
+            ds_path.write_text(json.dumps([vultrial_record], indent=2))
 
             args = _Args(
                 dataset_path=str(ds_dir),
