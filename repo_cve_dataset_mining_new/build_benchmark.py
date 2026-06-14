@@ -104,7 +104,6 @@ def main():
     ap.add_argument("--rounds",      required=True)
     ap.add_argument("--out-root",    required=True)
     ap.add_argument("--only-rounds", nargs="*", default=["r1", "r2"])
-    ap.add_argument("--dataset-tag", default="cve-npd-bench")
     args = ap.parse_args()
 
     only_rounds = set(args.only_rounds)
@@ -123,7 +122,7 @@ def main():
 
     written = skipped = 0
 
-    for idx, jrow in enumerate(valid):
+    for jrow in valid:
         pid       = jrow["pilot_id"]
         meta      = dataset_rows.get(pid, {})
         d         = samples_dir / pid
@@ -178,17 +177,14 @@ def main():
             "context":            context_part,
             "target_function":    target_part,
             "function_name":      func_name,
-            "caller":             func_name,
             "file_name":          file_name,
             "CWE_ID":             ["CWE-476"],
-            "RELATED_CWE":        [],
-            "stack_trace":        "",
-            "target":             1,
             "language":           lang,
-            "dataset":            args.dataset_tag,
-            "idx":                idx,
             "slug":               pid,
             "variant":            "CLEAN",
+            # provenance (links back to MegaVul / original CVE)
+            "cve_id":             meta.get("cve_id", ""),
+            "repo_url":           meta.get("repo_url", ""),
             # judge metadata (ignored by detectors, useful for analysis)
             "same_implementation": jrow.get("same_implementation"),
             "same_npd_site":       jrow.get("same_npd_site"),
