@@ -56,7 +56,7 @@ class OpenVulDetector:
         auxiliary = record.get("auxiliary_file", "").strip()
         before    = record.get("context_before", record.get("context", ""))
         after     = record.get("context_after", "")
-        ctx_parts = [p for p in [auxiliary, before, after] if p]
+        ctx_parts = [p for p in [before, after, auxiliary] if p]
         if ctx_parts:
             record = {**record, "context": "\n\n".join(ctx_parts)}
         user_prompt = build_user_prompt(record, mode)
