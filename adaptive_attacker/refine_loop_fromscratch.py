@@ -771,7 +771,7 @@ def main() -> None:
         active = [t for t in args.types
                   if states[t]["status"] == "active" and rnd > states[t]["rounds_used"]]
         if not active:
-            break
+            continue
         print(f"\n{'#'*60}\n# ROUND {rnd} ({args.sync}-sync) — active types: {active} "
               f"(library size: {len(library)})\n{'#'*60}")
         if args.sync == "round":
