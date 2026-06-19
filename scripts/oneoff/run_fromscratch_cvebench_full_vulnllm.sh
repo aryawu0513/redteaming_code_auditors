@@ -28,7 +28,7 @@ DETECTOR_URL="${DETECTOR_URL:-http://localhost:8008}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8007/v1}"
 export OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}"
 REFINER_MODEL="${REFINER_MODEL:-Qwen/Qwen3.6-27B-FP8}"
-BUDGET="${BUDGET:-10}"
+BUDGET="${BUDGET:-5}"
 RUN_TAG="fromscratch_v1"
 
 BASELINE_DIR="$REPO_ROOT/benchmark/cvebench_full/baseline"
@@ -51,6 +51,7 @@ for slug in "${SLUGS[@]}"; do
     python "$SCRIPT" \
         --slug                "$slug" \
         --dataset             "$DATASET" \
+        --detector            vulnllmr \
         --detector-url        "$DETECTOR_URL" \
         --system              vulnllmr_full \
         --refiner-model       "$REFINER_MODEL" \
