@@ -14,11 +14,17 @@ Usage:
 import argparse
 import difflib
 import json
+import sys
 from pathlib import Path
 
 import uvicorn
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
+
+# Make result_analysis importable
+_RESULT_ANALYSIS_DIR = Path(__file__).parents[1] / "result_analysis"
+if str(_RESULT_ANALYSIS_DIR) not in sys.path:
+    sys.path.insert(0, str(_RESULT_ANALYSIS_DIR))
 
 STATIC_DIR = Path(__file__).parent / "adaptive_static"
 RESULTS_DIR = Path(__file__).parent / "results"
@@ -103,7 +109,7 @@ def _scan_runs(systems_map: dict[str, Path]) -> list[dict]:
 def build_app(systems_map: dict[str, Path], samples_dir: Path | None = None) -> FastAPI:
     app = FastAPI(title="Adaptive Attacker Viewer")
 
-    _cache: dict = {"runs": None}
+    _cache: dict = {"runs": None, "metrics": None}
 
     @app.get("/api/runs")
     def list_runs(refresh: bool = False):
@@ -125,6 +131,25 @@ def build_app(systems_map: dict[str, Path], samples_dir: Path | None = None) -> 
             return _load_run(type_dir)
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
+
+    @app.get("/api/metrics")
+    def get_metrics(refresh: bool = False):
+        if refresh or _cache["metrics"] is None:
+            from metrics import (
+                collect_system_results, compute_asr_cond, compute_cr, compute_delta_tpr,
+            )
+            out = {}
+            for name, path in systems_map.items():
+                if not path.exists():
+                    continue
+                repo_results = collect_system_results(path)
+                out[name] = {
+                    "asr_cond":  compute_asr_cond(repo_results),
+                    "cr":        compute_cr(repo_results),
+                    "delta_tpr": compute_delta_tpr(repo_results),
+                }
+            _cache["metrics"] = out
+        return _cache["metrics"]
 
     @app.get("/api/baseline")
     def get_baseline(slug: str = Query(...), system: str = Query(...),
