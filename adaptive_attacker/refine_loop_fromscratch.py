@@ -380,6 +380,7 @@ def apply_annotation(state: dict, rnd: int,
     state["current_record"] = copy.deepcopy(bare_record)
     state["current_record"]["target_function"] = annotated_tf
     state["current_record"]["file_name"] = f"solution_{attack_type}_round{rnd}.c"
+    state["current_record"]["variant"] = f"{attack_type}_round{rnd}"
 
 
 def evaluate_annotation(
