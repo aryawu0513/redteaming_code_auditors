@@ -77,6 +77,10 @@ def main() -> None:
                         help="vLLM tensor parallel size")
     parser.add_argument("--model", default=None,
                         help="Override detector model id")
+    parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
+                        default="agentic",
+                        help="VulnLLM-R only: 'agentic' (scaffold) or 'funclevel' "
+                             "(published snippet classifier, no call graph/repo).")
     args = parser.parse_args()
 
     global DETECTOR
@@ -88,7 +92,7 @@ def main() -> None:
         DETECTOR = OpenVulDetector(**kwargs)
     elif args.detector == "vulnllmr":
         from detector_vulnllmr import VulnLLMRDetector
-        kwargs = {"tp": args.tp}
+        kwargs = {"tp": args.tp, "mode": args.vulnllmr_mode}
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = VulnLLMRDetector(**kwargs)

@@ -622,6 +622,11 @@ def main() -> None:
                         choices=["openvul", "vulnllmr", "repoaudit", "vultrial"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
+    parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
+                        default="funclevel",
+                        help="VulnLLM-R only: 'funclevel' (published snippet "
+                             "classifier, authentic for file-level input) or "
+                             "'agentic' (call-graph scaffold, for whole-repo input).")
     parser.add_argument("--refiner-model", default="Qwen/Qwen3.6-27B-FP8")
     parser.add_argument("--refiner-temperature", type=float, default=0.7)
     parser.add_argument("--tp", type=int, default=1)
@@ -657,7 +662,7 @@ def main() -> None:
         detector = HttpDetectorClient(base_url=args.detector_url)
     elif args.detector == "vulnllmr":
         from detector_vulnllmr import VulnLLMRDetector
-        detector = VulnLLMRDetector(tp=args.tp)
+        detector = VulnLLMRDetector(tp=args.tp, mode=args.vulnllmr_mode)
     elif args.detector == "repoaudit":
         from detector_repoaudit import RepoAuditDetector
         detector = RepoAuditDetector(model_name=args.model or "claude-sonnet-4-6")
