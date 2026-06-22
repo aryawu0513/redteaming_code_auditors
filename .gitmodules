@@ -11,3 +11,6 @@
 [submodule "OpenVul"]
 	path = OpenVul
 	url = git@github.com:aryawu0513/OpenVul.git
+[submodule "VulWeaver"]
+	path = VulWeaver
+	url = git@github.com:aryawu0513/VulWeaver.git
