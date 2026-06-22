@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from VulTrial.run import run_evaluation
@@ -70,4 +71,5 @@ class VulTrialDetector:
             return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
-        return [self.detect(r) for r in records]
+        with ThreadPoolExecutor(max_workers=len(records)) as ex:
+            return list(ex.map(self.detect, records))
