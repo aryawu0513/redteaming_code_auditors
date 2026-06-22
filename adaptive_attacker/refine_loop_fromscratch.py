@@ -38,6 +38,7 @@ import copy
 import csv
 import json
 import os
+import shutil
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -765,6 +766,9 @@ def main() -> None:
             print(f"[{attack_type}] already done ({state['status']}) — skipping")
             continue
 
+        # Delete any partial state from a previous killed run so bootstrap starts clean.
+        if out_dir.exists():
+            shutil.rmtree(out_dir)
         types_to_bootstrap.append(attack_type)
 
     def _bootstrap_one(attack_type: str) -> tuple[str, dict]:
