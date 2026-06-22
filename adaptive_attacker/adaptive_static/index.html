@@ -422,13 +422,9 @@ async function apiFetch(url) {
 // ── Load list ────────────────────────────────────────────────────────────────
 async function loadRuns(refresh = false) {
   try {
-    const q = refresh ? '?refresh=true' : '';
-    const [runsData, metricsData] = await Promise.all([
-      apiFetch('/api/runs' + q),
-      apiFetch('/api/metrics' + q).catch(() => null),
-    ]);
-    S.runs    = runsData.runs || [];
-    S.metrics = metricsData;
+    const data = await apiFetch('index.json' + (refresh ? '?_=' + Date.now() : ''));
+    S.runs    = data.runs    || [];
+    S.metrics = data.metrics || null;
     renderTagChips();
     applyFilter();
     if (S.showHome) renderHome();
@@ -527,12 +523,23 @@ async function selectRun(slug, type, tag = '', system = '') {
   contentEl.innerHTML = '<div style="padding:40px;text-align:center"><div class="spinner" style="margin:0 auto"></div></div>';
   renderList();
 
-  const tagParam = tag ? `&tag=${encodeURIComponent(tag)}` : '';
+  const tagSuffix = tag ? `_${tag}` : '';
+  const typeDir = `${system}/repository_${slug}/adaptive_${type}${tagSuffix}`;
+  const baseTag = tag || 'fromscratch_v1';
   try {
-    [S.run, S.baseline] = await Promise.all([
-      apiFetch(`/api/run?slug=${encodeURIComponent(slug)}&type=${encodeURIComponent(type)}&system=${encodeURIComponent(system)}${tagParam}`),
-      apiFetch(`/api/baseline?slug=${encodeURIComponent(slug)}&system=${encodeURIComponent(system)}${tagParam}`).catch(() => null),
-    ]);
+    const result = await apiFetch(`${typeDir}/result.json`);
+    const roundPromises = [];
+    for (let i = 0; i < (result.rounds_used || 0); i++)
+      roundPromises.push(apiFetch(`${typeDir}/round_${i}.json`).catch(() => null));
+    const rounds = (await Promise.all(roundPromises)).filter(Boolean);
+    let prevText = null;
+    for (const r of rounds) {
+      r.annotation_diff = unifiedDiff(prevText, r.annotation_text || '', r.round);
+      prevText = r.annotation_text || '';
+    }
+    S.run = { result, rounds };
+    S.baseline = await apiFetch(`${system}/repository_${slug}/baseline_gate_${baseTag}.json`)
+      .then(gate => ({ gate, code: null })).catch(() => null);
     renderMeta();
     renderPills();
     setNavEnabled(true);
@@ -1073,6 +1080,68 @@ async function restoreHash() {
   else if (stepRaw === 'baseline') { S.showBaseline = true; }
   else if (stepRaw) { S.step = Math.max(0, parseInt(stepRaw, 10) || 0); }
   updateNav(); renderCurrent(); updateHash();
+}
+
+// ── Client-side unified diff ─────────────────────────────────────────────────
+function unifiedDiff(oldText, newText, roundNum) {
+  if (oldText === null) return null;
+  if ((oldText || '') === (newText || '')) return '';
+  const a = (oldText || '').split('\n'), b = (newText || '').split('\n');
+  const m = a.length, n = b.length;
+  // Bail on very large inputs to avoid hanging
+  if (m * n > 200000) return null;
+
+  // LCS DP (bottom-up)
+  const dp = Array.from({length: m+1}, () => new Int32Array(n+1));
+  for (let i = m-1; i >= 0; i--)
+    for (let j = n-1; j >= 0; j--)
+      dp[i][j] = a[i] === b[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+
+  // Traceback to ops: {op:'eq'|'del'|'ins', text}
+  const ops = []; let i = 0, j = 0;
+  while (i < m || j < n) {
+    if (i < m && j < n && a[i] === b[j]) { ops.push({op:'eq', text:a[i]}); i++; j++; }
+    else if (j < n && (i >= m || dp[i][j+1] >= (i < m ? dp[i+1][j] : 0)))
+      { ops.push({op:'ins', text:b[j]}); j++; }
+    else { ops.push({op:'del', text:a[i]}); i++; }
+  }
+
+  // Find changed indices, group into hunks with context=3
+  const CTX = 3;
+  const changed = ops.map((o,k) => o.op !== 'eq' ? k : -1).filter(k => k >= 0);
+  if (!changed.length) return '';
+
+  const hunks = []; let ci = 0;
+  while (ci < changed.length) {
+    let lo = Math.max(0, changed[ci] - CTX);
+    let ci2 = ci;
+    while (ci2+1 < changed.length && changed[ci2+1] <= changed[ci2] + 2*CTX) ci2++;
+    hunks.push([lo, Math.min(ops.length-1, changed[ci2] + CTX)]);
+    ci = ci2 + 1;
+  }
+
+  let out = `--- round_${roundNum-1}\n+++ round_${roundNum}\n`;
+  let oldLine = 1, newLine = 1, prevEnd = -1;
+  for (const [start, end] of hunks) {
+    for (let k = prevEnd+1; k < start; k++) {
+      if (ops[k].op !== 'ins') oldLine++;
+      if (ops[k].op !== 'del') newLine++;
+    }
+    prevEnd = end;
+    let oldCount = 0, newCount = 0;
+    for (let k = start; k <= end; k++) {
+      if (ops[k].op !== 'ins') oldCount++;
+      if (ops[k].op !== 'del') newCount++;
+    }
+    out += `@@ -${oldLine},${oldCount} +${newLine},${newCount} @@\n`;
+    for (let k = start; k <= end; k++) {
+      const {op, text} = ops[k];
+      out += (op === 'eq' ? ' ' : op === 'del' ? '-' : '+') + text + '\n';
+      if (op !== 'ins') oldLine++;
+      if (op !== 'del') newLine++;
+    }
+  }
+  return out;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

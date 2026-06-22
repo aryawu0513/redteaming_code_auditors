@@ -19,6 +19,7 @@ OpenVul/datasets/
 OpenVul/results/
 defenses/texts/
 adaptive_attacker/results/
+/results/
 benchmark/
 _logs/
 
