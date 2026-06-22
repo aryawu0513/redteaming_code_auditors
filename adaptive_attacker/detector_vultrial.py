@@ -26,6 +26,7 @@ class VulTrialDetector:
     def __init__(self, model: str = "gpt-4o", mode: str = "npd") -> None:
         self.model = model
         self.mode = mode
+        self.thread_safe = True  # OpenAI API calls; no shared engine state
 
     def detect(self, record: dict) -> dict:
         with tempfile.TemporaryDirectory(prefix="vultrial_det_") as tmp:

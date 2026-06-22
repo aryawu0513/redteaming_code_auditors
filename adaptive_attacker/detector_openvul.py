@@ -50,6 +50,7 @@ class OpenVulDetector:
             min_p=0,
             max_tokens=32768,
         )
+        self.thread_safe = False  # shared vLLM LLM instance; not thread-safe
 
     def _build_prompt(self, record: dict, mode: str) -> str:
         # Build context: auxiliary + same-file before + same-file after

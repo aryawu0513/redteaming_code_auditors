@@ -782,8 +782,17 @@ def main() -> None:
         return attack_type, state
 
     if types_to_bootstrap:
-        with ThreadPoolExecutor(max_workers=len(types_to_bootstrap)) as ex:
-            for attack_type, state in ex.map(_bootstrap_one, types_to_bootstrap):
+        parallel = getattr(detector, "thread_safe", False)
+        if parallel:
+            ctx = ThreadPoolExecutor(max_workers=len(types_to_bootstrap))
+        else:
+            from contextlib import nullcontext
+            ctx = nullcontext()
+
+        with ctx as ex:
+            work = ex.map(_bootstrap_one, types_to_bootstrap) if parallel \
+                   else map(_bootstrap_one, types_to_bootstrap)
+            for attack_type, state in work:
                 states[attack_type] = state
                 if state["status"] == "static_succeeded":
                     out_dir = args.out_dir / f"adaptive_{attack_type}{dir_suffix}"

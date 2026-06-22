@@ -46,6 +46,7 @@ class VulnLLMRDetector:
         print(f"[detector] Loading {model_id} via agent scaffold …", flush=True)
         # make_vllm_fns returns (model_fn@temp=0.0, model_fn_diverse@temp=0.6)
         self.model_fn, self.model_fn_diverse = make_vllm_fns(model_id, max_tokens=max_tokens)
+        self.thread_safe = False  # shared vLLM LLM instance; not thread-safe
 
     def detect(self, record: dict) -> dict:
         file_name = record.get("file_name", "solution.c")

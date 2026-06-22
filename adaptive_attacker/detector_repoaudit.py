@@ -46,6 +46,7 @@ class RepoAuditDetector:
         self.language = language
         self.bug_type = bug_type
         self.files = files
+        self.thread_safe = True  # subprocess per call; no shared engine state
 
     def detect(self, record: dict) -> dict:
         before = record.get("context_before", record.get("context", ""))
