@@ -744,6 +744,8 @@ def main() -> None:
 
     # ── Round 0: bootstrap each type from baseline reasoning (or resume/skip) ──
     states: dict[str, dict] = {}
+    types_to_bootstrap: list[str] = []
+
     for attack_type in args.types:
         out_dir = args.out_dir / f"adaptive_{attack_type}{dir_suffix}"
         out_dir.mkdir(parents=True, exist_ok=True)
@@ -763,7 +765,10 @@ def main() -> None:
             print(f"[{attack_type}] already done ({state['status']}) — skipping")
             continue
 
-        # Fresh bootstrap (round 0)
+        types_to_bootstrap.append(attack_type)
+
+    def _bootstrap_one(attack_type: str) -> tuple[str, dict]:
+        out_dir = args.out_dir / f"adaptive_{attack_type}{dir_suffix}"
         state = init_type_fromscratch(
             attack_type=attack_type,
             bare_record=baseline,
@@ -774,17 +779,23 @@ def main() -> None:
             refiner_model=args.refiner_model,
             refiner_temperature=args.refiner_temperature,
         )
-        states[attack_type] = state
-        if state["status"] == "static_succeeded":
-            r0 = json.loads((out_dir / "round_0.json").read_text())
-            excerpt = filter_npd_paragraphs(state["last_det"]["reasoning"]) \
-                or state["last_det"]["reasoning"]
-            library.append(_make_library_entry(
-                attack_type,
-                r0.get("annotation_text", ""),
-                r0.get("insert_before", ""),
-                excerpt,
-            ))
+        return attack_type, state
+
+    if types_to_bootstrap:
+        with ThreadPoolExecutor(max_workers=len(types_to_bootstrap)) as ex:
+            for attack_type, state in ex.map(_bootstrap_one, types_to_bootstrap):
+                states[attack_type] = state
+                if state["status"] == "static_succeeded":
+                    out_dir = args.out_dir / f"adaptive_{attack_type}{dir_suffix}"
+                    r0 = json.loads((out_dir / "round_0.json").read_text())
+                    excerpt = filter_npd_paragraphs(state["last_det"]["reasoning"]) \
+                        or state["last_det"]["reasoning"]
+                    library.append(_make_library_entry(
+                        attack_type,
+                        r0.get("annotation_text", ""),
+                        r0.get("insert_before", ""),
+                        excerpt,
+                    ))
 
     # ── Round-major refinement ─────────────────────────────────────────────────
     for rnd in range(1, args.budget + 1):
