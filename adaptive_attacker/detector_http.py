@@ -43,6 +43,11 @@ class HttpDetectorClient:
             self._has_batch = False
         print(f"[detector_http] /detect_batch available: {self._has_batch}", flush=True)
 
+        # Safe to call concurrently: this client only issues HTTP POSTs (thread-safe),
+        # and detector_server serializes model access with _DETECT_LOCK, so a vLLM-backed
+        # server can't be corrupted by overlapping requests — they just queue.
+        self.thread_safe = True
+
     @staticmethod
     def _body(record: dict) -> dict:
         return record
