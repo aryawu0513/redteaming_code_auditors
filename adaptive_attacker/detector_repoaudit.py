@@ -11,7 +11,7 @@ import tempfile
 from pathlib import Path
 
 
-REPO_ROOT = Path(__file__).parent.parent.parent
+REPO_ROOT = Path(__file__).parent.parent
 REPOAUDIT_DIR = REPO_ROOT / "RepoAudit" / "src"
 
 
@@ -36,7 +36,7 @@ class RepoAuditDetector:
 
     def __init__(
         self,
-        model_name: str = "claude-sonnet-4-6",
+        model_name: str = "gpt-5-mini",
         language: str = "Cpp",
         bug_type: str = "NPD",
         files: str = "*.c",
@@ -54,11 +54,14 @@ class RepoAuditDetector:
         code   = "\n\n".join(parts).strip()
         file_name = record.get("file_name") or "solution.c"
         case_stem = Path(file_name).stem
+        auxiliary = record.get("auxiliary_file", "").strip()
 
         with tempfile.TemporaryDirectory(prefix="repoaudit_det_") as tmp:
             project_dir = Path(tmp) / "project"
             project_dir.mkdir(parents=True, exist_ok=True)
             (project_dir / file_name).write_text(code)
+            if auxiliary:
+                (project_dir / "auxiliary.cc").write_text(auxiliary)
 
             result_root = Path(tmp) / "ra_out"
             env = os.environ.copy()
@@ -84,11 +87,12 @@ class RepoAuditDetector:
                 return {"verdict": "safe", "reasoning": "RepoAudit produced no results.", "votes": {}}
             latest = run_dirs[-1]
 
-            summary = latest / f"{case_stem}_summary.json"
             verdict = "safe"
-            if summary.exists():
+            for summary in latest.glob("*_summary.json"):
                 sdata = json.loads(summary.read_text())
-                verdict = "vulnerable" if sdata.get("flag") == "tp" else "safe"
+                if sdata.get("flag") == "tp":
+                    verdict = "vulnerable"
+                    break
 
             detect_info = latest / "detect_info.json"
             di_text = ""
@@ -96,7 +100,10 @@ class RepoAuditDetector:
                 di_text = "=== REPOAUDIT_DETECT_INFO_JSON ===\n" + detect_info.read_text()
 
             log_dir = result_root / "log" / "dfbscan" / model_slug / self.bug_type / self.language / proj_name / latest.name
-            logs = _concat_logs(log_dir, case_stem)
+            log_parts = []
+            for log_file in sorted(log_dir.glob("*.log")) if log_dir.exists() else []:
+                log_parts.append(f"=== {log_file.name} ===\n" + log_file.read_text())
+            logs = "\n\n".join(log_parts)
 
             reasoning = "\n\n".join([t for t in [logs, di_text] if t]).strip()
             return {"verdict": verdict, "reasoning": reasoning, "votes": {}}

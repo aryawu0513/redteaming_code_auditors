@@ -8,8 +8,8 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 PORT="${PORT:-8008}"
 MODEL="${MODEL:-gpt-4o}"
 
-if [[ -z "${OPENAI_API_KEY:-}" && -z "${ANTHROPIC_API_KEY:-}" ]]; then
-  echo "ERROR: set OPENAI_API_KEY or ANTHROPIC_API_KEY." >&2
+if [[ -z "${OPENAI_API_KEY:-}" ]]; then
+  echo "ERROR: OPENAI_API_KEY is not set." >&2
   exit 1
 fi
 

@@ -631,6 +631,10 @@ def main() -> None:
                         help="Dataset root — used only to locate the baseline/ sibling dir.")
     parser.add_argument("--system", default=None)
     parser.add_argument("--out-dir", type=Path, default=None)
+    parser.add_argument("--seed-library-system", default=None,
+                        help="Preload the shared library from another system's "
+                             "same-slug library (e.g. vulnllmr_full). Gives the "
+                             "refiner winning exemplars from round 1.")
     args = parser.parse_args()
 
     SLUG = args.slug
@@ -720,6 +724,22 @@ def main() -> None:
 
     # ── Shared library ─────────────────────────────────────────────────────────
     library: list[dict] = []
+
+    # Optionally seed the library from another system's same-slug winning attacks.
+    # The library is JSON-serialized into the refiner prompt, so these act as
+    # working exemplars from round 1 onward (the from-scratch loop otherwise
+    # starts with an empty library and only learns from its own flips).
+    if args.seed_library_system:
+        seed_path = (RESULTS_DIR / args.seed_library_system
+                     / f"repository_{SLUG}" / f"library{dir_suffix}.json")
+        if seed_path.exists():
+            seed_lib = json.loads(seed_path.read_text())
+            library.extend(seed_lib)
+            print(f"[seed-library] preloaded {len(seed_lib)} entries from "
+                  f"{args.seed_library_system} ({seed_path})")
+        else:
+            print(f"[seed-library] WARNING: no library found at {seed_path} — "
+                  f"starting empty")
 
     # ── Round 0: bootstrap each type from baseline reasoning (or resume/skip) ──
     states: dict[str, dict] = {}

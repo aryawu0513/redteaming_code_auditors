@@ -34,14 +34,11 @@ class VulTrialDetector:
             slug = record.get("slug") or "record"
             attack = record.get("variant") or "CLEAN"
             # VulTrial reads `code`, `target`, `idx` from the record JSON.
-            # Construct code from separate fields; inject defaults for the rest.
-            before = record.get("context_before", record.get("context", ""))
-            after  = record.get("context_after", "")
-            tf     = record.get("target_function", "")
-            parts  = [p for p in [before, tf, after] if p]
+            # Send only the target_function — VulTrial is designed for focused snippets.
+            tf = record.get("target_function", "")
             vultrial_record = {
                 **record,
-                "code":   "\n\n".join(parts),
+                "code":   tf,
                 "target": record.get("target", 1),
                 "idx":    record.get("idx", 0),
             }
@@ -63,7 +60,12 @@ class VulTrialDetector:
                 return {"verdict": "safe", "reasoning": "VulTrial produced no results.", "votes": {}}
             r = results[0]
             predicted = r.get("predicted_is_vulnerable", "")
-            verdict = "vulnerable" if predicted == "yes" else "safe"
+            if predicted == "yes":
+                verdict = "vulnerable"
+            elif predicted in ("no",):
+                verdict = "safe"
+            else:
+                verdict = "error"  # unknown = subprocess/parse failure, not a clean safe
             reasoning = r.get("output", "")
             return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
 
