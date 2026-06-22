@@ -23,10 +23,14 @@ class VulTrialDetector:
     Reasoning: raw output text from VulTrial.
     """
 
-    def __init__(self, model: str = "gpt-4o", mode: str = "npd") -> None:
+    def __init__(self, model: str = "gpt-4o", mode: str = "npd",
+                 max_workers: int | None = None) -> None:
         self.model = model
         self.mode = mode
         self.thread_safe = True  # OpenAI API calls; no shared engine state
+        # None = unbounded (one thread per record, current behavior). Set an int
+        # to cap concurrent gpt-4o subprocesses if a caller sends large batches.
+        self._max_workers = max_workers
 
     def detect(self, record: dict) -> dict:
         with tempfile.TemporaryDirectory(prefix="vultrial_det_") as tmp:
@@ -72,5 +76,9 @@ class VulTrialDetector:
             return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
-        with ThreadPoolExecutor(max_workers=len(records)) as ex:
+        if not records:
+            return []
+        workers = len(records) if self._max_workers is None \
+            else min(len(records), self._max_workers)
+        with ThreadPoolExecutor(max_workers=workers) as ex:
             return list(ex.map(self.detect, records))

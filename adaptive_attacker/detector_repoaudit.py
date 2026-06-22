@@ -41,12 +41,17 @@ class RepoAuditDetector:
         language: str = "Cpp",
         bug_type: str = "NPD",
         files: str = "*.c",
+        max_workers: int | None = None,
     ) -> None:
         self.model_name = model_name
         self.language = language
         self.bug_type = bug_type
         self.files = files
         self.thread_safe = True  # subprocess per call; no shared engine state
+        # None = unbounded (one thread per record, current behavior). Each detect
+        # already runs --max-neural-workers 30 internally, so cap this if a caller
+        # sends large batches to avoid an API storm (N x 30 concurrent calls).
+        self._max_workers = max_workers
 
     def detect(self, record: dict) -> dict:
         before = record.get("context_before", record.get("context", ""))
@@ -111,5 +116,9 @@ class RepoAuditDetector:
             return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
-        with ThreadPoolExecutor(max_workers=len(records)) as ex:
+        if not records:
+            return []
+        workers = len(records) if self._max_workers is None \
+            else min(len(records), self._max_workers)
+        with ThreadPoolExecutor(max_workers=workers) as ex:
             return list(ex.map(self.detect, records))

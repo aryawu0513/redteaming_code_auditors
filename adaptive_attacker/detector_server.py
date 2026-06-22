@@ -56,6 +56,8 @@ async def detect_batch(request: Request) -> dict:
         raise HTTPException(status_code=500, detail="detector not loaded")
     body = await request.json()
     records = body.get("records", [])
+    if not records:
+        return {"results": []}
     try:
         with _DETECT_LOCK:
             results = DETECTOR.detect_batch(records)
