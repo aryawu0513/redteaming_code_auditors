@@ -13,7 +13,6 @@ Same output interface as OpenVulDetector: detect(record) → {"verdict", "reason
 
 import sys
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 VULNLLMR_ROOT = Path(__file__).parent.parent / "VulnLLM-R"
@@ -119,5 +118,12 @@ class VulnLLMRDetector:
         }
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
-        with ThreadPoolExecutor(max_workers=len(records)) as ex:
-            return list(ex.map(self.detect, records))
+        """
+        Interface parity with OpenVulDetector.detect_batch.
+
+        The agent scaffold runs its own multi-call exploration loop per record
+        (policy_runs queries + a final verdict) and exposes no cross-record
+        batching hook, so this simply loops detect(). No real wall-clock saving
+        here — the batched fast path is OpenVul-only.
+        """
+        return [self.detect(r) for r in records]
