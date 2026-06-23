@@ -63,7 +63,8 @@ class VulTrialDetector:
             )
             results = run_evaluation(args)
             if not results:
-                return {"verdict": "safe", "reasoning": "VulTrial produced no results.", "votes": {}}
+                return {"verdict": "safe", "reasoning": "VulTrial produced no results.",
+                        "votes": {"has_vul": 0, "no_vul": 1}}
             r = results[0]
             predicted = r.get("predicted_is_vulnerable", "")
             if predicted == "yes":
@@ -73,7 +74,10 @@ class VulTrialDetector:
             else:
                 verdict = "error"  # unknown = subprocess/parse failure, not a clean safe
             reasoning = r.get("output", "")
-            return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
+            votes = ({"has_vul": 1, "no_vul": 0} if verdict == "vulnerable"
+                     else {"has_vul": 0, "no_vul": 1} if verdict == "safe"
+                     else {"has_vul": 0, "no_vul": 0})
+            return {"verdict": verdict, "reasoning": reasoning, "votes": votes}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
         if not records:
