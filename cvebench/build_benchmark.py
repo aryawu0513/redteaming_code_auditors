@@ -60,7 +60,7 @@ def split_file(code: str, func_name: str) -> tuple[str, str, str]:
     pattern = re.compile(
         r'^\s*'
         r'(?:(?:static|inline|explicit|virtual|override|extern)\s+)*'
-        r'(?:\w[\w\s:*&<>]*?\s+)?'
+        r'(?:\w[\w\s:*&<>()]*?[\s*])?'
         r'(?:\w[\w:]*::)*'
         + re.escape(func_name) + r'\s*\(',
         re.MULTILINE,
