@@ -717,6 +717,7 @@ def main() -> None:
             "verdict": base_det["verdict"],
             "votes": base_det["votes"],
             "reasoning": base_det["reasoning"],
+            "target_function": baseline.get("target_function", ""),
         }, indent=2))
 
         if base_det["verdict"] == "safe":
