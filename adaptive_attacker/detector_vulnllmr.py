@@ -154,7 +154,9 @@ class VulnLLMRDetector:
         auxiliary = record.get("auxiliary_file", "").strip()
         target_function = record.get("target_function", "")
 
-        ctx_parts = [p for p in [before, auxiliary, after] if p and p.strip()]
+        # Order matches OpenVul (before, after, auxiliary) so the two
+        # function-level detectors get byte-identical context content+order.
+        ctx_parts = [p for p in [before, after, auxiliary] if p and p.strip()]
         context_str = "\n\n".join(ctx_parts).strip()
         if context_str:
             code = f"// context\n{context_str}\n// target function\n{target_function}"

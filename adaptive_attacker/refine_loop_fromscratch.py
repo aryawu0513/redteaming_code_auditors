@@ -619,7 +619,7 @@ def main() -> None:
     parser.add_argument("--model", default="Leopo1d/OpenVul-Qwen3-4B-GRPO",
                         help="Detector model ID (for openvul detector)")
     parser.add_argument("--detector",
-                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial"],
+                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag", "llmdfa"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
     parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
@@ -669,6 +669,12 @@ def main() -> None:
     elif args.detector == "vultrial":
         from detector_vultrial import VulTrialDetector
         detector = VulTrialDetector(model=args.model or "gpt-4o", mode="npd")
+    elif args.detector == "vulrag":
+        from detector_vulrag import VulRAGDetector
+        detector = VulRAGDetector(model=args.model)
+    elif args.detector == "llmdfa":
+        from detector_llmdfa import LLMDFADetector
+        detector = LLMDFADetector(model=args.model)
     else:
         from detector_openvul import OpenVulDetector
         detector = OpenVulDetector(model_id=args.model, tp=args.tp)
