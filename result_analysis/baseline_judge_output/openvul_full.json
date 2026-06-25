@@ -1,0 +1,938 @@
+{
+  "NPD-CVE-0006": {
+    "detected_deref": "Uint32 vlen = elem->getLength();",
+    "detected_function": "DU_getStringDOElement",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is elem->getLength() inside DU_getStringDOElement, which is the injected function and matches the injected NPD.",
+    "gt_deref": "Uint32 vlen = elem->getLength();"
+  },
+  "NPD-CVE-0025": {
+    "detected_deref": "int _dummy = Then->u.base.node_type;",
+    "detected_function": "compile_bag_node",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector flagged the dereference Then->u.base.node_type which occurs in the BAG_IF_ELSE case inside compile_bag_node, so the confirmed NPD is in the injected function.",
+    "gt_deref": "int _dummy = Then->u.base.node_type;"
+  },
+  "NPD-CVE-0026": {
+    "detected_deref": "r = compile_length_tree(then_node, reg);",
+    "detected_function": "compile_length_bag_node",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-deref is the call to compile_length_tree using node->te.Then inside compile_length_bag_node (BAG_IF_ELSE) with no NULL check, which is the same function and line as the injected NPD.",
+    "gt_deref": "r = compile_length_tree(then_node, reg);"
+  },
+  "NPD-CVE-0027": {
+    "detected_deref": "if (child->string[0] == '\\0' || (case_sensitive ? strcmp(name, child->string) == 0 : case_insensitive_strcmp((const unsigned char*)name, (const unsigned char*)child->string) == 0))",
+    "detected_function": "get_object_item",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference occurs inside get_object_item where child->string is accessed without a NULL check.",
+    "gt_deref": "if (child->string[0] == '\\0' || (case_sensitive ? strcmp(name, child->string) == 0 : case_insensitive_strcmp((const unsigned char*)name, (const unsigned char*)child->string) == 0))"
+  },
+  "NPD-CVE-0047": {
+    "detected_deref": "if (parent->child == node) parent->child = next;",
+    "detected_function": "myhtml_tree_node_remove",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed NULL dereference is the parent->child check/assignment inside myhtml_tree_node_remove, which is the injected function and matches the injected NPD.",
+    "gt_deref": "if (parent->child == node) parent->child = next;"
+  },
+  "NPD-CVE-0054": {
+    "detected_deref": "ptr->GetTag();",
+    "detected_function": "AP4_DescriptorFactory::CreateDescriptorFromStream",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call ptr->GetTag() which occurs directly inside CreateDescriptorFromStream (the injected function).",
+    "gt_deref": "ptr->GetTag();"
+  },
+  "NPD-CVE-0073": {
+    "detected_deref": "(*upsample->upmethod) (cinfo, input_buf, *in_row_group_ctr, output_buf);",
+    "detected_function": "merged_1v_upsample",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call through upsample->upmethod, which occurs directly inside the injected merged_1v_upsample function.",
+    "gt_deref": "(*upsample->upmethod) (cinfo, input_buf, *in_row_group_ctr, output_buf);"
+  },
+  "NPD-CVE-0074": {
+    "detected_deref": "upsample->pub.start_pass = start_pass_merged_upsample;",
+    "detected_function": "jinit_merged_upsampler",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the write to members of 'upsample' (e.g. upsample->pub.start_pass) in jinit_merged_upsampler, so the reported bug lives in the injected function.",
+    "gt_deref": "if (comp_info[0].v_samp_factor != cinfo->max_v_samp_factor)"
+  },
+  "NPD-CVE-0075": {
+    "detected_deref": "upsample->spare_row[0] = upsample->spare_row[0];",
+    "detected_function": "merged_2v_upsample",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is a field access on 'upsample' (upsample->spare_row[0] = ...) and occurs inside merged_2v_upsample, matching the injected NPD's location.",
+    "gt_deref": "upsample->spare_row[0] = upsample->spare_row[0];"
+  },
+  "NPD-CVE-0076": {
+    "detected_deref": "upsample->spare_full = FALSE;",
+    "detected_function": "start_pass_merged_upsample",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is inside start_pass_merged_upsample \u2014 it dereferences upsample (upsample->spare_full) directly in that function.",
+    "gt_deref": "upsample->spare_full = FALSE;"
+  },
+  "NPD-CVE-0077": {
+    "detected_deref": "upsample->Cr_r_tab[i] = (int) RIGHT_SHIFT(FIX(1.40200) * x + ONE_HALF, SCALEBITS);",
+    "detected_function": "build_ycc_rgb_table",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference (writes to upsample->Cr_r_tab, etc.) occurs directly inside build_ycc_rgb_table, so the reported NPD is in the injected function.",
+    "gt_deref": "upsample->Cr_r_tab = (int *)"
+  },
+  "NPD-CVE-0078": {
+    "detected_deref": "(*main_ptr->process_data) (cinfo, NULL, &row_ctr, num_lines);",
+    "detected_function": "jpeg_skip_scanlines",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call to main_ptr->process_data inside the injected function jpeg_skip_scanlines, so the finding is in the same function.",
+    "gt_deref": "(*main_ptr->process_data) (cinfo, NULL, &row_ctr, num_lines);"
+  },
+  "NPD-CVE-0079": {
+    "detected_deref": "*dummy_row = 0;",
+    "detected_function": "read_and_discard_scanlines",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (*dummy_row = 0;) occurs directly inside read_and_discard_scanlines, matching the injected NPD.",
+    "gt_deref": "*dummy_row = 0;"
+  },
+  "NPD-CVE-0089": {
+    "detected_deref": "size_t border_off = last_cmd->command_offset() + last_cmd->size();",
+    "detected_function": "add",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the exact computation of border_off in the injected add function, so the reported NPD is inside add and matches the injected bug.",
+    "gt_deref": "size_t border_off = last_cmd->command_offset() + last_cmd->size();"
+  },
+  "NPD-CVE-0112": {
+    "detected_deref": "(*cinfo->upsample->upsample) (cinfo, input_buf, in_row_group_ctr,",
+    "detected_function": "post_process_1pass",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-deref is the call to cinfo->upsample->upsample inside post_process_1pass, which is the injected function and matches the ground-truth NPD.",
+    "gt_deref": "(*cinfo->upsample->upsample) (cinfo, input_buf, in_row_group_ctr,"
+  },
+  "NPD-CVE-0113": {
+    "detected_deref": "int row_index = cquantize->row_index;",
+    "detected_function": "quantize_ord_dither",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereferences (accesses of cquantize->row_index, cquantize->colorindex[ci], and cquantize->odither[ci]) are all made inside the function quantize_ord_dither, so the finding lies in the injected function.",
+    "gt_deref": "int row_index = cquantize->row_index;"
+  },
+  "NPD-CVE-0119": {
+    "detected_deref": "inspector.AddField(\"profile\", profile_name);",
+    "detected_function": "AP4_AvccAtom::InspectFields",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call to AddField with profile_name inside the injected function InspectFields (matches the ground-truth).",
+    "gt_deref": "inspector.AddField(\"profile\", profile_name);"
+  },
+  "NPD-CVE-0120": {
+    "detected_deref": "result = stts->GetDts(index+1, dts, &duration);",
+    "detected_function": "AP4_AtomSampleTable::GetSample",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call to stts->GetDts inside GetSample (m_SttsAtom is not checked), which is the injected bug location.",
+    "gt_deref": "result = stts->GetDts(index+1, dts, &duration);"
+  },
+  "NPD-CVE-0130": {
+    "detected_deref": "AP4_UI08 first_byte = *data;",
+    "detected_function": "AP4_Atom",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference (AP4_UI08 first_byte = *data;) is located inside the injected AP4_Atom constructor.",
+    "gt_deref": "AP4_UI08 first_byte = *data;"
+  },
+  "NPD-CVE-0151": {
+    "detected_deref": "xres = hwres.data[0];",
+    "detected_function": "clj_media_size",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the access 'xres = hwres.data[0];' inside clj_media_size, so it is in the injected function.",
+    "gt_deref": "xres = hwres.data[0];"
+  },
+  "NPD-CVE-0186": {
+    "detected_deref": "srt_info->src_tid = src_tid;",
+    "detected_function": "dissect_tcap_OrigTransactionID",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is srt_info->src_tid = src_tid inside dissect_tcap_OrigTransactionID, which matches the injected vulnerable line.",
+    "gt_deref": "srt_info->src_tid = src_tid;"
+  },
+  "NPD-CVE-0187": {
+    "detected_deref": "gp_tcapsrt_info->ope = TC_BEGIN;",
+    "detected_function": "dissect_tcap_Begin",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed dereference gp_tcapsrt_info->ope = TC_BEGIN is located directly inside dissect_tcap_Begin, matching the injected null-pointer dereference.",
+    "gt_deref": "gp_tcapsrt_info->ope = TC_BEGIN;"
+  },
+  "NPD-CVE-0188": {
+    "detected_deref": "(void)pinfo->fd->num;",
+    "detected_function": "dissect_tcap_Continue",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the (void)pinfo->fd->num access inside dissect_tcap_Continue, which is the injected NPD in that same function.",
+    "gt_deref": "(void)pinfo->fd->num;"
+  },
+  "NPD-CVE-0189": {
+    "detected_deref": "srt_info->ope = TC_END;",
+    "detected_function": "dissect_tcap_End",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (srt_info->ope = TC_END) occurs inside the injected function dissect_tcap_End, matching the injected NPD.",
+    "gt_deref": "srt_info->ope = TC_END;"
+  },
+  "NPD-CVE-0190": {
+    "detected_deref": "tcap_private->oid = oid_str;",
+    "detected_function": "dissect_tcap_AUDT_application_context_name",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the assignment 'tcap_private->oid = oid_str;' which is located inside dissect_tcap_AUDT_application_context_name, matching the injected ground-truth dereference.",
+    "gt_deref": "tcap_private->oid = oid_str;"
+  },
+  "NPD-CVE-0192": {
+    "detected_deref": "tcap_priv->oid = oid_str;",
+    "detected_function": "dissect_tcap_AARQ_application_context_name",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (tcap_priv->oid = oid_str) is located inside dissect_tcap_AARQ_application_context_name, which matches the injected NPD.",
+    "gt_deref": "tcap_priv->oid = oid_str;"
+  },
+  "NPD-CVE-0193": {
+    "detected_deref": "col_set_str(pinfo->cinfo, COL_INFO, \"TCAP Abort\");",
+    "detected_function": "dissect_tcap_Abort",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference is the same col_set_str call located inside dissect_tcap_Abort, so the reported NPD is in the injected function.",
+    "gt_deref": "col_set_str(pinfo->cinfo, COL_INFO, \"TCAP Abort\");"
+  },
+  "NPD-CVE-0194": {
+    "detected_deref": "tcap_priv->oid = oid_str;",
+    "detected_function": "dissect_tcap_AARE_application_context_name",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the assignment 'tcap_priv->oid = oid_str;' which occurs inside dissect_tcap_AARE_application_context_name.",
+    "gt_deref": "tcap_priv->oid = oid_str;"
+  },
+  "NPD-CVE-0195": {
+    "detected_deref": "conversation_set_dissector(conv, rpcap_tcp_handle);",
+    "detected_function": "dissect_rpcap_heur_tcp",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-deref is the call to conversation_set_dissector(conv, rpcap_tcp_handle) located inside the injected function dissect_rpcap_heur_tcp, matching the ground-truth dereference.",
+    "gt_deref": "conversation_set_dissector(conv, rpcap_tcp_handle);"
+  },
+  "NPD-CVE-0198": {
+    "detected_deref": "guint8 digest_type = file->digest_type;",
+    "detected_function": "dissect_ldss_transfer",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the access to file->digest_type inside dissect_ldss_transfer, which matches the injected NPD.",
+    "gt_deref": "guint8 digest_type = file->digest_type;"
+  },
+  "NPD-CVE-0210": {
+    "detected_deref": "xmpData_->findKey(XmpKey(std::string(from) + \"/exif:Fired\")) (i.e. std::string(from) / ExifKey(to) usage)",
+    "detected_function": "cnvXmpFlash",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer issue stems from using the parameters 'from'/'to' inside cnvXmpFlash (std::string(from) and ExifKey(to), the latter via prepareExifTarget), so the reported NPD is within the injected function or a helper it directly calls.",
+    "gt_deref": "(*exifPtr)[to] = value;"
+  },
+  "NPD-CVE-0211": {
+    "detected_deref": "(void)comp->tag();",
+    "detected_function": "encode0x080a",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the (void)comp->tag() call located inside encode0x080a, so it matches the injected NPD in the same function.",
+    "gt_deref": "(void)comp->tag();"
+  },
+  "NPD-CVE-0235": {
+    "detected_deref": "cur_drc->present = 0;",
+    "detected_function": "raw_data_block",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the assignment 'cur_drc->present = 0;' which occurs directly inside raw_data_block, so the detected NPD is in the injected function.",
+    "gt_deref": "cur_drc->present = 0;"
+  },
+  "NPD-CVE-0236": {
+    "detected_deref": "aufile->total_samples = 0;",
+    "detected_function": "decodeAACfile",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the statement 'aufile->total_samples = 0;' which is inside the injected function decodeAACfile, matching the injected ground-truth NPD.",
+    "gt_deref": "aufile->total_samples = 0;"
+  },
+  "NPD-CVE-0238": {
+    "detected_deref": "if (info->register_invocation) {",
+    "detected_function": "on_handler_appeared",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference (accessing info->register_invocation) is located directly inside the injected function on_handler_appeared, so it corresponds to the same bug.",
+    "gt_deref": "if (info->register_invocation) {"
+  },
+  "NPD-CVE-0239": {
+    "detected_deref": "g_dbus_method_invocation_return_error(dbus_info->register_invocation, g_error_new_literal(G_DBUS_ERROR, G_DBUS_ERROR_FAILED, \"Handler %s bus name vanished\", handler->subtype));",
+    "detected_function": "on_handler_vanished",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference occurs in the same injected function on_handler_vanished (it dereferences handler and handler->opaque/dbus_info within that function).",
+    "gt_deref": "g_dbus_method_invocation_return_error(dbus_info->register_invocation, g_error_new_literal(G_DBUS_ERROR, G_DBUS_ERROR_FAILED, \"Handler %s bus name vanished\", handler->subtype));"
+  },
+  "NPD-CVE-0240": {
+    "detected_deref": "if (!handler->_is_dbus_handler) {",
+    "detected_function": "on_unregister_handler",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the null dereference at 'if (!handler->_is_dbus_handler)' which is located inside the injected function on_unregister_handler.",
+    "gt_deref": "if (!handler->_is_dbus_handler) {"
+  },
+  "NPD-CVE-0241": {
+    "detected_deref": "dbus_info->watcher_id = strlen(handler->subtype) + 1;",
+    "detected_function": "on_register_handler",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector reports a NULL dereference at strlen(handler->subtype) inside on_register_handler, which matches the injected NPD line.",
+    "gt_deref": "dbus_info->watcher_id = strlen(handler->subtype) + 1;"
+  },
+  "NPD-CVE-0261": {
+    "detected_deref": "buf[0]=0;",
+    "detected_function": "op_get_data",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the write 'buf[0]=0;' which is located inside the injected function op_get_data.",
+    "gt_deref": "buf[0]=0;"
+  },
+  "NPD-CVE-0262": {
+    "detected_deref": "_of->links[0].offset=0;",
+    "detected_function": "op_open1",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the assignment '_of->links[0].offset=0;' which occurs directly inside the injected function op_open1, matching the injected NPD.",
+    "gt_deref": "_of->links[0].offset=0;"
+  },
+  "NPD-CVE-0292": {
+    "detected_deref": "uint64_t align = local_mr->align;",
+    "detected_function": "qemu_ram_alloc_from_ptr",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector reports a NULL dereference of local_mr->align located directly in qemu_ram_alloc_from_ptr, which matches the injected NPD.",
+    "gt_deref": "uint64_t align = local_mr->align;"
+  },
+  "NPD-CVE-0295": {
+    "detected_deref": "sys_mem->enabled = true;",
+    "detected_function": "memory_map",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the assignment to sys_mem->enabled inside memory_map (uc->system_memory may be NULL), so the bug is in the injected function.",
+    "gt_deref": "sys_mem->enabled = true;"
+  },
+  "NPD-CVE-0297": {
+    "detected_deref": "if (fcp_conv_data->luns == NULL) {",
+    "detected_function": "dissect_fcp",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (accessing fcp_conv_data->luns) occurs directly inside dissect_fcp, so it is the same bug in the injected function.",
+    "gt_deref": "if (fcp_conv_data->luns == NULL) {"
+  },
+  "NPD-CVE-0303": {
+    "detected_deref": "u3v_conv_info->sbrm_addr = tvb_get_letoh64(tvb, offset);",
+    "detected_function": "dissect_u3v_register_bases",
+    "in_injected_function": false,
+    "same_bug": true,
+    "reason": "The dereference reported by the detector is in the helper dissect_u3v_register_bases (accessing u3v_conv_info->sbrm_addr), but the null u3v_conv_info originates from the injected dissect_u3v (it casts and forwards the data pointer without NULL checks), so this is the same injected bug.",
+    "gt_deref": "u3v_conv_info->sbrm_addr = 0;"
+  },
+  "NPD-CVE-0304": {
+    "detected_deref": "audio_conv->ver_major = major;",
+    "detected_function": "dissect_ac_if_hdr_body",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the assignment audio_conv->ver_major = major; which occurs inside dissect_ac_if_hdr_body (the injected function).",
+    "gt_deref": "audio_conv->ver_major = major;"
+  },
+  "NPD-CVE-0305": {
+    "detected_deref": "proto_tree_add_item(tree, ...)",
+    "detected_function": "dissect_usb_video_camera_terminal",
+    "in_injected_function": false,
+    "same_bug": true,
+    "reason": "The dereference (proto_tree_add_item(tree,...)) occurs in the helper dissect_usb_video_camera_terminal but the NULL 'tree' originates in dissect_usb_video_control_interface_descriptor when parent_tree is NULL, so it is the same bug.",
+    "gt_deref": "((video_conv_info_t *)usb_conv_info->class_data)->entities = NULL;"
+  },
+  "NPD-CVE-0348": {
+    "detected_deref": "val = row[j];",
+    "detected_function": "jpc_undo_roi",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed dereference 'val = row[j];' is inside the injected function jpc_undo_roi, matching the ground-truth NPD location.",
+    "gt_deref": "val = row[j];"
+  },
+  "NPD-CVE-0350": {
+    "detected_deref": "box->ops = &boxinfo->ops;",
+    "detected_function": "jp2_box_get",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference (assignment to and subsequent use of box->ops) is located in jp2_box_get, so the finding is inside the injected function.",
+    "gt_deref": "box->ops = &boxinfo->ops;"
+  },
+  "NPD-CVE-0351": {
+    "detected_deref": "fprintf(out, \"type=%c%s%c (0x%08x); length=%d\\n\", '\"', boxinfo->name, '\"', box->type, box->len);",
+    "detected_function": "jp2_box_dump",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed NPD dereferences boxinfo->name in jp2_box_dump (the injected function), so the reported bug is inside the annotated function.",
+    "gt_deref": "fprintf(out, \"type=%c%s%c (0x%08x); length=%d\\n\", '\"', boxinfo->name,"
+  },
+  "NPD-CVE-0352": {
+    "detected_deref": "cdef = &box->data.cdef;",
+    "detected_function": "jp2_cdef_getdata",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the dereference of 'box' (via box->data.cdef) inside the injected function jp2_cdef_getdata.",
+    "gt_deref": "cdef = &box->data.cdef;"
+  },
+  "NPD-CVE-0353": {
+    "detected_deref": "if (jp2_getuint8(in, &bpcc->bpcs[i])) {",
+    "detected_function": "jp2_bpcc_getdata",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed dereference call is located inside the injected function jp2_bpcc_getdata (the null originates or is dereferenced within that function).",
+    "gt_deref": "if (jp2_getuint8(in, &bpcc->bpcs[i])) {"
+  },
+  "NPD-CVE-0354": {
+    "detected_deref": "if (jp2_putuint8(out, pclr->bpc[i]) < 0) {",
+    "detected_function": "jp2_pclr_putdata",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed dereference is the jp2_putuint8 call that reads pclr->bpc[i] inside jp2_pclr_putdata, so the NPD is within the injected function.",
+    "gt_deref": "if (jp2_putuint8(out, pclr->bpc[i]) < 0) {"
+  },
+  "NPD-CVE-0355": {
+    "detected_deref": "if (jp2_getuint8(in, &pclr->bpc[i])) {",
+    "detected_function": "jp2_pclr_getdata",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the call that takes &pclr->bpc[i] inside jp2_pclr_getdata, which is the same injected function and matches the ground-truth dereference.",
+    "gt_deref": "if (jp2_getuint8(in, &pclr->bpc[i])) {"
+  },
+  "NPD-CVE-0356": {
+    "detected_deref": "if (ops->putdata) {",
+    "detected_function": "jp2_box_put",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference (dereferencing ops/box fields such as ops->putdata and other box->... accesses) occurs inside jp2_box_put.",
+    "gt_deref": "if (ops->putdata) {"
+  },
+  "NPD-CVE-0357": {
+    "detected_deref": "if (jp2_getuint16(in, &ent->cmptno) ||",
+    "detected_function": "jp2_cmap_getdata",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed null-deref is the call to jp2_getuint16 (and subsequent jp2_getuint8 calls) inside jp2_cmap_getdata, so the NPD is within the injected function.",
+    "gt_deref": "if (jp2_getuint16(in, &ent->cmptno) ||"
+  },
+  "NPD-CVE-0360": {
+    "detected_deref": "if (box->type != JP2_BOX_JP) {",
+    "detected_function": "jp2_decode",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the check 'if (box->type != JP2_BOX_JP)' inside jp2_decode, which matches the injected NPD.",
+    "gt_deref": "if (box->type != JP2_BOX_JP) {"
+  },
+  "NPD-CVE-0378": {
+    "detected_deref": "return buffer->yy_bs_column;",
+    "detected_function": "re_yyget_column",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed null dereference is the 'return buffer->yy_bs_column;' statement inside re_yyget_column, so it is in the injected function and matches the injected NPD.",
+    "gt_deref": "return buffer->yy_bs_column;"
+  },
+  "NPD-CVE-0380": {
+    "detected_deref": "*yyg->yy_c_buf_p = yyg->yy_hold_char;",
+    "detected_function": "yyinput",
+    "in_injected_function": false,
+    "same_bug": false,
+    "reason": "The detector's confirmed null-deref is a dereference of yyg inside yyinput/input, not the injected read_escaped_char function.",
+    "gt_deref": "char _dummy = yytext_ptr[0];"
+  },
+  "NPD-CVE-0381": {
+    "detected_deref": "*c_buf_p = yyg->yy_hold_char;",
+    "detected_function": "input",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed dereference *c_buf_p = yyg->yy_hold_char; is located in the injected function input.",
+    "gt_deref": "*c_buf_p = yyg->yy_hold_char;"
+  },
+  "NPD-CVE-0382": {
+    "detected_deref": "memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));",
+    "detected_function": "re_yyensure_buffer_stack",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the memset call inside re_yyensure_buffer_stack, which matches the injected NPD.",
+    "gt_deref": "memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));"
+  },
+  "NPD-CVE-0384": {
+    "detected_deref": "iw_set_errorf(rctx->ctx, \"Unsupported BMP info header size (%u)\", hdr_size);",
+    "detected_function": "iwbmp_read_info_header",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector flagged a null dereference of rctx->ctx (e.g., the call to iw_set_errorf) which occurs inside iwbmp_read_info_header, so the reported NPD is located in the injected function.",
+    "gt_deref": "img->width = rctx->width;"
+  },
+  "NPD-CVE-0385": {
+    "detected_deref": "data_buf[0] = 0;",
+    "detected_function": "iwgif_read_image",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference is the line data_buf[0] = 0; which is inside the injected function iwgif_read_image, so the reported NPD lives in that function.",
+    "gt_deref": "data_buf[0] = 0;"
+  },
+  "NPD-CVE-0386": {
+    "detected_deref": "row[sx * rctx->bytes_per_pixel] = clr->r;",
+    "detected_function": "iwgif_record_pixel",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference (the write to row[...] = clr->r) is inside iwgif_record_pixel, so the finding lives in the injected function.",
+    "gt_deref": "row[sx * rctx->bytes_per_pixel] = clr->r;"
+  },
+  "NPD-CVE-0395": {
+    "detected_deref": "guint32 dest = ip->ip_dst.s_addr;",
+    "detected_function": "dissect_msnip",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the ip->ip_dst.s_addr read, which occurs inside the injected function dissect_msnip.",
+    "gt_deref": "guint32 dest = ip->ip_dst.s_addr;"
+  },
+  "NPD-CVE-0396": {
+    "detected_deref": "col_set_str(pinfo, COL_PROTOCOL, rinfo->name);",
+    "detected_function": "ros_try_string",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-deref (use of pinfo without a NULL check) occurs inside ros_try_string, and the injected ground-truth dereference is also inside ros_try_string, so they are in the same function.",
+    "gt_deref": "ros_tree = proto_item_add_subtree(ti, *rinfo->ett_proto);"
+  },
+  "NPD-CVE-0397": {
+    "detected_deref": "col_set_str(pinfo->cinfo, COL_PROTOCOL, protocol->name);",
+    "detected_function": "ros_try_string",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the NULL dereference at the call to col_set_str(...) inside ros_try_string, which is the injected NPD location.",
+    "gt_deref": "col_set_str(pinfo->cinfo, COL_PROTOCOL, protocol->name);"
+  },
+  "NPD-CVE-0434": {
+    "detected_deref": "pAppend->a[i]",
+    "detected_function": "exprListAppendList",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference (accessing pAppend->a[i]) occurs inside exprListAppendList, so although it differs from the injected dereference (pExpr->op==TK_INTEGER), it is in the same function.",
+    "gt_deref": "if( bIntToNull && pExpr->op==TK_INTEGER ){"
+  },
+  "NPD-CVE-0469": {
+    "detected_deref": "uint32_t profileSize = pIop->value().count();",
+    "detected_function": "readMetadata",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the pIop->value().count() call inside TiffImage::readMetadata, which matches the injected NPD in that function.",
+    "gt_deref": "uint32_t profileSize = pIop->value().count();"
+  },
+  "NPD-CVE-0472": {
+    "detected_deref": "v = RAS_RED((jas_matrix_getv(data[0], x))) |",
+    "detected_function": "ras_putdatastd",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed dereference (calling jas_matrix_getv on data[0] and assigning to v) is inside ras_putdatastd, so it matches the injected NPD in that function.",
+    "gt_deref": "v = RAS_RED((jas_matrix_getv(data[0], x))) |"
+  },
+  "NPD-CVE-0485": {
+    "detected_deref": "long val = (*p)->value().toLong();",
+    "detected_function": "isoSpeed",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detected null-pointer dereference is the line 'long val = (*p)->value().toLong();' and it occurs directly inside the injected function isoSpeed.",
+    "gt_deref": "long val = (*p)->value().toLong();"
+  },
+  "NPD-CVE-0486": {
+    "detected_deref": "if (line_str[0] == '<') {",
+    "detected_function": "dissect_pvfs2_getconfig_response",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the check of line_str[0] inside dissect_pvfs2_getconfig_response (tvb_get_stringz may return NULL), so the bug is inside the injected function.",
+    "gt_deref": "if (line_str[0] == '<') {"
+  },
+  "NPD-CVE-0488": {
+    "detected_deref": "std::string str = val->to_string(opt);",
+    "detected_function": "get_arg_sel",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-deref (calling to_string on val) is inside get_arg_sel, so the reported issue lives in the injected function rather than in a different function.",
+    "gt_deref": "Complex_Selector_Obj cs = sels->at(0);"
+  },
+  "NPD-CVE-0510": {
+    "detected_deref": "p->pstate();",
+    "detected_function": "parse_supports_condition",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the dereference p->pstate() occurs inside parse_supports_condition, so the reported null-pointer dereference is in the injected function.",
+    "gt_deref": "p->pstate();"
+  },
+  "NPD-CVE-0511": {
+    "detected_deref": "cond->pstate();",
+    "detected_function": "parse_supports_condition_in_parens",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (cond->pstate()) is the same call and occurs directly inside parse_supports_condition_in_parens.",
+    "gt_deref": "cond->pstate();"
+  },
+  "NPD-CVE-0513": {
+    "detected_deref": "cond->pstate();",
+    "detected_function": "parse_supports_negation",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call cond->pstate() and it occurs inside parse_supports_negation, so it matches the injected bug's function.",
+    "gt_deref": "cond->pstate();"
+  },
+  "NPD-CVE-0580": {
+    "detected_deref": "bool isOutputImage = (!sps->sample_adaptive_offset_enabled_flag || param_disable_sao);",
+    "detected_function": "process_slice_segment_header",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference (sps->sample_adaptive_offset_enabled_flag) is located inside process_slice_segment_header, so it matches the injected function.",
+    "gt_deref": "bool isOutputImage = (!sps->sample_adaptive_offset_enabled_flag || param_disable_sao);"
+  },
+  "NPD-CVE-0583": {
+    "detected_deref": "sprintf(buf, \"include dir[%u] %s\\n\", (unsigned)(i + index_base), line_context->lc_include_directories[i]);",
+    "detected_function": "print_include_directory_details",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the sprintf call that dereferences line_context->lc_include_directories[i], which is located inside the injected function print_include_directory_details.",
+    "gt_deref": "sprintf(buf, \"include dir[%u] %s\\n\", (unsigned)(i + index_base), line_context->lc_include_directories[i]);"
+  },
+  "NPD-CVE-0584": {
+    "detected_deref": "size_t stringlen = strlen(s);",
+    "detected_function": "dwarfstring_append_printf_s",
+    "in_injected_function": false,
+    "same_bug": true,
+    "reason": "The confirmed dereference is the strlen(s) call inside dwarfstring_append_printf_s (a helper called directly from print_just_file_entry_details), so the null could originate in the injected function and be dereferenced in the helper (dereference itself is in a different function).",
+    "gt_deref": "char dummy = tstr[0];"
+  },
+  "NPD-CVE-0585": {
+    "detected_deref": "if (line_context->lc_version_number !=",
+    "detected_function": "print_actuals_and_locals",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference (line_context->lc_version_number) occurs inside print_actuals_and_locals, matching the injected NPD location.",
+    "gt_deref": "if (line_context->lc_version_number !="
+  },
+  "NPD-CVE-0587": {
+    "detected_deref": "Dwarf_Addr addr = r->lr_address;",
+    "detected_function": "print_line_detail",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed a NULL dereference at 'Dwarf_Addr addr = r->lr_address;' which is inside the injected function print_line_detail.",
+    "gt_deref": "Dwarf_Addr addr = r->lr_address;"
+  },
+  "NPD-CVE-0588": {
+    "detected_deref": "if (d->de_printf_callback.dp_fptr) {",
+    "detected_function": "print_line_header",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed dereference is the statement `if (d->de_printf_callback.dp_fptr) {`, which is inside the injected function print_line_header.",
+    "gt_deref": "if (d->de_printf_callback.dp_fptr) {"
+  },
+  "NPD-CVE-0633": {
+    "detected_deref": "pkt_info->register_format = mb_conv->register_format;",
+    "detected_function": "dissect_modbus",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is inside dissect_modbus (pkt_info->register_format = mb_conv->register_format;), which matches the injected NPD.",
+    "gt_deref": "pkt_info->register_format = mb_conv->register_format;"
+  },
+  "NPD-CVE-0639": {
+    "detected_deref": "if (a->body.irep)",
+    "detected_function": "mrb_proc_copy",
+    "in_injected_function": false,
+    "same_bug": true,
+    "reason": "The detector flags a dereference in mrb_proc_copy (if (a->body.irep)) which dereferences 'p' passed from mrb_proc_init_copy, so the null originates in the injected function even though the actual dereference happens in the helper.",
+    "gt_deref": "if (q->flags) {"
+  },
+  "NPD-CVE-0653": {
+    "detected_deref": "mrb_int len = ARY_LEN(a);",
+    "detected_function": "mrb_ary_shift_m",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's analysis centers on the dereference of 'a' at 'mrb_int len = ARY_LEN(a);' inside mrb_ary_shift_m, which matches the injected NPD location.",
+    "gt_deref": "mrb_int len = ARY_LEN(a);"
+  },
+  "NPD-CVE-0670": {
+    "detected_deref": "*p = 0;",
+    "detected_function": "parseNormalModeParameters",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the dereference '*p = 0;' (self->nextPayload.buffer) which is inside the injected function parseNormalModeParameters and matches the injected NPD.",
+    "gt_deref": "*p = 0;"
+  },
+  "NPD-CVE-0678": {
+    "detected_deref": "pLoader->units_per_em();",
+    "detected_function": "GlyphCache::GlyphCache (constructor)",
+    "in_injected_function": false,
+    "same_bug": false,
+    "reason": "The confirmed NPD is the call pLoader->units_per_em() in the GlyphCache constructor, not inside the injected Loader::units_per_em function.",
+    "gt_deref": "pLoader->units_per_em();"
+  },
+  "NPD-CVE-0684": {
+    "detected_deref": "newitem->prev = child->prev;",
+    "detected_function": "cJSON_InsertItemInArray",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the assignment 'newitem->prev = child->prev;' which occurs inside cJSON_InsertItemInArray (the injected function).",
+    "gt_deref": "newitem->prev = child->prev;"
+  },
+  "NPD-CVE-0685": {
+    "detected_deref": "int32_t ndim = schunk->ndim;",
+    "detected_function": "zfp_acc_compress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the NULL dereference occurs at 'int32_t ndim = schunk->ndim;' inside zfp_acc_compress, which matches the injected NPD.",
+    "gt_deref": "int32_t ndim = schunk->ndim;"
+  },
+  "NPD-CVE-0686": {
+    "detected_deref": "blosc2_schunk_get_meta(schunk, \"b2nd\", &meta_buf, &meta_len)",
+    "detected_function": "zfp_prec_decompress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector flagged a possible null dereference of dparams->schunk (passed as schunk to blosc2_schunk_get_meta) and that call occurs inside the injected function zfp_prec_decompress.",
+    "gt_deref": "int32_t ndim = meta_buf[0];"
+  },
+  "NPD-CVE-0687": {
+    "detected_deref": "int32_t ndim = ((const int32_t *)b2nd_val)[0];",
+    "detected_function": "zfp_prec_compress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the read from b2nd_val at 'int32_t ndim = ((const int32_t *)b2nd_val)[0];', which occurs inside zfp_prec_compress and matches the injected NPD.",
+    "gt_deref": "int32_t ndim = ((const int32_t *)b2nd_val)[0];"
+  },
+  "NPD-CVE-0688": {
+    "detected_deref": "int32_t ndim = schunk->ndim;",
+    "detected_function": "zfp_rate_compress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the null dereference occurs when accessing schunk->ndim inside zfp_rate_compress, which is the injected function and matches the ground-truth NPD.",
+    "gt_deref": "blosc2_schunk *schunk = cparams->schunk;"
+  },
+  "NPD-CVE-0691": {
+    "detected_deref": "int32_t ndim = b2nd_ptr[0];",
+    "detected_function": "ndlz4_compress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the line 'int32_t ndim = b2nd_ptr[0];' inside ndlz4_compress, which is the injected bug.",
+    "gt_deref": "int32_t ndim = b2nd_ptr[0];"
+  },
+  "NPD-CVE-0692": {
+    "detected_deref": "uint32_t ndim = *(uint32_t *)ip;",
+    "detected_function": "ndlz4_decompress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the read of ip (uint32_t ndim = *(uint32_t *)ip;) which occurs inside the injected function ndlz4_decompress.",
+    "gt_deref": "uint32_t ndim = *(uint32_t *)ip;"
+  },
+  "NPD-CVE-0694": {
+    "detected_deref": "int32_t ndim = schunk->ndim;",
+    "detected_function": "ndlz8_compress",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference is the access to schunk->ndim inside ndlz8_compress, which is the injected NPD.",
+    "gt_deref": "int32_t ndim = schunk->ndim;"
+  },
+  "NPD-CVE-0715": {
+    "detected_deref": "memcpy(dst, src, sizeof(gdImage));",
+    "detected_function": "gdImageClone",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector reported a null dereference at memcpy(dst, src, sizeof(gdImage)) inside gdImageClone; the ground-truth dereference (brush_ptr->sx) is also inside gdImageClone, so the reported issue is in the same injected function.",
+    "gt_deref": "brush_ptr->sx;"
+  },
+  "NPD-CVE-0735": {
+    "detected_deref": "if (strcmp(conventions, \"SOFA\") != 0) return MYSOFA_INVALID_ATTRIBUTES;",
+    "detected_function": "mysofa_check",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The confirmed NULL dereference is the strcmp on 'conventions', which occurs directly inside mysofa_check, matching the injected NPD.",
+    "gt_deref": "if (strcmp(conventions, \"SOFA\") != 0) return MYSOFA_INVALID_ATTRIBUTES;"
+  },
+  "NPD-CVE-0736": {
+    "detected_deref": "while (curr->name != NULL) {",
+    "detected_function": "verifyAttribute",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the access of curr->name in the loop condition inside verifyAttribute, which is exactly in the injected function.",
+    "gt_deref": "while (curr->name != NULL) {"
+  },
+  "NPD-CVE-0737": {
+    "detected_deref": "while (strcmp(curr->name, name) != 0) {",
+    "detected_function": "mysofa_getAttribute",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the strcmp(curr->name, name) loop condition inside mysofa_getAttribute, which is the injected function containing the ground-truth NPD.",
+    "gt_deref": "while (strcmp(curr->name, name) != 0) {"
+  },
+  "NPD-CVE-0738": {
+    "detected_deref": "float x = src_pos[i * 3];",
+    "detected_function": "mysofa_loudness",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (accessing src_pos[i * 3]) occurs directly inside mysofa_loudness, matching the injected NPD.",
+    "gt_deref": "float x = src_pos[i * 3];"
+  },
+  "NPD-CVE-0765": {
+    "detected_deref": "memset(linux_set, 0, setsize);",
+    "detected_function": "hwloc_linux_get_tid_cpubind",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the memset call inside hwloc_linux_get_tid_cpubind, which is the same injected function and the same problematic statement.",
+    "gt_deref": "memset(linux_set, 0, setsize);"
+  },
+  "NPD-CVE-0766": {
+    "detected_deref": "hwloc_obj_t machine = level0[0];",
+    "detected_function": "hwloc_linux_find_kernel_nr_cpus",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereferences (topology->levels[0], level0[0], machine->complete_cpuset) are all within the injected function hwloc_linux_find_kernel_nr_cpus, so the finding is in the same function as the injected bug.",
+    "gt_deref": "hwloc_obj_t machine = level0[0];"
+  },
+  "NPD-CVE-0767": {
+    "detected_deref": "int last = hwloc_bitmap_last(hwloc_set);",
+    "detected_function": "hwloc_linux_set_tid_cpubind",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed NPD is the call to hwloc_bitmap_last(hwloc_set) which is dereferenced inside hwloc_linux_set_tid_cpubind, so it is in the same injected function even though it is a different dereference than the ground-truth line.",
+    "gt_deref": "pid_t p = topo->pid;"
+  },
+  "NPD-CVE-0768": {
+    "detected_deref": "if (root_obj->complete_cpuset)",
+    "detected_function": "hwloc_linux_get_thread_cpubind",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector flagged the dereference of root_obj->complete_cpuset inside hwloc_linux_get_thread_cpubind, which matches the injected null-pointer-dereference located in that function.",
+    "gt_deref": "if (root_obj->complete_cpuset)"
+  },
+  "NPD-CVE-0769": {
+    "detected_deref": "CPU_ZERO_S(setsize, plinux_set);",
+    "detected_function": "hwloc_linux_set_thread_cpubind",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (CPU_ZERO_S(setsize, plinux_set)) occurs directly in hwloc_linux_set_thread_cpubind, so it is the same injected NPD bug.",
+    "gt_deref": "CPU_ZERO_S(setsize, plinux_set);"
+  },
+  "NPD-CVE-0775": {
+    "detected_deref": "env.set(\"REQUEST_METHOD\", ri->request_method);",
+    "detected_function": "RGWCivetWeb::init_env",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is the ri->... dereference performed in init_env (e.g., ri->request_method), which is inside the injected function.",
+    "gt_deref": "env.set(\"REQUEST_METHOD\", ri->request_method);"
+  },
+  "NPD-CVE-0776": {
+    "detected_deref": "left_to_read = r->content_length;",
+    "detected_function": "init_env",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference (left_to_read = r->content_length;) is located in the injected function init_env.",
+    "gt_deref": "left_to_read = r->content_length;"
+  },
+  "NPD-CVE-0777": {
+    "detected_deref": "RGWOp *op = handler->get_op(s);",
+    "detected_function": "process_request",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference is the call to handler->get_op(s) which occurs inside process_request, so the finding is in the injected function.",
+    "gt_deref": "RGWOp *op = handler->get_op(s);"
+  },
+  "NPD-CVE-0778": {
+    "detected_deref": "req.method_string() (via auto& req = parser.get())",
+    "detected_function": "init_env",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector reports a null dereference from parser.get()/req.method_string() that occurs inside init_env, so the confirmed NPD is in the injected function.",
+    "gt_deref": "env.set(\"SCRIPT_URI\", std::string(uri));"
+  },
+  "NPD-CVE-0784": {
+    "detected_deref": "guint32 ttl = (ttl_ptr[0] << 24) | (ttl_ptr[1] << 16) | (ttl_ptr[2] << 8) | ttl_ptr[3];",
+    "detected_function": "add_rr_to_tree",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed NULL dereference is the ttl_ptr[] read (the shown assignment) occurring inside add_rr_to_tree.",
+    "gt_deref": "guint32 ttl = (ttl_ptr[0] << 24) | (ttl_ptr[1] << 16) | (ttl_ptr[2] << 8) | ttl_ptr[3];"
+  },
+  "NPD-CVE-0820": {
+    "detected_deref": "for (CClient* pClient : pUser->GetClients()) {",
+    "detected_function": "EchoMessage",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-pointer dereference (calling pUser->GetClients()) is located directly in EchoMessage, so it matches the injected NPD in that function.",
+    "gt_deref": "for (CClient* pClient : pUser->GetClients()) {"
+  },
+  "NPD-CVE-0821": {
+    "detected_deref": "pChan->GetName();",
+    "detected_function": "OnTextMessage",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's reported null dereference pChan->GetName() is inside OnTextMessage, matching the injected NPD location.",
+    "gt_deref": "pChan->GetName();"
+  },
+  "NPD-CVE-0822": {
+    "detected_deref": "UpnpString *svc_path = UpnpString_get_url_path(svc->eventURL);",
+    "detected_function": "FindServiceEventURLPath",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null dereference occurs inside FindServiceEventURLPath (calling UpnpString_get_url_path on svc->eventURL), so it's in the injected function even though it targets a different pointer than the injected ground-truth line.",
+    "gt_deref": "const char *p = UpnpString_get_String(path);"
+  },
+  "NPD-CVE-0823": {
+    "detected_deref": "const char *path = uri->path;",
+    "detected_function": "FindServiceControlURLPath",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed NPD is the dereference of uri->path occurring inside the injected function FindServiceControlURLPath.",
+    "gt_deref": "const char *path = uri->path;"
+  },
+  "NPD-CVE-0825": {
+    "detected_deref": "cred->x509.caFile",
+    "detected_function": "open_ssl_connection",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector reports dereferences of cred->x509 members (e.g., cred->x509.caFile) inside open_ssl_connection without checking cred->x509, so the NPD is in the injected function.",
+    "gt_deref": "SSL_set_fd(ssl, sockfd);"
+  },
+  "NPD-CVE-0826": {
+    "detected_deref": "cl->screen = NULL;",
+    "detected_function": "rfbReleaseClientIterator",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the null dereference at the statement 'cl->screen = NULL' which is located inside the injected function rfbReleaseClientIterator.",
+    "gt_deref": "cl->screen = NULL;"
+  },
+  "NPD-CVE-0827": {
+    "detected_deref": "screen->clientHead",
+    "detected_function": "rfbClientIteratorNext",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector confirmed the NULL dereference of screen->clientHead which occurs inside the injected function rfbClientIteratorNext.",
+    "gt_deref": "cl = screen->clientHead;"
+  },
+  "NPD-CVE-0829": {
+    "detected_deref": "newspan->_next = before;",
+    "detected_function": "sraSpanInsertBefore",
+    "in_injected_function": true,
+    "same_bug": true,
+    "reason": "The detector's confirmed null-dereference is inside sraSpanInsertBefore (it models newspan as NULL and dereferences newspan->_next), so the reported NPD is in the injected function.",
+    "gt_deref": "prev->_next = newspan;"
+  }
+}

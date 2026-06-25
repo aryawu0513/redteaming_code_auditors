@@ -20,3 +20,6 @@
 [submodule "Vul-RAG"]
 	path = Vul-RAG
 	url = git@github.com:aryawu0513/KnowledgeRAG4LLMVulD.git
+[submodule "LLM4PFA"]
+	path = LLM4PFA
+	url = git@github.com:aryawu0513/LLM-Enhanced-Path-Feasibility-Analysis.git
