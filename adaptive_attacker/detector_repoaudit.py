@@ -5,15 +5,46 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import shutil
 import subprocess
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-
 REPO_ROOT = Path(__file__).parent.parent
 REPOAUDIT_DIR = REPO_ROOT / "RepoAudit" / "src"
+
+# A log record is one timestamped line: "2026-06-21 23:16:44,032 - INFO - ..."
+_LOG_RECORD = r"\n\d{4}-\d{2}-\d{2} \d\d:\d\d:\d\d"
+# The LLM's answer is "Answer: Yes" / "Answer: No" on its own — that marks a
+# PathValidator (validator) response. Explorer responses end with "Answer: <values>".
+_VALIDATOR_ANSWER = re.compile(r"Answer:\s*(Yes|No)\b\.?\s*$", re.MULTILINE)
+_RESPONSE_BLOCK = re.compile(
+    r"Response:\s*\n(.*?)(?=" + _LOG_RECORD + r"|\Z)", re.DOTALL
+)
+
+
+def extract_ra_reasoning(raw_log: str) -> str:
+    """Pull the LLM's own reasoning out of a (possibly parallel/interleaved) RepoAudit log.
+
+    RepoAudit runs ~30 workers, so explorer dispatch headers and their Response
+    blocks are interleaved out of order — splitting on dispatch headers (as the
+    demo viewer does) loses almost everything. Instead we grab every "Response:"
+    block directly (each is logged atomically as one record) and label it
+    explorer vs validator by whether its answer is a bare Yes/No.
+    """
+    blocks = []
+    for m in _RESPONSE_BLOCK.finditer(raw_log):
+        body = m.group(1).strip()
+        if not body:
+            continue
+        kind = "VALIDATOR" if _VALIDATOR_ANSWER.search(body) else "EXPLORER"
+        blocks.append((kind, body))
+    out = []
+    for i, (kind, body) in enumerate(blocks, 1):
+        out.append(f"─── {kind} #{i} ───\n{body}")
+    return "\n\n".join(out)
 
 
 def _concat_logs(log_dir: Path, case_stem: str) -> str:
@@ -40,7 +71,7 @@ class RepoAuditDetector:
         model_name: str = "gpt-5-mini",
         language: str = "Cpp",
         bug_type: str = "NPD",
-        files: str = "*.c",
+        files: str = "",
         max_workers: int | None = None,
     ) -> None:
         self.model_name = model_name
@@ -101,18 +132,22 @@ class RepoAuditDetector:
                     verdict = "vulnerable"
                     break
 
-            detect_info = latest / "detect_info.json"
-            di_text = ""
-            if detect_info.exists():
-                di_text = "=== REPOAUDIT_DETECT_INFO_JSON ===\n" + detect_info.read_text()
-
+            # Reasoning = the LLM's own analysis: the explorer (IntraDataFlowAnalyzer)
+            # and validator (PathValidator) Response blocks from the per-file logs.
+            # This is what the model actually reasoned about each candidate path —
+            # NOT the structured detect_info.json bug report. Extracted here, before
+            # the temp dir is deleted, for both safe and vulnerable verdicts.
             log_dir = result_root / "log" / "dfbscan" / model_slug / self.bug_type / self.language / proj_name / latest.name
-            log_parts = []
-            for log_file in sorted(log_dir.glob("*.log")) if log_dir.exists() else []:
-                log_parts.append(f"=== {log_file.name} ===\n" + log_file.read_text())
-            logs = "\n\n".join(log_parts)
+            parts = []
+            if log_dir.exists():
+                for log_file in sorted(log_dir.glob("*.log")):
+                    if log_file.name == "dfbscan.log":
+                        continue  # only execution metadata, no LLM content
+                    reasoning_text = extract_ra_reasoning(log_file.read_text())
+                    if reasoning_text:
+                        parts.append(reasoning_text)
+            reasoning = "\n\n".join(parts)
 
-            reasoning = "\n\n".join([t for t in [logs, di_text] if t]).strip()
             return {"verdict": verdict, "reasoning": reasoning, "votes": {}}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:

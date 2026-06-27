@@ -122,7 +122,8 @@ def main() -> None:
         DETECTOR = VulTrialDetector(**kwargs)
 
     print(f"[server] {args.detector} loaded; serving on 0.0.0.0:{args.port}", flush=True)
-    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning")
+    uvicorn.run(app, host="0.0.0.0", port=args.port, log_level="warning",
+                timeout_graceful_shutdown=5)
 
 
 if __name__ == "__main__":
