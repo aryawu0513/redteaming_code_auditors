@@ -11,15 +11,6 @@
 [submodule "OpenVul"]
 	path = OpenVul
 	url = git@github.com:aryawu0513/OpenVul.git
-[submodule "VulWeaver"]
-	path = VulWeaver
-	url = git@github.com:aryawu0513/VulWeaver.git
-[submodule "LLMDFA"]
-	path = LLMDFA
-	url = git@github.com:aryawu0513/LLMDFA.git
 [submodule "Vul-RAG"]
 	path = Vul-RAG
 	url = git@github.com:aryawu0513/KnowledgeRAG4LLMVulD.git
-[submodule "LLM4PFA"]
-	path = LLM4PFA
-	url = git@github.com:aryawu0513/LLM-Enhanced-Path-Feasibility-Analysis.git
