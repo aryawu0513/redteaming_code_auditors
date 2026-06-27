@@ -28,3 +28,6 @@ cvebench/__pycache__/
 cvebench/f3*.jsonl
 !cvebench/f3*.slim.jsonl
 cvebench/results_testsuite.json
+
+writing/
+scripts/oneoff/
