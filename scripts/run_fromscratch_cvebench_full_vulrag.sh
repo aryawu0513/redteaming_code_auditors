@@ -8,11 +8,9 @@
 # The annotation hits BOTH Vul-RAG surfaces: the gpt-4o-mini judgment AND the
 # BM25 retrieval (injected comment can shift which knowledge is retrieved).
 #
-# TWO PROCESSES:
-#   Terminal 1 — serve Vul-RAG (no GPU; prefers OPENAI_API_KEY):
-#       OPENAI_API_KEY=... bash scripts/serve_detector_vulrag.sh        # :8009
-#   Terminal 2 — launch this attack (Qwen refiner must be up on 8007):
-#       bash scripts/run_fromscratch_cvebench_full_vulrag.sh
+# Requires:
+#   - Qwen refiner served at $OPENAI_BASE_URL (default: http://localhost:8007/v1)
+#   - OPENAI_API_KEY set (for Vul-RAG gpt-4o-mini calls)
 #
 # Results → adaptive_attacker/results/vulrag_full/repository_<slug>/
 
@@ -21,7 +19,6 @@ REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 SCRIPT="$REPO_ROOT/adaptive_attacker/refine_loop_fromscratch.py"
 DATASET="$REPO_ROOT/benchmark/cvebench_full/baseline"
 
-DETECTOR_URL="${DETECTOR_URL:-http://localhost:8009}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8007/v1}"   # Qwen refiner
 export OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}"
 REFINER_MODEL="${REFINER_MODEL:-Qwen/Qwen3.6-27B-FP8}"
@@ -32,7 +29,7 @@ RUN_TAG="fromscratch_v1"
 
 mapfile -t SLUGS < <(ls "$DATASET" | sed 's/^repository_//' | sort)
 TOTAL=${#SLUGS[@]}
-echo "Vul-RAG from-scratch adaptive attack — all $TOTAL slugs  (detector: $DETECTOR_URL)"
+echo "Vul-RAG from-scratch adaptive attack — all $TOTAL slugs"
 
 DONE=0
 for slug in "${SLUGS[@]}"; do
@@ -41,7 +38,6 @@ for slug in "${SLUGS[@]}"; do
         --slug                "$slug" \
         --dataset             "$DATASET" \
         --detector            vulrag \
-        --detector-url        "$DETECTOR_URL" \
         --system              vulrag_full \
         --refiner-model       "$REFINER_MODEL" \
         --refiner-temperature 1.0 \
