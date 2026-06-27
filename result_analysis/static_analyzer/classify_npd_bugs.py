@@ -56,10 +56,17 @@ BENCH_ROOT = ROOT / "benchmark/cvebench_full/baseline"
 #   NPD-CVE-0678: C++ constructor initializer list; `pLoader = _glyph_loader` is a
 #     member field, not a function call — struct_field via member.
 MANUAL_OVERRIDES: dict[str, str] = {
-    "NPD-CVE-0377": "struct_field",
-    "NPD-CVE-0378": "struct_field",
-    "NPD-CVE-0585": "param_in",
-    "NPD-CVE-0678": "struct_field",
+    "NPD-CVE-0377": "struct_field",  # YY_CURRENT_BUFFER macro — assignment not visible
+    "NPD-CVE-0378": "struct_field",  # YY_CURRENT_BUFFER macro — assignment not visible
+    "NPD-CVE-0585": "param_in",      # line_context param on continuation sig line
+    "NPD-CVE-0678": "struct_field",  # C++ constructor initializer list
+    # stdlib_alloc regex fires on a correctly-null-checked calloc/malloc;
+    # the actual null source is a different expression in each case:
+    "NPD-CVE-0241": "custom_alloc",  # NPD is handler->subtype via g_strdup, not the calloc
+    "NPD-CVE-0262": "struct_field",  # malloc stored into _of->links (struct field of param); detection
+                                     # requires field-sensitive alias tracking through pointer param
+    "NPD-CVE-0358": "callee_return", # NPD is boxinfo from jp2_boxinfolookup, calloc is guarded
+    "NPD-CVE-0687": "output_param",  # NPD is b2nd_val (output param); malloc is null-checked
 }
 
 STDLIB_NULL_FUNCS = re.compile(
@@ -73,28 +80,30 @@ STDLIB_NULL_FUNCS = re.compile(
     r'dlopen|dlsym|mmap|getcwd|getwd)\s*\('
 )
 
-# malloc wrappers commonly used in C projects (macros or thin wrappers)
+# Standard library allocators — all three major SA tools have built-in models
+STDLIB_ALLOC = re.compile(r'\b(malloc|calloc|realloc)\s*\(')
+
+# Project-specific allocator wrappers — tools have no model without manual config
 CUSTOM_ALLOC = re.compile(
-    r'\b(malloc|calloc|realloc|'
-    r're_yyalloc|yyalloc|'           # flex-generated allocators
-    r'CPU_ALLOC|'                    # hwloc / glibc macro
-    r'jas_alloc2?|jas_matrix_create|' # jasper
-    r'g_malloc|g_new|g_new0|'       # glib
-    r'xmalloc|xzalloc|xcalloc|'     # common project wrappers
+    r'\b(re_yyalloc|yyalloc|'           # flex-generated allocators
+    r'CPU_ALLOC|'                        # hwloc / glibc macro
+    r'jas_alloc2?|jas_matrix_create|'    # jasper
+    r'g_malloc|g_new|g_new0|'           # glib
+    r'xmalloc|xzalloc|xcalloc|'         # common project wrappers
     r'zmalloc|zalloc)\s*\('
 )
-STDLIB_ALLOC = CUSTOM_ALLOC  # kept as alias for existing references
 
 # Detectability tier per source_kind, grounded in tool capabilities
 DETECTABILITY = {
     "null_literal":   "HIGH",    # intra-procedural flow-sensitive
-    "stdlib_alloc":   "HIGH",    # stdlib alloc model (CppCheck, Clang SA, Infer)
-    "stdlib_other":   "MEDIUM",  # stdlib null model (CppCheck, Clang SA configurable)
+    "stdlib_alloc":   "HIGH",    # stdlib alloc model built into CppCheck, Infer, CodeQL
+    "stdlib_other":   "MEDIUM",  # stdlib null model (configurable in CppCheck/Clang SA)
     "callee_return":  "MEDIUM",  # interprocedural summary (Infer biabduction, CodeQL)
+    "custom_alloc":   "LOW",     # project wrapper — no tool model without manual config
     "output_param":   "LOW",     # output-parameter modeling
     "struct_field":   "LOW",     # field-sensitive heap analysis
     "param_in":       "LOW",     # backward call-site enumeration
-    "unknown":        "VERY_LOW", # requires CTU analysis (Clang SA CTU, CodeQL whole-program)
+    "unknown":        "VERY_LOW",
 }
 
 
@@ -160,6 +169,8 @@ def _scan_kinds(body: str, sig: str, stdlib_only: bool = False) -> list[str]:
 
     if STDLIB_ALLOC.search(body):
         kinds.append("stdlib_alloc")
+    elif CUSTOM_ALLOC.search(body):
+        kinds.append("custom_alloc")
 
     if STDLIB_NULL_FUNCS.search(body):
         kinds.append("stdlib_other")
@@ -241,17 +252,17 @@ def classify(slug: str, fn: str, primary: str, auxiliary: str = "") -> dict:
     if not kinds:
         kinds.append("unknown")
 
-    priority = ["null_literal", "stdlib_alloc", "stdlib_other", "output_param",
-                "callee_return", "struct_field", "param_in", "unknown"]
+    priority = ["null_literal", "stdlib_alloc", "custom_alloc", "stdlib_other",
+                "output_param", "callee_return", "struct_field", "param_in", "unknown"]
     primary_kind = next((k for k in priority if k in kinds), "unknown")
 
-    # Apply manual override when regex cannot determine source_kind
+    # Apply manual override when regex picks the wrong kind
     manual = MANUAL_OVERRIDES.get(slug)
-    if manual and primary_kind == "unknown":
+    if manual and primary_kind != manual:
+        kinds = [k for k in kinds if k not in ("unknown", primary_kind)]
         primary_kind = manual
         if manual not in kinds:
             kinds.append(manual)
-        kinds = [k for k in kinds if k != "unknown"]
 
     # --- source_locality ---
     if primary_kind in ("null_literal", "stdlib_alloc", "stdlib_other", "output_param"):
@@ -309,7 +320,8 @@ def main():
     print("-" * 80)
     desc = {
         "null_literal":  "intra-procedural, flow-sensitive",
-        "stdlib_alloc":  "stdlib alloc model",
+        "stdlib_alloc":  "stdlib alloc model (built-in to all tools)",
+        "custom_alloc":  "project allocator wrapper — no tool model",
         "stdlib_other":  "stdlib null model (configurable)",
         "output_param":  "output-parameter modeling",
         "callee_return": "interprocedural summary",
@@ -317,8 +329,8 @@ def main():
         "param_in":      "backward call-site enumeration",
         "unknown":       "cross-TU (CTU) analysis",
     }
-    for kind in ["null_literal", "stdlib_alloc", "stdlib_other", "output_param",
-                 "callee_return", "struct_field", "param_in", "unknown"]:
+    for kind in ["null_literal", "stdlib_alloc", "custom_alloc", "stdlib_other",
+                 "output_param", "callee_return", "struct_field", "param_in", "unknown"]:
         nc = kind_counts.get(kind, 0)
         print(f"  {kind:20s}  {nc:5d}  {100*nc/n:5.1f}%  {DETECTABILITY[kind]:14s}  {desc[kind]}")
 

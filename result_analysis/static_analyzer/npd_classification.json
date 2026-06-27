@@ -24,16 +24,17 @@
   {
     "slug": "NPD-CVE-0025",
     "function": "compile_bag_node",
-    "source_kind": "callee_return",
+    "source_kind": "custom_alloc",
     "all_kinds": [
       "struct_field",
       "callee_return",
-      "param_in"
+      "param_in",
+      "custom_alloc"
     ],
     "source_locality": "cross_file",
     "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "MEDIUM",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -782,15 +783,15 @@
   {
     "slug": "NPD-CVE-0241",
     "function": "on_register_handler",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
-      "param_in"
+      "param_in",
+      "custom_alloc"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": false,
@@ -824,17 +825,16 @@
   {
     "slug": "NPD-CVE-0262",
     "function": "op_open1",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "struct_field",
     "all_kinds": [
-      "stdlib_alloc",
       "output_param",
       "struct_field",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_function",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -867,16 +867,17 @@
   {
     "slug": "NPD-CVE-0295",
     "function": "memory_map",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field",
+      "callee_return",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": false,
@@ -1030,15 +1031,16 @@
   {
     "slug": "NPD-CVE-0352",
     "function": "jp2_cdef_getdata",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
+      "callee_return",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1050,16 +1052,17 @@
   {
     "slug": "NPD-CVE-0353",
     "function": "jp2_bpcc_getdata",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field",
+      "callee_return",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1091,16 +1094,17 @@
   {
     "slug": "NPD-CVE-0355",
     "function": "jp2_pclr_getdata",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field",
+      "callee_return",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1132,16 +1136,17 @@
   {
     "slug": "NPD-CVE-0357",
     "function": "jp2_cmap_getdata",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field",
+      "callee_return",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1153,14 +1158,14 @@
   {
     "slug": "NPD-CVE-0358",
     "function": "jp2_box_create",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "callee_return",
     "all_kinds": [
-      "stdlib_alloc"
+      "callee_return"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "MEDIUM",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1231,15 +1236,15 @@
   {
     "slug": "NPD-CVE-0379",
     "function": "re_yylex_init_extra",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1289,15 +1294,15 @@
   {
     "slug": "NPD-CVE-0382",
     "function": "re_yyensure_buffer_stack",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1494,16 +1499,16 @@
   {
     "slug": "NPD-CVE-0472",
     "function": "ras_putdatastd",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field",
       "param_in"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -1960,16 +1965,15 @@
   {
     "slug": "NPD-CVE-0687",
     "function": "zfp_prec_compress",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "output_param",
     "all_kinds": [
-      "stdlib_alloc",
       "output_param",
       "param_in"
     ],
     "source_locality": "in_function",
     "requires_interprocedural": false,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -2160,14 +2164,14 @@
   {
     "slug": "NPD-CVE-0765",
     "function": "hwloc_linux_get_tid_cpubind",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc"
+      "custom_alloc"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -2198,15 +2202,16 @@
   {
     "slug": "NPD-CVE-0767",
     "function": "hwloc_linux_set_tid_cpubind",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
-      "struct_field"
+      "custom_alloc",
+      "struct_field",
+      "callee_return"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -2218,15 +2223,15 @@
   {
     "slug": "NPD-CVE-0768",
     "function": "hwloc_linux_get_thread_cpubind",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc",
+      "custom_alloc",
       "struct_field"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,
@@ -2238,14 +2243,14 @@
   {
     "slug": "NPD-CVE-0769",
     "function": "hwloc_linux_set_thread_cpubind",
-    "source_kind": "stdlib_alloc",
+    "source_kind": "custom_alloc",
     "all_kinds": [
-      "stdlib_alloc"
+      "custom_alloc"
     ],
-    "source_locality": "in_function",
-    "requires_interprocedural": false,
+    "source_locality": "cross_file",
+    "requires_interprocedural": true,
     "requires_field_sensitivity": false,
-    "sa_detectability": "HIGH",
+    "sa_detectability": "LOW",
     "cppcheck_ran": true,
     "cppcheck_hit": false,
     "infer_ran": true,

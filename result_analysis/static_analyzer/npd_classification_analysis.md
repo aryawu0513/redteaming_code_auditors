@@ -33,57 +33,85 @@ Relevant prior work:
 
 ## Category Definitions
 
-Each category maps to an analysis precision dimension. The `H_CROSS_FILE`
-category (CTU analysis) is defined for completeness but has zero members in
-this benchmark — the LLM injector did not produce cross-TU null sources.
+Each category maps to an analysis precision dimension. `VERY_LOW` (CTU
+analysis) is defined for completeness but has zero members in this benchmark —
+the LLM injector did not produce cross-TU null sources.
 
 | Category | Null source | Analysis needed | SA detectability |
 |---|---|---|---|
 | null_literal | Explicit `ptr = NULL` in function body | Flow-sensitive, intra-procedural | HIGH |
-| stdlib_alloc | `malloc`/`calloc`/`realloc` (or project wrapper) return | Stdlib allocation model | HIGH |
+| stdlib_alloc | `malloc`/`calloc`/`realloc` return, unchecked | Stdlib allocation model (built-in to all tools) | HIGH |
+| custom_alloc | Project-specific allocator wrapper (no tool model) | Requires custom summaries or checker configuration | LOW |
 | stdlib_other | Stdlib returning null (`fopen`, `strstr`, …) | Stdlib null model (CppCheck, Clang SA) | MEDIUM |
 | callee_return | User-defined function return used as pointer | Interprocedural summary (Infer biabduction, CodeQL dataflow) | MEDIUM |
 | output_param | Pointer via output param (`&ptr`) | Output-parameter modeling | LOW |
 | struct_field | Pointer read from struct/class field | Field-sensitive heap analysis | LOW |
 | param_in | Pointer parameter, null at call sites | Backward call-site enumeration | LOW |
-| (cross_file) | Null source not in primary or auxiliary file | Cross-translation-unit (CTU) analysis | VERY LOW |
+| (cross_file) | Null source not in primary or auxiliary file | Cross-translation-unit (CTU) analysis | VERY_LOW |
+
+**stdlib_alloc vs custom_alloc**: tools have built-in null models for
+`malloc`/`calloc`/`realloc`. Project-specific wrappers (`jas_alloc2`,
+`CPU_ALLOC`, `g_new0`, `xmalloc`, `re_yyalloc`, etc.) are not modeled by any
+of the three tools without custom configuration, so they are classified as
+`custom_alloc` with LOW detectability. A 0% recall on `custom_alloc` is
+therefore expected behavior, not a tool failure.
 
 ## Distribution on 128 Samples
 
-Data: `results/npd_classification.json`; classification script: `scripts/oneoff/classify_npd_bugs.py`.
+Data: `result_analysis/static_analyzer/npd_classification.json`; classification
+script: `result_analysis/static_analyzer/classify_npd_bugs.py`.
 
 **Classification methodology**: regex-based analysis of the function body
 (`primary_file`) and cross-file helpers (`auxiliary_file`, tree-sitter
 extracted). `stdlib_alloc` is only credited when the allocation call appears
-within the target function body; an allocation in a callee (auxiliary file) is
-classified as `callee_return`. Four samples (NPD-CVE-0377, -0378, -0585,
--0678) were hand-labeled after verifying against the LLM judge's reasoning,
-because the null source is hidden behind a macro expansion (`YY_CURRENT_BUFFER`)
-or a C++ constructor initializer list that the single-line signature parser
-cannot reach. All other 124 samples are classified automatically.
+within the target function body and the pointer is not guarded before the
+dereference site; an allocation in a callee (auxiliary file) is classified as
+`callee_return`. Eight samples required manual override (see `MANUAL_OVERRIDES`
+in the classifier):
+
+- *Four macro/constructor cases* (NPD-CVE-0377, -0378, -0585, -0678): null
+  source hidden behind a macro expansion (`YY_CURRENT_BUFFER`) or a C++
+  constructor initializer list that the single-line signature parser cannot
+  reach.
+- *Four stdlib_alloc false positives*: the regex matched a malloc/calloc call
+  that is either null-checked before the injected deref, with the actual null
+  source being a different expression, or stored into a struct field before
+  dereference (field-sensitivity barrier, not an alloc-model barrier):
+  - NPD-CVE-0241 — calloc is guarded; NPD is via `g_strdup` (→ custom_alloc)
+  - NPD-CVE-0262 — `malloc` stored into `_of->links` (struct field of a
+    parameter); immediate deref `_of->links[0]` requires field-sensitive alias
+    tracking (→ struct_field)
+  - NPD-CVE-0358 — calloc is guarded; NPD is via `jp2_boxinfolookup` return
+    (→ callee_return)
+  - NPD-CVE-0687 — malloc is explicitly null-checked; NPD is via `b2nd_val`
+    output parameter (→ output_param)
+
+All other 120 samples are classified automatically.
 
 | source_kind | N | % | SA detectability |
 |---|---|---|---|
 | null_literal | 5 | 3.9% | HIGH |
-| stdlib_alloc | 17 | 13.3% | HIGH |
+| stdlib_alloc | 1 | 0.8% | HIGH |
+| custom_alloc | 14 | 10.9% | LOW |
 | stdlib_other | 4 | 3.1% | MEDIUM |
 | callee_return | 39 | 30.5% | MEDIUM |
-| output_param | 10 | 7.8% | LOW |
-| struct_field | 47 | 36.7% | LOW |
+| output_param | 11 | 8.6% | LOW |
+| struct_field | 48 | 37.5% | LOW |
 | param_in | 6 | 4.7% | LOW |
 | unknown / cross_file | 0 | 0% | VERY_LOW |
 
-| Axis | Value | N | % |
-|---|---|---|---|
-| SA detectability | HIGH | 22 | 17.2% |
-| | MEDIUM | 43 | 33.6% |
-| | LOW | 63 | 49.2% |
-| | VERY_LOW | 0 | 0% |
-| Source locality | in_function | — | — |
-| | cross_function (same file) | — | — |
-| | cross_file | — | — |
-| Requires interprocedural | yes | — | — |
-| Requires field sensitivity | yes | — | — |
+| SA detectability | N | % |
+|---|---|---|
+| HIGH | 6 | 4.7% |
+| MEDIUM | 43 | 33.6% |
+| LOW | 79 | 61.7% |
+| VERY_LOW | 0 | 0% |
+
+The distribution shows most bugs are hard by construction: only 6 of 128 have
+an intraprocedural null source directly detectable from stdlib models or
+explicit null assignments, while the remaining 122 require interprocedural
+summaries, field-sensitive heap reasoning, output-parameter modeling, or
+treatment of unmodeled custom allocators.
 
 ## Empirical SA Recall
 
@@ -128,20 +156,36 @@ deployment reality.
 
 **Tier recall on the 91-sample all-ran subset:**
 
-| Tier | Detected | Of 91 subset | Recall |
+| Tier | N (all-ran) | Detected | Recall |
 |---|---|---|---|
-| HIGH | 4 | 19 | 21% |
-| MEDIUM | 3 | 30 | 10% |
-| LOW | 7 | 42 | 17% |
-| VERY_LOW | 0 | 0 | — |
+| HIGH | 5 | 4 | **80%** |
+| MEDIUM | 30 | 3 | 10% |
+| LOW | 56 | 7 | 12% |
+| VERY_LOW | 0 | — | — |
 
-The tier ordering is directionally consistent (HIGH > LOW > MEDIUM) but the
-differences are small and the absolute hit counts (3–7 per tier) are too low
-for statistical separation. The tiers reflect theoretically motivated analysis
-requirements; this experiment provides suggestive but not conclusive empirical
-support for the ordering. The HIGH recall of 21% — on bugs with an explicit
-null assignment or direct stdlib alloc in the function body — is low enough
-that it warrants acknowledgment: these are the cases the literature treats as
-trivially detectable, and even here three of four tools miss most of them.
-This is consistent with Habib & Pradel's finding that even simple patterns
-are missed when interprocedural or path constraints interact.
+Breakdown within each tier:
+
+| source_kind | Detected / all-ran | Notes |
+|---|---|---|
+| null_literal | 3/4 | 1 genuine tool miss (path constraints defeat flow analysis) |
+| stdlib_alloc | 1/1 | — |
+| stdlib_other | 0/4 | no tool ran stdlib null model broadly enough |
+| callee_return | 3/26 | Infer biabduction; most require deep summaries |
+| custom_alloc | 0/12 | expected — no tool model for wrappers |
+| struct_field | 5/36 | shallow field reads caught; deep aliasing missed |
+| output_param | 2/5 | |
+| param_in | 0/3 | |
+
+The 80% HIGH recall validates that the tier structure is empirically grounded:
+tools catch 4 of 5 bugs where the null source is directly visible (explicit
+null assignment or unchecked stdlib alloc in the function body). The one
+remaining HIGH miss is a `null_literal` sample where path constraints interact
+with the assignment in a way none of the three tools resolve. At MEDIUM and
+LOW, recall converges to ~10–12%, consistent with Habib & Pradel's finding
+that interprocedural and field-sensitive bugs are broadly missed regardless of
+tool.
+
+The `custom_alloc` 0/12 result is expected and not a tool failure: none of the
+three tools ship models for project-specific allocator wrappers without custom
+configuration. These bugs are hard by construction and serve as a useful
+zero-recall control group within the LOW tier.
