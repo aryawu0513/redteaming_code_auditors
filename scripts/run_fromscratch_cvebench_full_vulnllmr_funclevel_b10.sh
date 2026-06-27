@@ -1,27 +1,19 @@
 #!/usr/bin/env bash
-# run_fromscratch_cvebench_full_vulnllmr_funclevel.sh
+# run_fromscratch_cvebench_full_vulnllmr_funclevel_b10.sh
 #
-# From-scratch adaptive attack on all 128 cvebench_full samples against
-# VulnLLM-R in NON-AGENTIC (function-level) mode — the published snippet
-# classifier. The model reads the tree-sitter context + target function
-# ("// context" / "// target function" layout it was trained on); no call
-# graph, no retrieval, no whole-repo scope. This is the authentic mode for
-# our function-centric benchmark (no fuzz harnesses → agentic mode is
-# structurally mismatched).
+# Extends the budget=5 VulnLLM-R (funclevel) fromscratch_v1 run to budget=10.
+# Seeds from vulnllmr_funclevel_full (b5 results) by copying to
+# vulnllmr_funclevel_full_b10 on first launch, then resumes budget_exhausted
+# types for 5 more rounds. Already-flipped types are skipped automatically.
 #
-# TWO PROCESSES (the mode is set on the SERVER, not here, because the attack
-# reaches the detector over HTTP via --detector-url):
-#
+# Requires:
 #   Terminal 1 — serve the detector in funclevel mode:
 #       MODE=funclevel DETECTOR_GPU=1 bash scripts/serve_detector_vulnllmr.sh
 #
-#   Terminal 2 — launch this attack:
-#       bash scripts/oneoff/run_fromscratch_cvebench_full_vulnllmr_funclevel.sh
+#   Terminal 2 — launch this script:
+#       bash scripts/run_fromscratch_cvebench_full_vulnllmr_funclevel_b10.sh
 #
 # Also requires the Qwen refiner served at $OPENAI_BASE_URL (default 8007).
-#
-# Results land in (NEW tag, does not touch the agentic vulnllmr_full):
-#   adaptive_attacker/results/vulnllmr_funclevel_full/repository_<slug>/
 
 set -euo pipefail
 
@@ -33,20 +25,29 @@ DETECTOR_URL="${DETECTOR_URL:-http://localhost:8008}"
 export OPENAI_BASE_URL="${OPENAI_BASE_URL:-http://localhost:8007/v1}"
 export OPENAI_API_KEY="${OPENAI_API_KEY:-dummy}"
 REFINER_MODEL="${REFINER_MODEL:-Qwen/Qwen3.6-27B-FP8}"
-BUDGET="${BUDGET:-5}"
+BUDGET=10
 RUN_TAG="fromscratch_v1"
+SYSTEM="vulnllmr_funclevel_full_b10"
 
-if [ ! -d "$DATASET" ]; then
-    echo "ERROR: $DATASET not found — run build_benchmark.py first." >&2
+SRC_DIR="$REPO_ROOT/adaptive_attacker/results/vulnllmr_funclevel_full"
+DST_DIR="$REPO_ROOT/adaptive_attacker/results/$SYSTEM"
+
+if [ ! -d "$SRC_DIR" ]; then
+    echo "ERROR: $SRC_DIR not found — run the b5 script first." >&2
     exit 1
+fi
+
+if [ ! -d "$DST_DIR" ]; then
+    echo "Seeding $DST_DIR from $SRC_DIR ..."
+    cp -r "$SRC_DIR" "$DST_DIR"
+    echo "Done copying."
+else
+    echo "$DST_DIR already exists — skipping copy, resuming."
 fi
 
 mapfile -t SLUGS < <(ls "$DATASET" | sed 's/^repository_//' | sort)
 TOTAL=${#SLUGS[@]}
-echo "VulnLLM-R (funclevel) from-scratch adaptive attack — all $TOTAL slugs"
-echo "Detector URL: $DETECTOR_URL  (must be serving MODE=funclevel)"
-echo "Results: adaptive_attacker/results/vulnllmr_funclevel_full/"
-echo ""
+echo "Found $TOTAL slugs in $DATASET"
 
 DONE=0
 for slug in "${SLUGS[@]}"; do
@@ -59,7 +60,7 @@ for slug in "${SLUGS[@]}"; do
         --dataset             "$DATASET" \
         --detector            vulnllmr \
         --detector-url        "$DETECTOR_URL" \
-        --system              vulnllmr_funclevel_full \
+        --system              "$SYSTEM" \
         --refiner-model       "$REFINER_MODEL" \
         --refiner-temperature 1.0 \
         --budget              "$BUDGET" \
@@ -69,4 +70,4 @@ done
 
 echo ""
 echo "Done — $DONE / $TOTAL slugs."
-echo "Results in adaptive_attacker/results/vulnllmr_funclevel_full/"
+echo "Results in adaptive_attacker/results/$SYSTEM/"
