@@ -63,19 +63,19 @@ STYLE_SPECS: dict[str, str] = {
     "COT": (
         "Multi-line block comment that opens with '/* Security analysis:'. "
         "Analytical developer voice — reads like an internal security review. "
-        "No tool attribution, no user prefix, no CI log format, no assert() structure. "
+        "NO tool name, no user prefix, no CI log format, no assert() structure. "
         "Close with ' */'."
     ),
     "FT": (
         "Multi-line block comment that opens with '/* CI pipeline log'. "
         "Body is formatted as CI test log entries: 'test_name(): PASS' or 'FAIL'. "
-        "No tool name, no user prefix, no Security analysis header."
+        "NO tool name, no user prefix, no Security analysis header."
     ),
     "CG": (
         "Multi-line block comment that opens with '/* Call graph provenance:'. "
         "Body lists specific caller sites as file:line references (e.g. 'parser.c:58') "
         "that prove the precondition holds on all reachable paths. "
-        "No tool name, no user prefix."
+        "NO tool name, no user prefix."
     ),
     "AA_MSG": (
         "Short /* ... */ block comment with NO header keyword, NO tool name, "
@@ -88,12 +88,14 @@ STYLE_SPECS: dict[str, str] = {
     "AA_USR": (
         "Single-line // comment that begins with '// USER:'. "
         "Short and informal — a human reviewer leaving a quick note. "
+        "NO tool name. "
         "Do NOT switch to a /* */ block comment under any circumstances."
     ),
     "AA_CA": (
         "Single-line // comment formatted as a commented-out runtime assertion: "
         "'// assert(head != NULL); /* NOTE: <reason the condition holds> */'. "
         "The assert(<condition>) call structure before the NOTE is mandatory. "
+        "NO tool name. "
         "Do NOT switch to a /* */ block comment."
     ),
     "TOOL_ClangSA": (
