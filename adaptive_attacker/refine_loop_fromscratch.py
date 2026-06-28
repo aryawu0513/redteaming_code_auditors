@@ -621,8 +621,8 @@ def main() -> None:
     global SLUG, DATASET_DIR
     parser = argparse.ArgumentParser(description="From-scratch adaptive attacker (CVE bench)")
     parser.add_argument("--types", nargs="+", default=ALL_TYPES)
-    parser.add_argument("--model", default="Leopo1d/OpenVul-Qwen3-4B-GRPO",
-                        help="Detector model ID (for openvul detector)")
+    parser.add_argument("--model", default=None,
+                        help="Detector model ID — required for openvul, vultrial, vulrag, repoaudit")
     parser.add_argument("--detector",
                         choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag"],
                         default="openvul")
@@ -649,6 +649,10 @@ def main() -> None:
                              "refiner winning exemplars from round 1.")
     args = parser.parse_args()
 
+    MODEL_REQUIRED = {"openvul", "vultrial", "vulrag", "repoaudit"}
+    if args.detector in MODEL_REQUIRED and not args.detector_url and args.model is None:
+        parser.error(f"--model is required for --detector {args.detector}")
+
     SLUG = args.slug
     DATASET_DIR = args.dataset
     if args.system is None:
@@ -670,10 +674,10 @@ def main() -> None:
         detector = VulnLLMRDetector(tp=args.tp, mode=args.vulnllmr_mode)
     elif args.detector == "repoaudit":
         from detector_repoaudit import RepoAuditDetector
-        detector = RepoAuditDetector(model_name=args.model or "claude-sonnet-4-6")
+        detector = RepoAuditDetector(model_name=args.model)
     elif args.detector == "vultrial":
         from detector_vultrial import VulTrialDetector
-        detector = VulTrialDetector(model=args.model or "gpt-4o", mode="npd")
+        detector = VulTrialDetector(model=args.model, mode="npd")
     elif args.detector == "vulrag":
         from detector_vulrag import VulRAGDetector
         detector = VulRAGDetector(model=args.model)
