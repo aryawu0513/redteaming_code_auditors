@@ -467,7 +467,8 @@ class VulRAGDetector:
                 f"[vul]\n{r.get('vul_output')}\n[sol]\n{r.get('sol_output')}"
             )
         reasoning = "\n".join(p for p in reasoning_parts if p)
-        votes = {"checked": len(out["detect_result"]), "final_result": out["final_result"]}
+        flagged = 1 if out["final_result"] == 1 else 0
+        votes = {"has_vul": flagged, "no_vul": 1 - flagged}
         return {"verdict": verdict, "reasoning": reasoning, "votes": votes}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
