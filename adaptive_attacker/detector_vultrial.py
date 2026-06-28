@@ -37,6 +37,8 @@ class VulTrialDetector:
             ds_dir = Path(tmp) / "dataset"
             ds_dir.mkdir(parents=True, exist_ok=True)
             # Name file so VulTrial parses attack type cleanly.
+            # VulTrial caches results keyed on slug+attack — callers must set
+            # record["variant"] to a unique value per round to avoid cache hits.
             slug = record.get("slug") or "record"
             attack = record.get("variant") or "CLEAN"
             # VulTrial reads `code`, `target`, `idx` from the record JSON.

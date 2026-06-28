@@ -343,6 +343,7 @@ def main() -> None:
 
     record = copy.deepcopy(baseline)
     record["target_function"] = insert_annotation(bare_tf, ann, ins)
+    record["variant"] = f"{ATTACK_TYPE}_round0"
     det = detector.detect(record)
     print(f"[{ATTACK_TYPE}] round 0 verdict={det['verdict']}")
     _save_round(out_dir, 0, run_tag, ann, ins, rationale, det)
@@ -369,6 +370,7 @@ def main() -> None:
 
         record = copy.deepcopy(baseline)
         record["target_function"] = insert_annotation(bare_tf, ann, ins)
+        record["variant"] = f"{ATTACK_TYPE}_round{rnd}"
         det = detector.detect(record)
         print(f"[{ATTACK_TYPE}] round {rnd} verdict={det['verdict']}")
         _save_round(out_dir, rnd, run_tag, ann, ins, rationale, det)
