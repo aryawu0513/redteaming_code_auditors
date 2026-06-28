@@ -17,9 +17,10 @@ not a claim that the KB covers our targets. Swap `kb_path` to use a different KB
 
 LLM ROUTING
 -----------
-All LLM calls go through OpenRouter (OpenAI-compatible): base_url
-`https://openrouter.ai/api/v1`, key from env `OPENROUTER_API_KEY`, model from env
-`VULRAG_MODEL` (default `openai/gpt-4o-mini`, faithful to the original gpt-4o-mini).
+All LLM calls go through native OpenAI: base_url `https://api.openai.com/v1`, key
+from env `OPENAI_API_KEY`, model from env `VULRAG_MODEL` (default `gpt-4o-mini`,
+faithful to the original Vul-RAG). OpenRouter is intentionally NOT used — it needs
+the `openai/`-prefixed model id and rejects plain `gpt-4o-mini` as "invalid model ID".
 We use the `openai` Python SDK. The detector matches the existing detector interface:
 `detect(record) -> {"verdict", "reasoning", "votes"}` and `detect_batch(records)`.
 
@@ -231,16 +232,14 @@ class VulRAGDetector:
     ) -> None:
         import json
 
-        # Prefer native OpenAI (gpt-4o-mini); only the openai/ prefix form is for
-        # OpenRouter. Model form is chosen by which key is present (OpenAI first).
+        # Native OpenAI only (faithful to the original gpt-4o-mini Vul-RAG).
+        # We deliberately do NOT fall back to OpenRouter: it requires the
+        # `openai/`-prefixed model id and silently mis-routes plain `gpt-4o-mini`
+        # as an "invalid model ID".
         if model:
             self.model = model
         elif os.environ.get("VULRAG_MODEL"):
             self.model = os.environ["VULRAG_MODEL"]
-        elif os.environ.get("OPENAI_API_KEY"):
-            self.model = "gpt-4o-mini"
-        elif os.environ.get("OPENROUTER_API_KEY"):
-            self.model = "openai/gpt-4o-mini"
         else:
             self.model = "gpt-4o-mini"
         # Summary (purpose/function extraction) model defaults to the same model.
@@ -285,17 +284,16 @@ class VulRAGDetector:
         if self._client is None:
             from openai import OpenAI
 
-            # Prefer native OpenAI; fall back to OpenRouter only if no OpenAI key.
+            # Native OpenAI only — never OpenRouter (see __init__ note). Require a
+            # real key; the dummy key used for the Qwen refiner won't authenticate.
             openai_key = os.environ.get("OPENAI_API_KEY")
-            or_key = os.environ.get("OPENROUTER_API_KEY")
-            if openai_key:
-                self._client = OpenAI(api_key=openai_key,
-                                      base_url="https://api.openai.com/v1")
-            elif or_key:
-                self._client = OpenAI(api_key=or_key,
-                                      base_url="https://openrouter.ai/api/v1")
-            else:
-                raise RuntimeError("Set OPENAI_API_KEY (preferred) or OPENROUTER_API_KEY")
+            if not openai_key or openai_key == "dummy":
+                raise RuntimeError(
+                    "Vul-RAG needs a real OPENAI_API_KEY (native OpenAI). "
+                    f"Got {'unset' if not openai_key else 'dummy'}."
+                )
+            self._client = OpenAI(api_key=openai_key,
+                                  base_url="https://api.openai.com/v1")
         return self._client
 
     def _chat(self, model: str, prompt_text: str) -> str:
