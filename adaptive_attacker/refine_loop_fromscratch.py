@@ -218,6 +218,7 @@ def init_type_fromscratch(
     annotation_text: str | None = None
     insert_before: str | None = None
     bootstrap_prompt_messages = None
+    bootstrap_raw_attempts: list[dict] = []
 
     for attempt in range(3):
         try:
@@ -240,9 +241,12 @@ def init_type_fromscratch(
             bootstrap_prompt_messages = out_raw.get("prompt_messages")
             break
         except ValueError as e:
+            bootstrap_raw_attempts.append({"attempt": attempt + 1, "error": str(e),
+                                           "raw_response": locals().get("out_raw", {}).get("raw_response", "") if isinstance(locals().get("out_raw"), dict) else ""})
             print(f"[{attack_type}] bootstrap attempt {attempt+1}: error — {e}")
             bootstrap_bundle["constraint_reminder"] = f"Previous attempt invalid: {e}. Retry."
         except Exception as e:
+            bootstrap_raw_attempts.append({"attempt": attempt + 1, "error": str(e), "raw_response": ""})
             print(f"[{attack_type}] bootstrap attempt {attempt+1}: unexpected error — {e}")
             bootstrap_bundle["constraint_reminder"] = f"Error: {e}. Retry."
 
@@ -267,6 +271,7 @@ def init_type_fromscratch(
         "detector_reasoning": det0["reasoning"],
         "votes": det0["votes"],
         "prompt_messages": bootstrap_prompt_messages,
+        "bootstrap_raw_attempts": bootstrap_raw_attempts if annotation_text is None else [],
     }
     (out_dir / "round_0.json").write_text(json.dumps(round_0, indent=2))
     print(f"  verdict={det0['verdict']}  votes={det0['votes']}")
@@ -619,7 +624,7 @@ def main() -> None:
     parser.add_argument("--model", default="Leopo1d/OpenVul-Qwen3-4B-GRPO",
                         help="Detector model ID (for openvul detector)")
     parser.add_argument("--detector",
-                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag", "llmdfa"],
+                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
     parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
@@ -672,9 +677,6 @@ def main() -> None:
     elif args.detector == "vulrag":
         from detector_vulrag import VulRAGDetector
         detector = VulRAGDetector(model=args.model)
-    elif args.detector == "llmdfa":
-        from detector_llmdfa import LLMDFADetector
-        detector = LLMDFADetector(model=args.model)
     else:
         from detector_openvul import OpenVulDetector
         detector = OpenVulDetector(model_id=args.model, tp=args.tp)

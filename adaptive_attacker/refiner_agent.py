@@ -128,6 +128,7 @@ def bootstrap_refine(
     raw = resp.choices[0].message.content or ""
     result = _parse_placement_result(raw, "bootstrap_refine")
     result["prompt_messages"] = messages
+    result["raw_response"] = raw
     return result
 
 

@@ -71,7 +71,7 @@ async def detect_batch(request: Request) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--detector", choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag", "llmdfa"], required=True)
+    parser.add_argument("--detector", choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag"], required=True)
     parser.add_argument("--port", type=int, default=8008)
     parser.add_argument("--tp", type=int, default=1,
                         help="vLLM tensor parallel size")
@@ -108,12 +108,6 @@ def main() -> None:
         if args.model:
             kwargs["model"] = args.model
         DETECTOR = VulRAGDetector(**kwargs)
-    elif args.detector == "llmdfa":
-        from detector_llmdfa import LLMDFADetector
-        kwargs = {}
-        if args.model:
-            kwargs["model"] = args.model
-        DETECTOR = LLMDFADetector(**kwargs)
     else:
         from detector_vultrial import VulTrialDetector
         kwargs = {}
