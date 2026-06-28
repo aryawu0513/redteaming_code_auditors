@@ -19,7 +19,7 @@ OpenVul/datasets/
 OpenVul/results/
 defenses/texts/
 adaptive_attacker/results/
-/results/
+/space/
 benchmark/
 _logs/
 
@@ -31,3 +31,4 @@ cvebench/results_testsuite.json
 
 writing/
 scripts/oneoff/
+0627_patch/

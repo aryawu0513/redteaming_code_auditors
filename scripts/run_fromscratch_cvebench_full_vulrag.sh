@@ -38,6 +38,7 @@ for slug in "${SLUGS[@]}"; do
         --slug                "$slug" \
         --dataset             "$DATASET" \
         --detector            vulrag \
+        --model               gpt-4o-mini \
         --system              vulrag_full \
         --refiner-model       "$REFINER_MODEL" \
         --refiner-temperature 1.0 \

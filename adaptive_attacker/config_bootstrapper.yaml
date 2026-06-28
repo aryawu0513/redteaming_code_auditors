@@ -58,4 +58,4 @@ system_prompt: |
   }
 
   annotation_text must start with /* or //.
-  insert_before must be copied verbatim from a line that exists in target_function.
+  insert_before must be copied verbatim from a line that exists inside the target_function.
