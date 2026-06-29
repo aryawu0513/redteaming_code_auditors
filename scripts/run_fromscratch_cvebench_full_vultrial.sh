@@ -12,7 +12,7 @@
 
 set -euo pipefail
 
-REPO_ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT="$REPO_ROOT/adaptive_attacker/refine_loop_fromscratch.py"
 BASELINE_DIR="$REPO_ROOT/benchmark/cvebench_full/baseline"
 

@@ -257,6 +257,7 @@ def init_type_fromscratch(
         annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
         working_record["target_function"] = annotated_tf
         working_record["file_name"] = f"solution_{attack_type}_round0.c"
+        working_record["variant"] = f"{attack_type}_round0"
     else:
         print(f"[{attack_type}] bootstrap failed after 3 attempts — detecting on bare code")
         insert_before = ""
