@@ -19,6 +19,7 @@ OpenVul/datasets/
 OpenVul/results/
 defenses/texts/
 adaptive_attacker/results/
+adaptive_attacker/COT_SEEDS_EXPERIMENT/
 /space/
 benchmark/
 _logs/
@@ -32,3 +33,7 @@ cvebench/results_testsuite.json
 writing/
 scripts/oneoff/
 0627_patch/
+
+adaptive_attacker/FABRICATE_COT_EXPERIMENT/
+
+writing_overleaf/
