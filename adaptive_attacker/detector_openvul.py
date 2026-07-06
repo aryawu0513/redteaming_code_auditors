@@ -36,8 +36,13 @@ class OpenVulDetector:
         tp: int = 1,
         n: int = 1,
         temperature: float = 0.6,
+        mode: str = "npd",
+        defense_text: str | None = None,
     ) -> None:
         from vllm import LLM, SamplingParams  # import here to avoid slow import at module level
+
+        self.default_mode = mode  # which CWE prompt line detect()/detect_batch() use by default
+        self.defense_text = defense_text  # comment-trust policy appended to the system prompt
 
         print(f"[detector] Loading {model_id} (tp={tp}) …", flush=True)
         self.llm = LLM(model=model_id, tensor_parallel_size=tp)
@@ -61,6 +66,8 @@ class OpenVulDetector:
         if ctx_parts:
             record = {**record, "context": "\n\n".join(ctx_parts)}
         user_prompt = build_user_prompt(record, mode)
+        if self.defense_text:
+            user_prompt = user_prompt + "\n\n" + self.defense_text.strip()
         return self.tokenizer.apply_chat_template(
             [
                 {"role": "system", "content": SYSTEM_PROMPT},
@@ -90,13 +97,15 @@ class OpenVulDetector:
             "votes": votes,
         }
 
-    def detect(self, record: dict, mode: str = "npd") -> dict:
+    def detect(self, record: dict, mode: str | None = None) -> dict:
         """
         Run the detector on a dataset record.
 
         Args:
             record: OpenVul-format dict (context, target_function, function_name, file_name, …)
-            mode:   'npd' (NPD-focused prompt) or 'generic'
+            mode:   'npd', 'uaf', or 'generic'. Defaults to self.default_mode
+                    (set at construction) so callers that don't know about
+                    bug-type framing still get the right prompt.
 
         Returns:
             {
@@ -106,11 +115,11 @@ class OpenVulDetector:
               "votes":       {"has_vul": int, "no_vul": int},
             }
         """
-        prompt_str = self._build_prompt(record, mode)
+        prompt_str = self._build_prompt(record, mode or self.default_mode)
         output = self.llm.generate([prompt_str], self.params)[0]
         return self._parse_output(output)
 
-    def detect_batch(self, records: list[dict], mode: str = "npd") -> list[dict]:
+    def detect_batch(self, records: list[dict], mode: str | None = None) -> list[dict]:
         """
         Run the detector on several records in ONE vLLM call.
 
@@ -120,6 +129,7 @@ class OpenVulDetector:
         """
         if not records:
             return []
+        mode = mode or self.default_mode
         prompts = [self._build_prompt(r, mode) for r in records]
         outputs = self.llm.generate(prompts, self.params)
         return [self._parse_output(o) for o in outputs]

@@ -24,9 +24,11 @@ class VulTrialDetector:
     """
 
     def __init__(self, model: str = "gpt-4o", mode: str = "npd",
-                 max_workers: int | None = None) -> None:
+                 max_workers: int | None = None,
+                 defense_text: str | None = None) -> None:
         self.model = model
         self.mode = mode
+        self.defense_text = defense_text  # comment-trust policy appended to agent prompts
         self.thread_safe = True  # OpenAI API calls; no shared engine state
         # None = unbounded (one thread per record, current behavior). Set an int
         # to cap concurrent gpt-4o subprocesses if a caller sends large batches.
@@ -62,6 +64,7 @@ class VulTrialDetector:
                 category="context_aware",
                 language="c",
                 save=True,
+                defense=self.defense_text or "",
             )
             results = run_evaluation(args)
             if not results:

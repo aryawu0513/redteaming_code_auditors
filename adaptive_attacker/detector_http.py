@@ -24,10 +24,12 @@ class HttpDetectorClient:
             os.environ.get("DETECTOR_HTTP_TIMEOUT", "7200")
         )
 
+        self.server_defense = None  # defense the server bakes in, from /health
         try:
             r = requests.get(f"{self.base_url}/health", timeout=10)
             r.raise_for_status()
             info = r.json()
+            self.server_defense = info.get("defense")
             print(f"[detector_http] connected: {info} (timeout={self.timeout}s)", flush=True)
         except Exception as e:
             raise RuntimeError(

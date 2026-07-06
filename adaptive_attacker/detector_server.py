@@ -27,12 +27,14 @@ sys.path.insert(0, str(HERE))
 
 app = FastAPI()
 DETECTOR = None
+DEFENSE_NAME = None  # normalized defense the server bakes in ("D0" = none)
 _DETECT_LOCK = threading.Lock()
 
 
 @app.get("/health")
 def health() -> dict:
-    return {"ok": True, "detector": type(DETECTOR).__name__ if DETECTOR else None}
+    return {"ok": True, "detector": type(DETECTOR).__name__ if DETECTOR else None,
+            "defense": DEFENSE_NAME}
 
 
 @app.post("/detect")
@@ -78,21 +80,42 @@ def main() -> None:
     parser.add_argument("--model", default=None,
                         help="Override detector model id")
     parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
-                        default="agentic",
-                        help="VulnLLM-R only: 'agentic' (scaffold) or 'funclevel' "
-                             "(published snippet classifier, no call graph/repo).")
+                        default="funclevel",
+                        help="VulnLLM-R only: 'funclevel' (published snippet classifier, "
+                             "matches the attack + recovery defaults) or 'agentic' (scaffold).")
+    parser.add_argument("--cwe", type=int, default=476,
+                        help="Which CWE to hunt for (476=NPD, 416=UAF). "
+                             "Used by vulnllmr and openvul.")
+    parser.add_argument("--defense", default="D0",
+                        help="Defense baked into the served model's prompt: "
+                             "D0 (none) or a registry key (D1). Applied to every "
+                             "/detect call for the life of the server.")
     args = parser.parse_args()
 
-    global DETECTOR
+    # Resolve defense text from the registry once, at load time.
+    defense_text = None
+    if args.defense and args.defense.upper() not in ("D0", "NONE"):
+        sys.path.insert(0, str(HERE.parent))
+        from defenses.registry import DEFENSES
+        if args.defense not in DEFENSES:
+            parser.error(f"unknown defense {args.defense!r}; known: D0, {list(DEFENSES)}")
+        defense_text = DEFENSES[args.defense]["task_addition"]
+    print(f"[server] defense={args.defense} ({'ON' if defense_text else 'OFF'})", flush=True)
+
+    global DETECTOR, DEFENSE_NAME
+    DEFENSE_NAME = "D0" if defense_text is None else args.defense
     if args.detector == "openvul":
         from detector_openvul import OpenVulDetector
-        kwargs = {"tp": args.tp}
+        cwe_to_mode = {476: "npd", 416: "uaf"}
+        kwargs = {"tp": args.tp, "mode": cwe_to_mode.get(args.cwe, "generic"),
+                  "defense_text": defense_text}
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = OpenVulDetector(**kwargs)
     elif args.detector == "vulnllmr":
         from detector_vulnllmr import VulnLLMRDetector
-        kwargs = {"tp": args.tp, "mode": args.vulnllmr_mode}
+        kwargs = {"tp": args.tp, "mode": args.vulnllmr_mode, "cwe": args.cwe,
+                  "defense_text": defense_text}
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = VulnLLMRDetector(**kwargs)
@@ -104,13 +127,13 @@ def main() -> None:
         DETECTOR = RepoAuditDetector(**kwargs)
     elif args.detector == "vulrag":
         from detector_vulrag import VulRAGDetector
-        kwargs = {}
+        kwargs = {"defense_text": defense_text}
         if args.model:
             kwargs["model"] = args.model
         DETECTOR = VulRAGDetector(**kwargs)
     else:
         from detector_vultrial import VulTrialDetector
-        kwargs = {}
+        kwargs = {"defense_text": defense_text}
         if args.model:
             kwargs["model"] = args.model
         DETECTOR = VulTrialDetector(**kwargs)

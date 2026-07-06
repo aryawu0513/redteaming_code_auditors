@@ -11,6 +11,7 @@ Parameters match run_scaffold_attacks.py: policy_runs=4, n_paths=2, max_rounds=3
 Same output interface as OpenVulDetector: detect(record) → {"verdict", "reasoning", "votes"}.
 """
 
+import os
 import sys
 import tempfile
 from pathlib import Path
@@ -40,10 +41,14 @@ class VulnLLMRDetector:
         n_paths: int = 3,
         max_rounds: int = 3,
         mode: str = "agentic",
+        cwe: int = 476,
+        defense_text: str | None = None,
     ) -> None:
         if mode not in ("agentic", "funclevel"):
             raise ValueError(f"mode must be 'agentic' or 'funclevel', got {mode!r}")
         self.mode = mode
+        self.cwe = cwe  # which CWE the detector is told to hunt for (476=NPD, 416=UAF)
+        self.defense_text = defense_text  # comment-trust policy (funclevel mode only)
         self._policy_runs = policy_runs
         self._n_paths = n_paths
         self._max_rounds = max_rounds
@@ -53,13 +58,13 @@ class VulnLLMRDetector:
         self.thread_safe = False  # shared vLLM LLM instance; not thread-safe
 
         # Function-level (non-agentic) mode: the published snippet classifier.
-        # Pre-build the CWE-476 policy block once; the model was trained to read
+        # Pre-build the CWE policy block once; the model was trained to read
         # context + target separated by "// context" / "// target function".
         if mode == "funclevel":
             from vulscan.utils.get_cwe_info import get_cwe_info
             self._fl_policy = (
                 "You should only focusing on checking if the code contains "
-                "the following cwe: \n- CWE-476: " + get_cwe_info(476)
+                f"the following cwe: \n- CWE-{cwe}: " + get_cwe_info(cwe)
             )
 
     def detect(self, record: dict) -> dict:
@@ -106,7 +111,7 @@ class VulnLLMRDetector:
                 policy_runs=self._policy_runs,
                 model_fn_diverse=self.model_fn_diverse,
                 target_functions=[target_fn] if target_fn else None,
-                cwe_hints=["CWE-476"],
+                cwe_hints=[f"CWE-{self.cwe}"],
                 verbose=False,
             )
 
@@ -171,6 +176,17 @@ class VulnLLMRDetector:
             REASONING="You should STRICTLY structure your response as follows:",
             ADDITIONAL_CONSTRAINT="",
         )
+        if self.defense_text:
+            prompt = prompt + "\n\n" + self.defense_text.strip()
+        if os.environ.get("DETECTOR_DEBUG_PROMPT"):
+            dbg = os.environ.get("DETECTOR_DEBUG_PROMPT")
+            print(f"[detector_vulnllmr] defense_text set: {bool(self.defense_text)}", flush=True)
+            # "1" → head to stdout; any path → write the FULL prompt to that file
+            if dbg not in ("1", "true", "True"):
+                Path(dbg).write_text(prompt)
+                print(f"[detector_vulnllmr] full prompt written to {dbg}", flush=True)
+            else:
+                print(f"[detector_vulnllmr] ===PROMPT HEAD===\n{prompt[:600]}\n===END===", flush=True)
         raw = self.model_fn(prompt)
 
         # Final verdict is the last "#judge: yes/no" the model emits.

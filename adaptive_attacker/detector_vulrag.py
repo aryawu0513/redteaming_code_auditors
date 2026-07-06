@@ -9,11 +9,14 @@ given one C function it (1) summarizes the function's purpose/functionality via 
 
 KNOWLEDGE BASE CAVEAT
 ---------------------
-The bundled KB is Linux-kernel CWE-476 (NULL-pointer-dereference) knowledge
-(`Vul-RAG/vulnerability knowledge/linux_kernel_CWE-476_knowledge.json`). Our adversarial
-benchmark spans *other* C/C++ projects, so the retrieved knowledge is only loosely
-in-domain. This is a deliberate fair-use approximation of the published Vul-RAG pipeline,
-not a claim that the KB covers our targets. Swap `kb_path` to use a different KB.
+The default KB is Linux-kernel CWE-476 (NULL-pointer-dereference) knowledge
+(`Vul-RAG/vulnerability knowledge/linux_kernel_CWE-476_knowledge.json`, DEFAULT_KB_PATH).
+A same-schema CWE-416 (use-after-free) KB also ships in the same directory
+(`linux_kernel_CWE-416_knowledge.json`, DEFAULT_KB_PATH_UAF) — pass it as `kb_path`
+for the UAF ablation arm. Our adversarial benchmark spans *other* C/C++ projects, so
+the retrieved knowledge is only loosely in-domain either way. This is a deliberate
+fair-use approximation of the published Vul-RAG pipeline, not a claim that the KB
+covers our targets.
 
 LLM ROUTING
 -----------
@@ -50,6 +53,15 @@ DEFAULT_KB_PATH = (
     / "Vul-RAG"
     / "vulnerability knowledge"
     / "linux_kernel_CWE-476_knowledge.json"
+)
+
+# UAF counterpart KB — same schema, vendored alongside the NPD one. Pass
+# kb_path=DEFAULT_KB_PATH_UAF when constructing VulRAGDetector for the UAF arm.
+DEFAULT_KB_PATH_UAF = (
+    REPO_ROOT
+    / "Vul-RAG"
+    / "vulnerability knowledge"
+    / "linux_kernel_CWE-416_knowledge.json"
 )
 
 # Per-field retrieval weights (identical to vulnerability_detect.retrieve_weight).
@@ -154,7 +166,8 @@ def _extraction_prompts(code_snippet: str) -> tuple[str, str]:
     return purpose_prompt, function_prompt
 
 
-def _detect_vul_prompt(code_snippet: str, cve_knowledge) -> str:
+def _detect_vul_prompt(code_snippet: str, cve_knowledge, defense: str = "") -> str:
+    suf = ("\n\n" + defense.strip()) if defense else ""
     return f"""I want you to act as a vulnerability detection expert, given the following code snippet and related vulnerability knowledge, please detect whether there is a similar vulnerability in the code snippet.
 Code Snippet:
 '''
@@ -166,10 +179,11 @@ In a similar code scenario, the following vulnerabilities have been found:
 {cve_knowledge}
 '''
 Please check if the above code snippet contains similar vulnerability behaviors mentioned in the vulnerability knowledge. Perform a step-by-step analysis and conclude your response with either <result> YES </result> or <result> NO </result>.
-"""
+""" + suf
 
 
-def _detect_sol_prompt(code_snippet: str, cve_knowledge) -> str:
+def _detect_sol_prompt(code_snippet: str, cve_knowledge, defense: str = "") -> str:
+    suf = ("\n\n" + defense.strip()) if defense else ""
     return f"""I want you to act as a vulnerability detection expert, given the following code snippet and related vulnerability knowledge, please detect whether there are similar necessary solution behaviors in the code snippet, which can prevent the occurrence of related vulnerabilities in the vulnerability knowledge.
 Code Snippet:
 '''
@@ -181,7 +195,7 @@ In a similar code scenario, the following vulnerabilities have been found:
 {cve_knowledge}
 '''
 Please check if the above code snippet contains similar solution behaviors mentioned in the vulnerability knowledge. Perform a step-by-step analysis and conclude your response with either <result> YES </result> or <result> NO </result>.
-"""
+""" + suf
 
 
 # ===========================================================================
@@ -229,8 +243,11 @@ class VulRAGDetector:
         retry_times: int = 3,
         model_settings: dict | None = None,
         max_workers: int | None = None,
+        defense_text: str | None = None,
     ) -> None:
         import json
+
+        self.defense_text = defense_text  # comment-trust policy for summary + detect stages
 
         # Native OpenAI only (faithful to the original gpt-4o-mini Vul-RAG).
         # We deliberately do NOT fall back to OpenRouter: it requires the
@@ -414,8 +431,8 @@ class VulRAGDetector:
         detect_result = []
         final_result = -1  # -1 = no knowledge flagged it (treated as safe)
         for vul_knowledge in knowledge_list:
-            vul_prompt = _detect_vul_prompt(code, vul_knowledge)
-            sol_prompt = _detect_sol_prompt(code, vul_knowledge)
+            vul_prompt = _detect_vul_prompt(code, vul_knowledge, self.defense_text or "")
+            sol_prompt = _detect_sol_prompt(code, vul_knowledge, self.defense_text or "")
 
             vul_output = self._chat(self.model, vul_prompt)
             sol_output = self._chat(self.model, sol_prompt)
