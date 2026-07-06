@@ -1,0 +1,1135 @@
+[
+  {
+    "pid": "UAF-CVE-0129",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0130",
+    "status": "ok",
+    "func_name": "xps_image_end_image",
+    "file_path": "devices/vector/gdevxps.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1     -I./obj -I./base -I./obj -I./devices -I./devices/vector  -I./tiff/libtiff -Itiff-config/libtiff -I./obj -I./zlib -o ./obj/gdevxps_0.o -c ./devices/vector/gdevxps.c\nIn file included from ./base/gx.h:26,\n                 from ./devices/vector/gdevxps.c:20:\n./devices/vector/gdevxps.c: In function \u2018xps_image_end_image\u2019:\n./base/gsmemory.h:241:3: warning: pointer targets in initialization of \u2018char *\u2019 from \u2018byte *\u2019 {aka \u2018unsigned char *\u2019} differ in signedness [-Wpointer-sign]\n  241 |   (*(mem)->procs.alloc_bytes)(mem, nbytes, cname)\n      |   ^\n./devices/vector/gdevxps.c:2222:17: note: in expansion of macro \u2018gs_alloc_bytes\u2019\n 2222 |     char *tmp = gs_alloc_bytes(mem->non_gc_memory, 256, \"xps_image_end_image\");\n      |                 ^~~~~~~~~~~~~~\n./devices/vector/gdevxps.c:2222:5: error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]\n 2222 |     char *tmp = gs_alloc_bytes(mem->non_gc_memory, 256, \"xps_image_end_image\");\n      |     ^~~~\ncc1: some warnings being treated as errors\nmake: *** [devices/devs.mak:1099: obj/gdevxps_0.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0334",
+    "status": "ok",
+    "func_name": "c_pdf14trans_clist_read_update",
+    "file_path": "base/gdevp14.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./obj -I./base -I./devices  -DWHICH_CMS=\"lcms2mt\" -o ./obj/gdevp14_0.o -c ./base/gdevp14.c\n./base/gdevp14.c: In function \u2018c_pdf14trans_clist_read_update\u2019:\n./base/gdevp14.c:9437:68: warning: passing argument 2 of \u2018tdev->procs.get_profile\u2019 makes pointer from integer without a cast [-Wint-conversion]\n 9437 |     cmm_profile_t *old_profile = dev_proc(tdev, get_profile)(tdev, GS_UNKNOWN_TAG);\n      |                                                                    ^~~~~~~~~~~~~~\n      |                                                                    |\n      |                                                                    int\n./base/gdevp14.c:9437:68: note: expected \u2018cmm_dev_profile_t **\u2019 {aka \u2018struct cmm_dev_profile_s **\u2019} but argument is of type \u2018int\u2019\nIn file included from ./base/gxdevice.h:23,\n                 from ./base/gdevp14.c:23:\n./base/gxdevcli.h:827:26: warning: initialization of \u2018cmm_profile_t *\u2019 {aka \u2018struct cmm_profile_s *\u2019} from \u2018int\u2019 makes pointer from integer without a cast [-Wint-conversion]\n  827 | #define dev_proc(dev, p) ((dev)->procs.p)\n      |                          ^\n./base/gdevp14.c:9437:34: note: in expansion of macro \u2018dev_proc\u2019\n 9437 |     cmm_profile_t *old_profile = dev_proc(tdev, get_profile)(tdev, GS_UNKNOWN_TAG);\n      |                                  ^~~~~~~~\n./base/gdevp14.c:9440:13: error: \u2018gs_composite_t\u2019 {aka \u2018struct gs_composite_s\u2019} has no member named \u2018pdf14_op\u2019\n 9440 |     if (pcte->pdf14_op == PDF14_OP_PUSH) {\n      |             ^~\n./base/gdevp14.c:9440:27: error: \u2018PDF14_OP_PUSH\u2019 undeclared (first use in this function)\n 9440 |     if (pcte->pdf14_op == PDF14_OP_PUSH) {\n      |                           ^~~~~~~~~~~~~\n./base/gdevp14.c:9440:27: note: each undeclared identifier is reported only once for each function it appears in\nIn file included from ./base/gxdevice.h:23,\n                 from ./base/gdevp14.c:23:\n./base/gdevp14.c:9445:28: error: \u2018gx_device_procs\u2019 {aka \u2018struct gx_device_procs_s\u2019} has no member named \u2018set_profile\u2019; did you mean \u2018get_profile\u2019?\n 9445 |             dev_proc(tdev, set_profile)(tdev, GS_UNKNOWN_TAG, new_profile);\n      |                            ^~~~~~~~~~~\n./base/gxdevcli.h:827:40: note: in definition of macro \u2018dev_proc\u2019\n  827 | #define dev_proc(dev, p) ((dev)->procs.p)\n      |                                        ^\n./base/gdevp14.c:9447:17: error: \u2018gx_device\u2019 {aka \u2018struct gx_device_s\u2019} has no member named \u2018icc_hashcode\u2019\n 9447 |             tdev->icc_hashcode = old_profile->hashcode;\n      |                 ^~\nmake: *** [base/lib.mak:3182: obj/gdevp14_0.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0335",
+    "status": "ok",
+    "func_name": "x_catch_free_colors",
+    "file_path": "devices/gdevxini.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0336",
+    "status": "ok",
+    "func_name": "gdev_x_open",
+    "file_path": "devices/gdevxini.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0337",
+    "status": "ok",
+    "func_name": "gs_main_finit",
+    "file_path": "psi/imain.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./psi -I./obj -I./obj -I./base -I./devices  -o ./obj/imain.o -c ./psi/imain.c\n./psi/imain.c: In function \u2018gs_main_finit\u2019:\n./psi/imain.c:1122:5: error: too few arguments to function \u2018gs_lib_finit\u2019\n 1122 |     gs_lib_finit(exit_status, code);\n      |     ^~~~~~~~~~~~\nIn file included from ./psi/imain.c:26:\n./base/gslib.h:36:6: note: declared here\n   36 | void gs_lib_finit(int exit_status, int code, gs_memory_t *);\n      |      ^~~~~~~~~~~~\nmake: *** [psi/int.mak:1927: obj/imain.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0362",
+    "status": "ok",
+    "func_name": "gx_image_enum_begin",
+    "file_path": "base/gxipixel.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./obj -I./base -I./devices  -DWHICH_CMS=\"lcms2mt\" -o ./obj/gxipixel.o -c ./base/gxipixel.c\n./base/gxipixel.c: In function \u2018gx_image_enum_begin\u2019:\n./base/gxipixel.c:279:30: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018BitsPerComponent\u2019\n  279 |     temp_data[0] = (byte)(pic->BitsPerComponent & 0xFF);\n      |                              ^~\n./base/gxipixel.c:280:30: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018Width\u2019\n  280 |     temp_data[1] = (byte)(pic->Width & 0xFF);\n      |                              ^~\n./base/gxipixel.c:281:30: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018Height\u2019\n  281 |     temp_data[2] = (byte)(pic->Height & 0xFF);\n      |                              ^~\nAt top level:\n./base/gxipixel.c:581:1: warning: \u2018image_init_colors\u2019 defined but not used [-Wunused-function]\n  581 | image_init_colors(gx_image_enum * penum, int bps, int spp,\n      | ^~~~~~~~~~~~~~~~~\n./base/gxipixel.c:296:1: warning: \u2018color_draws_b_w\u2019 defined but not used [-Wunused-function]\n  296 | color_draws_b_w(gx_device * dev, const gx_drawing_color * pdcolor)\n      | ^~~~~~~~~~~~~~~\n./base/gxipixel.c:54:36: warning: \u2018image1_enum_procs\u2019 defined but not used [-Wunused-const-variable=]\n   54 | static const gx_image_enum_procs_t image1_enum_procs = {\n      |                                    ^~~~~~~~~~~~~~~~~\nmake: *** [base/lib.mak:833: obj/gxipixel.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0446",
+    "status": "ok",
+    "func_name": "Ins_IP",
+    "file_path": "base/ttinterp.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0467",
+    "status": "ok",
+    "func_name": "sampled_data_continue",
+    "file_path": "psi/zfsample.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0644",
+    "status": "ok",
+    "func_name": "xps_finish_image_path",
+    "file_path": "devices/vector/gdevxps.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0645",
+    "status": "ok",
+    "func_name": "xps_image_end_image",
+    "file_path": "devices/vector/gdevxps.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "./obj/aux/echogs -w ./obj/ldt.tr -n - gcc   -o ./bin/gs\n./obj/aux/echogs -a ./obj/ldt.tr -n -s ./obj/gsromfs1.o ./obj/gs.o -s\ncat ./obj/gsld.tr >> ./obj/ldt.tr\n./obj/aux/echogs -a ./obj/ldt.tr -s -  -lm -ldl  -rdynamic     -lpthread -lm\nif [ x != x ]; then LD_RUN_PATH=; export LD_RUN_PATH; fi; \\\nXCFLAGS= XINCLUDE= XLDFLAGS= XLIBDIRS= XLIBS= \\\nPSI_FEATURE_DEVS= FEATURE_DEVS= DEVICE_DEVS= DEVICE_DEVS1= DEVICE_DEVS2= DEVICE_DEVS3= \\\nDEVICE_DEVS4= DEVICE_DEVS5= DEVICE_DEVS6= DEVICE_DEVS7= DEVICE_DEVS8= \\\nDEVICE_DEVS9= DEVICE_DEVS10= DEVICE_DEVS11= DEVICE_DEVS12= \\\nDEVICE_DEVS13= DEVICE_DEVS14= DEVICE_DEVS15= DEVICE_DEVS16= \\\nDEVICE_DEVS17= DEVICE_DEVS18= DEVICE_DEVS19= DEVICE_DEVS20= \\\nDEVICE_DEVS_EXTRA= \\\n/bin/sh <./obj/ldt.tr\n./obj/aux/echogs -w ./obj/pclldt.tr -n - gcc    -o ./bin/gpcl6\n./obj/aux/echogs -a ./obj/pclldt.tr -n -x 20\n./obj/aux/echogs -a ./obj/pclldt.tr -n -s ./obj/plimpl.o ./obj/pctop.o ./obj/pxtop.o ./obj/gconfig.o ./obj/gscdefs.o  -s\ncat ./obj/pclld.tr >> ./obj/pclldt.tr\n./obj/aux/echogs -a ./obj/pclldt.tr -n -s - ./obj/pclromfs1.o ./obj/realmain.o ./obj/plmain.o\n./obj/aux/echogs -a ./obj/pclldt.tr -s -  -lm -ldl  -rdynamic     -lpthread -lm\nif [ x != x ]; then LD_RUN_PATH=; export LD_RUN_PATH; fi; \\\nXCFLAGS= XINCLUDE= XLDFLAGS= XLIBDIRS= XLIBS= \\\nPCL_FEATURE_DEVS= DEVICE_DEVS= DEVICE_DEVS1= DEVICE_DEVS2= DEVICE_DEVS3= \\\nDEVICE_DEVS4= DEVICE_DEVS5= DEVICE_DEVS6= DEVICE_DEVS7= DEVICE_DEVS8= \\\nDEVICE_DEVS9= DEVICE_DEVS10= DEVICE_DEVS11= DEVICE_DEVS12= \\\nDEVICE_DEVS13= DEVICE_DEVS14= DEVICE_DEVS15= DEVICE_DEVS16= \\\nDEVICE_DEVS17= DEVICE_DEVS18= DEVICE_DEVS19= DEVICE_DEVS20= \\\nDEVICE_DEVS_XETRA= \\\nsh <./obj/pclldt.tr\n./obj/aux/echogs -w ./obj/xpsldt.tr -n - gcc    -o ./bin/gxps\n./obj/aux/echogs -a ./obj/xpsldt.tr -n -s ./obj/xpstop.o ./obj/xpsimpl.o ./obj/gconfig.o ./obj/gscdefs.o  -s\ncat ./obj/xpsld.tr >> ./obj/xpsldt.tr\n./obj/aux/echogs -a ./obj/xpsldt.tr -s - ./obj/xpsromfs1.o ./obj/realmain.o ./obj/plmain.o  -lm -ldl  -rdynamic     -lpthread -lm\nif [ x != x ]; then LD_RUN_PATH=; export LD_RUN_PATH; fi; \\\nXCFLAGS= XINCLUDE= XLDFLAGS= XLIBDIRS= XLIBS= \\\nPCL_FEATURE_DEVS= DEVICE_DEVS= DEVICE_DEVS1= DEVICE_DEVS2= DEVICE_DEVS3= \\\nDEVICE_DEVS4= DEVICE_DEVS5= DEVICE_DEVS6= DEVICE_DEVS7= DEVICE_DEVS8= \\\nDEVICE_DEVS9= DEVICE_DEVS10= DEVICE_DEVS11= DEVICE_DEVS12= \\\nDEVICE_DEVS13= DEVICE_DEVS14= DEVICE_DEVS15= DEVICE_DEVS16= \\\nDEVICE_DEVS17= DEVICE_DEVS18= DEVICE_DEVS19= DEVICE_DEVS20= \\\nDEVICE_DEVS_EXTRA= \\\nsh <./obj/xpsldt.tr\n/usr/bin/ld: ./obj/gdevxps.o: in function `xps_image_end_image':\ngdevxps.c:(.text+0x480f): undefined reference to `gdev_vector_image_end_image'\ncollect2: error: ld returned 1 exit status\nmake: *** [base/unixlink.mak:172: bin/gs] Error 1\n/usr/bin/ld: ./obj/gdevxps.o: in function `xps_image_end_image':\ngdevxps.c:(.text+0x480f): undefined reference to `gdev_vector_image_end_image'\ncollect2: error: ld returned 1 exit status\nmake: *** [base/unixlink.mak:196: bin/gpcl6] Error 1\n/usr/bin/ld: ./obj/gdevxps.o: in function `xps_image_end_image':\ngdevxps.c:(.text+0x480f): undefined reference to `gdev_vector_image_end_image'\ncollect2: error: ld returned 1 exit status\nmake: *** [base/unixlink.mak:217: bin/gxps] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0849",
+    "status": "ok",
+    "func_name": "c_pdf14trans_clist_read_update",
+    "file_path": "base/gdevp14.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./obj -I./base -I./devices  -DWHICH_CMS=\"lcms2mt\" -o ./obj/gdevp14_0.o -c ./base/gdevp14.c\n./base/gdevp14.c: In function \u2018c_pdf14trans_clist_read_update\u2019:\n./base/gdevp14.c:9440:43: error: \u2018gs_pdf14trans_params_t\u2019 {aka \u2018struct gs_pdf14trans_params_s\u2019} has no member named \u2018icc_hashcode\u2019; did you mean \u2018icc_hash\u2019?\n 9440 |     int64_t icc_hashcode = ptrans->params.icc_hashcode;\n      |                                           ^~~~~~~~~~~~\n      |                                           icc_hash\n./base/gdevp14.c:9451:23: error: \u2018gs_pdf14trans_params_t\u2019 {aka \u2018struct gs_pdf14trans_params_s\u2019} has no member named \u2018devn_params\u2019\n 9451 |     if (ptrans->params.devn_params != NULL) {\n      |                       ^\n./base/gdevp14.c:9441:9: warning: unused variable \u2018code\u2019 [-Wunused-variable]\n 9441 |     int code = 0;\n      |         ^~~~\nmake: *** [base/lib.mak:3182: obj/gdevp14_0.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0850",
+    "status": "ok",
+    "func_name": "x_catch_free_colors",
+    "file_path": "devices/gdevxini.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0851",
+    "status": "ok",
+    "func_name": "gdev_x_open",
+    "file_path": "devices/gdevxini.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0852",
+    "status": "ok",
+    "func_name": "gs_main_finit",
+    "file_path": "psi/imain.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./psi -I./obj -I./obj -I./base -I./devices  -o ./obj/imain.o -c ./psi/imain.c\n./psi/imain.c: In function \u2018gs_main_finit\u2019:\n./psi/imain.c:1133:23: error: \u2018gs_main_instance\u2019 {aka \u2018struct gs_main_instance_s\u2019} has no member named \u2018gs_lib_ctx\u2019\n 1133 |     gs_lib_finit(minst->gs_lib_ctx, exit_status, code);\n      |                       ^~\n./psi/imain.c:1133:50: warning: passing argument 3 of \u2018gs_lib_finit\u2019 makes pointer from integer without a cast [-Wint-conversion]\n 1133 |     gs_lib_finit(minst->gs_lib_ctx, exit_status, code);\n      |                                                  ^~~~\n      |                                                  |\n      |                                                  int\nIn file included from ./psi/imain.c:26:\n./base/gslib.h:36:46: note: expected \u2018gs_memory_t *\u2019 {aka \u2018struct gs_memory_s *\u2019} but argument is of type \u2018int\u2019\n   36 | void gs_lib_finit(int exit_status, int code, gs_memory_t *);\n      |                                              ^~~~~~~~~~~~~\nmake: *** [psi/int.mak:1927: obj/imain.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0877",
+    "status": "ok",
+    "func_name": "gx_image_enum_begin",
+    "file_path": "base/gxipixel.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./obj -I./base -I./devices  -DWHICH_CMS=\"lcms2mt\" -o ./obj/gxipixel.o -c ./base/gxipixel.c\n./base/gxipixel.c: In function \u2018gx_image_enum_begin\u2019:\n./base/gxipixel.c:269:29: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018Width\u2019\n  269 |     init_buf[0] = (byte)(pic->Width & 0xFF);\n      |                             ^~\n./base/gxipixel.c:270:30: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018Width\u2019\n  270 |     init_buf[1] = (byte)((pic->Width >> 8) & 0xFF);\n      |                              ^~\n./base/gxipixel.c:271:29: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018Height\u2019\n  271 |     init_buf[2] = (byte)(pic->Height & 0xFF);\n      |                             ^~\n./base/gxipixel.c:272:30: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018Height\u2019\n  272 |     init_buf[3] = (byte)((pic->Height >> 8) & 0xFF);\n      |                              ^~\n./base/gxipixel.c:273:28: error: \u2018gs_image_common_t\u2019 {aka \u2018const struct gs_image_common_s\u2019} has no member named \u2018BitsPerComponent\u2019\n  273 |     init_buf[4] = (byte)pic->BitsPerComponent;\n      |                            ^~\nAt top level:\n./base/gxipixel.c:592:1: warning: \u2018image_init_colors\u2019 defined but not used [-Wunused-function]\n  592 | image_init_colors(gx_image_enum * penum, int bps, int spp,\n      | ^~~~~~~~~~~~~~~~~\n./base/gxipixel.c:307:1: warning: \u2018color_draws_b_w\u2019 defined but not used [-Wunused-function]\n  307 | color_draws_b_w(gx_device * dev, const gx_drawing_color * pdcolor)\n      | ^~~~~~~~~~~~~~~\n./base/gxipixel.c:54:36: warning: \u2018image1_enum_procs\u2019 defined but not used [-Wunused-const-variable=]\n   54 | static const gx_image_enum_procs_t image1_enum_procs = {\n      |                                    ^~~~~~~~~~~~~~~~~\nmake: *** [base/lib.mak:833: obj/gxipixel.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0961",
+    "status": "ok",
+    "func_name": "Ins_IP",
+    "file_path": "base/ttinterp.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0982",
+    "status": "ok",
+    "func_name": "sampled_data_continue",
+    "file_path": "psi/zfsample.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "gcc  -DHAVE_MKSTEMP -DHAVE_FILE64 -DHAVE_FSEEKO -DHAVE_MKSTEMP64   -DHAVE_SETLOCALE -DHAVE_SSE2  -DHAVE_BSWAP32 -DHAVE_BYTESWAP_H -DHAVE_STRERROR -DHAVE_ISNAN -DHAVE_ISINF  -DHAVE_PREAD_PWRITE=1 -DGS_RECURSIVE_MUTEXATTR=PTHREAD_MUTEX_RECURSIVE -O2 -Wall -Wstrict-prototypes -Wundef -Wmissing-declarations -Wmissing-prototypes -Wwrite-strings -fno-strict-aliasing -Werror=declaration-after-statement -fno-builtin -fno-common -Werror=return-type -DHAVE_STDINT_H=1 -DHAVE_DIRENT_H=1 -DHAVE_SYS_DIR_H=1 -DHAVE_SYS_TIME_H=1 -DHAVE_SYS_TIMES_H=1 -DHAVE_INTTYPES_H=1 -DHAVE_LIBDL=1 -DGX_COLOR_INDEX_TYPE=\"unsigned long long\" -D__USE_UNIX98=1   -DHAVE_RESTRICT=1 -fno-strict-aliasing -DHAVE_POPEN_PROTO=1    -I./psi -I./obj -I./obj -I./base -I./devices  -o ./obj/zfsample.o -c ./psi/zfsample.c\n./psi/zfsample.c: In function \u2018sampled_data_continue\u2019:\n./psi/zfsample.c:518:9: error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]\n  518 |         double rmin = params->Range[2 * i];\n      |         ^~~~~~\n./psi/zfsample.c:524:9: error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]\n  524 |         double range = rmax - rmin;\n      |         ^~~~~~\n./psi/zfsample.c:530:9: error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]\n  530 |         int max_val = (1 << params->BitsPerSample) - 1;\n      |         ^~~\n./psi/zfsample.c:536:9: error: ISO C90 forbids mixed declarations and code [-Werror=declaration-after-statement]\n  536 |         byte *tbuf = temp_buf + i * bytes_per_sample;\n      |         ^~~~\ncc1: some warnings being treated as errors\nmake: *** [psi/int.mak:1551: obj/zfsample.o] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-0373",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0374",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0375",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0376",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0888",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0889",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0890",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-0891",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 67596a87731dc593551975ca0268a438ab7410a2\n"
+  },
+  {
+    "pid": "UAF-CVE-1039",
+    "status": "ok",
+    "func_name": "planar_decompress",
+    "file_path": "libfreerdp/codec/planar.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1040",
+    "status": "ok",
+    "func_name": "freerdp_bitmap_planar_context_reset",
+    "file_path": "libfreerdp/codec/planar.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1069",
+    "status": "ok",
+    "func_name": "shadow_server_start",
+    "file_path": "server/shadow/shadow_server.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0305",
+    "status": "ok",
+    "func_name": "yr_object_copy",
+    "file_path": "libyara/object.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "PASS=5 FAIL=0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0820",
+    "status": "ok",
+    "func_name": "yr_object_copy",
+    "file_path": "libyara/object.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "PASS=5 FAIL=0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1033",
+    "status": "ok",
+    "func_name": "simplify_linear_step",
+    "file_path": "src/math/grobner/pdd_simplifier.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0118",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0633",
+    "status": "ok",
+    "func_name": "ap_limit_section",
+    "file_path": "server/core.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0218",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 0c68b497e13f6fb6f149e0726cd081a7bb182175\n"
+  },
+  {
+    "pid": "UAF-CVE-0219",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 0c68b497e13f6fb6f149e0726cd081a7bb182175\n"
+  },
+  {
+    "pid": "UAF-CVE-0733",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 0c68b497e13f6fb6f149e0726cd081a7bb182175\n"
+  },
+  {
+    "pid": "UAF-CVE-0734",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 0c68b497e13f6fb6f149e0726cd081a7bb182175\n"
+  },
+  {
+    "pid": "UAF-CVE-0441",
+    "status": "ok",
+    "func_name": "xlsxioread_sheetlist_open",
+    "file_path": "lib/xlsxio_read.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0956",
+    "status": "ok",
+    "func_name": "xlsxioread_sheetlist_open",
+    "file_path": "lib/xlsxio_read.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0340",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0381",
+    "status": "ok",
+    "func_name": "ossl_connect_step1",
+    "file_path": "lib/vtls/openssl.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0384",
+    "status": "ok",
+    "func_name": "set_ssl_ciphers",
+    "file_path": "lib/vtls/schannel.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0855",
+    "status": "ok",
+    "func_name": "Curl_close",
+    "file_path": "lib/url.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0896",
+    "status": "ok",
+    "func_name": "ossl_connect_step1",
+    "file_path": "lib/vtls/openssl.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0899",
+    "status": "ok",
+    "func_name": "set_ssl_ciphers",
+    "file_path": "lib/vtls/schannel.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0385",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0426",
+    "status": "fail",
+    "error": "source file missing in clone: lib/Support/BigIntSupport.cpp"
+  },
+  {
+    "pid": "UAF-CVE-0427",
+    "status": "ok",
+    "func_name": "swap",
+    "file_path": "lib/VM/JSLib/Array.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0428",
+    "status": "ok",
+    "func_name": "addOp_RJS",
+    "file_path": "lib/VM/Operations.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0431",
+    "status": "ok",
+    "func_name": "inferBinaryInst",
+    "file_path": "lib/Optimizer/Scalar/TypeInference.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0900",
+    "status": "ok",
+    "func_name": "transientObjectPutErrorMessage",
+    "file_path": "lib/VM/Interpreter.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0941",
+    "status": "fail",
+    "error": "source file missing in clone: lib/Support/BigIntSupport.cpp"
+  },
+  {
+    "pid": "UAF-CVE-0942",
+    "status": "ok",
+    "func_name": "swap",
+    "file_path": "lib/VM/JSLib/Array.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0943",
+    "status": "ok",
+    "func_name": "addOp_RJS",
+    "file_path": "lib/VM/Operations.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0946",
+    "status": "ok",
+    "func_name": "inferBinaryInst",
+    "file_path": "lib/Optimizer/Scalar/TypeInference.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0949",
+    "status": "ok",
+    "func_name": "identifyCallsites",
+    "file_path": "lib/Optimizer/Scalar/SimpleCallGraphProvider.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0324",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 8da6d56bf7af2d25f779e52edef61b2fd4557b3c\n"
+  },
+  {
+    "pid": "UAF-CVE-0325",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 8da6d56bf7af2d25f779e52edef61b2fd4557b3c\n"
+  },
+  {
+    "pid": "UAF-CVE-0839",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 8da6d56bf7af2d25f779e52edef61b2fd4557b3c\n"
+  },
+  {
+    "pid": "UAF-CVE-0840",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 8da6d56bf7af2d25f779e52edef61b2fd4557b3c\n"
+  },
+  {
+    "pid": "UAF-CVE-0494",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0495",
+    "status": "ok",
+    "func_name": "read_func",
+    "file_path": "src/epoll_socket.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0496",
+    "status": "ok",
+    "func_name": "handle_readable_event",
+    "file_path": "src/epoll_socket.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1009",
+    "status": "ok",
+    "func_name": "parse_request",
+    "file_path": "src/sim_parser.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1010",
+    "status": "ok",
+    "func_name": "read_func",
+    "file_path": "src/epoll_socket.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1011",
+    "status": "ok",
+    "func_name": "handle_readable_event",
+    "file_path": "src/epoll_socket.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0226",
+    "status": "ok",
+    "func_name": "CleanNode",
+    "file_path": "src/gdoc.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0741",
+    "status": "ok",
+    "func_name": "CleanNode",
+    "file_path": "src/gdoc.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0445",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0960",
+    "status": "ok",
+    "func_name": "mif_process_cmpt",
+    "file_path": "src/libjasper/mif/mif_cod.c",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make check",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0025",
+    "status": "ok",
+    "func_name": "onig_new_deluxe",
+    "file_path": "src/regext.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0540",
+    "status": "ok",
+    "func_name": "onig_new_deluxe",
+    "file_path": "src/regext.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0210",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0725",
+    "status": "ok",
+    "func_name": "read_gif",
+    "file_path": "src/gifread.c",
+    "build_ok": true,
+    "build_summary": "make rc=2",
+    "suite_cmd": "make check",
+    "returncode": 2,
+    "verdict": "fail",
+    "summary": "exit 2",
+    "error_output": "make  all-recursive\nmake[1]: Entering directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle'\nMaking all in src\nmake[2]: Entering directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src'\ngcc -W -Wall  -g -O2   -o gifsicle clp.o fmalloc.o giffunc.o gifread.o gifunopt.o merge.o optimize.o quantize.o support.o xform.o gifsicle.o  gifwrite.o -lm \ngcc -W -Wall  -g -O2   -o gifdiff clp.o fmalloc.o giffunc.o gifread.o gifdiff.o  -lm \nmake[2]: Leaving directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src'\nmake[2]: Entering directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle'\nmake[2]: Leaving directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle'\nmake[1]: Leaving directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle'\nMaking check in src\nmake[1]: Entering directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src'\ngcc -W -Wall  -g -O2   -o gifsicle clp.o fmalloc.o giffunc.o gifread.o gifunopt.o merge.o optimize.o quantize.o support.o xform.o gifsicle.o  gifwrite.o -lm \ngcc -W -Wall  -g -O2   -o gifdiff clp.o fmalloc.o giffunc.o gifread.o gifdiff.o  -lm \nmake[1]: Leaving directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src'\nmake[1]: Entering directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle'\nmake[1]: Leaving directory '/tmp/cve_patch_scratch_uaf/kohler__gifsicle'\n/usr/bin/ld: gifread.o: in function `read_gif':\n/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src/gifread.c:784: undefined reference to `Gif_Strdup'\ncollect2: error: ld returned 1 exit status\nmake[2]: *** [Makefile:386: gifsicle] Error 1\n/usr/bin/ld: gifread.o: in function `read_gif':\n/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src/gifread.c:784: undefined reference to `Gif_Strdup'\ncollect2: error: ld returned 1 exit status\nmake[2]: *** [Makefile:382: gifdiff] Error 1\nmake[2]: Target 'all' not remade because of errors.\nmake[1]: *** [Makefile:455: all-recursive] Error 1\nmake: *** [Makefile:353: all] Error 2\n/usr/bin/ld: gifread.o: in function `read_gif':\n/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src/gifread.c:784: undefined reference to `Gif_Strdup'\ncollect2: error: ld returned 1 exit status\nmake[1]: *** [Makefile:386: gifsicle] Error 1\n/usr/bin/ld: gifread.o: in function `read_gif':\n/tmp/cve_patch_scratch_uaf/kohler__gifsicle/src/gifread.c:784: undefined reference to `Gif_Strdup'\ncollect2: error: ld returned 1 exit status\nmake[1]: *** [Makefile:382: gifdiff] Error 1\nmake[1]: Target 'check' not remade because of errors.\nmake: *** [Makefile:455: check-recursive] Error 1\nmake: Target 'check' not remade because of errors.\n"
+  },
+  {
+    "pid": "UAF-CVE-1072",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0437",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 70c073dfef85750f00995ade4b9d8609c33f70d5\n"
+  },
+  {
+    "pid": "UAF-CVE-0438",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 70c073dfef85750f00995ade4b9d8609c33f70d5\n"
+  },
+  {
+    "pid": "UAF-CVE-0439",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 70c073dfef85750f00995ade4b9d8609c33f70d5\n"
+  },
+  {
+    "pid": "UAF-CVE-0952",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 70c073dfef85750f00995ade4b9d8609c33f70d5\n"
+  },
+  {
+    "pid": "UAF-CVE-0953",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 70c073dfef85750f00995ade4b9d8609c33f70d5\n"
+  },
+  {
+    "pid": "UAF-CVE-0954",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: 70c073dfef85750f00995ade4b9d8609c33f70d5\n"
+  },
+  {
+    "pid": "UAF-CVE-0422",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0423",
+    "status": "ok",
+    "func_name": "initFromParser",
+    "file_path": "src/podofo/main/PdfMemDocument.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0937",
+    "status": "ok",
+    "func_name": "readObjectsInternal",
+    "file_path": "src/podofo/main/PdfParser.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0938",
+    "status": "ok",
+    "func_name": "initFromParser",
+    "file_path": "src/podofo/main/PdfMemDocument.cpp",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0342",
+    "status": "ok",
+    "func_name": "operator",
+    "file_path": "src/expand.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0857",
+    "status": "ok",
+    "func_name": "operator",
+    "file_path": "src/expand.cpp",
+    "build_ok": true,
+    "build_summary": "make rc=0",
+    "suite_cmd": "make test",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0482",
+    "status": "ok",
+    "func_name": "read_sps_NAL",
+    "file_path": "libde265/decctx.cc",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0997",
+    "status": "ok",
+    "func_name": "read_sps_NAL",
+    "file_path": "libde265/decctx.cc",
+    "build_ok": true,
+    "build_summary": "cmake rc=0",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0173",
+    "status": "ok",
+    "func_name": "interpret_heif_file",
+    "file_path": "libheif/heif_context.cc",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0688",
+    "status": "ok",
+    "func_name": "interpret_heif_file",
+    "file_path": "libheif/heif_context.cc",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1067",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-1068",
+    "status": "ok",
+    "func_name": "nodeDestruct",
+    "file_path": "libtransmission/variant.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0158",
+    "status": "skip"
+  },
+  {
+    "pid": "UAF-CVE-0271",
+    "status": "ok",
+    "func_name": "dissect_ipmi_trace",
+    "file_path": "epan/dissectors/packet-ipmi-trace.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0280",
+    "status": "ok",
+    "func_name": "dissect_SYSTEM_TIME_ptr",
+    "file_path": "epan/dissectors/packet-dcerpc-spoolss.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0281",
+    "status": "ok",
+    "func_name": "cb_wstr_postprocess",
+    "file_path": "epan/dissectors/packet-dcerpc-nt.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0282",
+    "status": "ok",
+    "func_name": "cb_str_postprocess",
+    "file_path": "epan/dissectors/packet-dcerpc-nt.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0673",
+    "status": "ok",
+    "func_name": "enip_open_cip_connection",
+    "file_path": "epan/dissectors/packet-enip.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0786",
+    "status": "ok",
+    "func_name": "dissect_ipmi_trace",
+    "file_path": "epan/dissectors/packet-ipmi-trace.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0795",
+    "status": "ok",
+    "func_name": "dissect_SYSTEM_TIME_ptr",
+    "file_path": "epan/dissectors/packet-dcerpc-spoolss.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0796",
+    "status": "ok",
+    "func_name": "cb_wstr_postprocess",
+    "file_path": "epan/dissectors/packet-dcerpc-nt.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0797",
+    "status": "ok",
+    "func_name": "cb_str_postprocess",
+    "file_path": "epan/dissectors/packet-dcerpc-nt.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1043",
+    "status": "ok",
+    "func_name": "dissect_q931_number_ie",
+    "file_path": "epan/dissectors/packet-q931.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1045",
+    "status": "ok",
+    "func_name": "dissect_q931_ie_cs0",
+    "file_path": "epan/dissectors/packet-q931.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1046",
+    "status": "ok",
+    "func_name": "dissect_q931_ie_cs7",
+    "file_path": "epan/dissectors/packet-q931.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-1047",
+    "status": "ok",
+    "func_name": "dissect_q931_IEs",
+    "file_path": "epan/dissectors/packet-q931.c",
+    "build_ok": true,
+    "build_summary": "cmake rc=2",
+    "suite_cmd": "ctest",
+    "returncode": 0,
+    "verdict": "pass",
+    "summary": "exit 0",
+    "error_output": ""
+  },
+  {
+    "pid": "UAF-CVE-0030",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: c55722b22e58c5337c36cc21159330735cb64603\n"
+  },
+  {
+    "pid": "UAF-CVE-0031",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: c55722b22e58c5337c36cc21159330735cb64603\n"
+  },
+  {
+    "pid": "UAF-CVE-0545",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: c55722b22e58c5337c36cc21159330735cb64603\n"
+  },
+  {
+    "pid": "UAF-CVE-0546",
+    "status": "fail",
+    "error": "clone/build failed: checkout failed: fatal: reference is not a tree: c55722b22e58c5337c36cc21159330735cb64603\n"
+  }
+]

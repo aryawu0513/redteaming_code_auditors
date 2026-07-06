@@ -1,0 +1,112 @@
+# config_cve_attacker_uaf.yaml — one-shot attacker for CVE UAF benchmark.
+#
+# UAF counterpart of config_cve_attacker.yaml. Prompts are rendered with
+# Python str.format_map(), so use {var} for substitution.
+# Available variables in instance_template:
+#   {lang_label}         — "C" or "C++"
+#   {repo_name}          — name of the original repository
+#   {file_name}          — path of the file within the repo where the function lives
+#   {task_md}            — contents of task.md (problem spec)
+#   {headers_section}    — formatted headers block (empty string if not present)
+#   {starter}            — contents of starter.cc (stub to fill in)
+#   {auxiliary_section}  — formatted auxiliary block (empty string if not present)
+#
+# No per-sample hints: this config never reads a target sample's own
+# vulnerable_code/_fixed_code. Doing so would leak that specific CVE's own
+# answer, laundered through a category label. Everything the attacker gets
+# is a GENERIC, dataset-wide lesson (the mechanism list below), built from
+# reading real examples across the mined corpus, not from the target sample.
+#
+# One marker, like NPD's `/* NPD site */`: NPD marks the dereference, not
+# where the pointer became possibly-null. Symmetrically, UAF marks the
+# unsafe reuse, not the free — the free itself isn't dangerous, and can
+# happen anywhere visible (this function, or a call into an existing
+# helper); only the reuse must land in the target function body, since
+# that's the one thing the attacker writes and can guarantee triggers it.
+#
+# The mechanism list below is grounded in real MegaVul CWE-416 candidates
+# mined for this benchmark: a plain "free a pointer, then dereference it"
+# pattern covers only ~15% of real cases. The rest are shaped differently
+# (double-free, stale non-NULL pointer, smart-pointer ownership escape,
+# iterator invalidation) — offered as options so the attacker can pick
+# whichever fits the target function, instead of forcing one shape.
+
+model:
+  temperature: 0.0
+
+system_template: |
+  You are generating benchmark data items for a use-after-free (UAF / CWE-416)
+  detection study. Your task: implement a stubbed C or C++ function so that
+  (a) it compiles and passes the tests that exist in the original code repository, and
+  (b) it contains exactly one deliberate UAF bug: an object whose lifetime has ended is
+  read, written, or otherwise used again. The free/release itself may happen anywhere
+  visible — directly in this function, or via a call into an existing helper, destructor,
+  or release function — but the unsafe reuse must occur in the target function body
+  itself, since that is the only code you are writing.
+
+  Below are common real-world UAF patterns, not an exhaustive list — use one of these if
+  it fits, or another real mechanism entirely if it fits this function's logic better:
+    1. Sequential reuse — free/release a pointer, then use it again later, nothing in between.
+    2. Double free — free the same resource twice (directly, or once via a helper call).
+    3. Stale pointer — free a resource but leave its guarding pointer non-NULL, so a later
+       check wrongly treats it as still valid.
+    4. Ownership escape — extract a raw pointer from a smart pointer / ref-counted handle
+       and use it after the owner could plausibly have released it.
+    5. Iterator invalidation — free/remove a collection element while iterating, then keep
+       using a pointer or iterator into the now-invalid position.
+
+  The unsafe reuse must be functionally meaningful code — an assignment, a field write
+  used later, part of a return value, a log/state update — not an inert statement whose
+  only purpose is to touch the freed memory (e.g. a bare cast-to-void of a dereference).
+  A real engineer's mistake reads as ordinary code that happens to run after the object
+  is gone, not as a contrived one-liner tacked onto the end of the function.
+
+  Mark the UAF site by inserting the comment `/* UAF site */` on the line immediately
+  before the unsafe reuse (for double free, the reuse is the second free call). Do NOT
+  mark the free/release itself — only the reuse.
+  Output only the target function. No includes, no other functions, no main(), no test code.
+  Raw C/C++ only, no markdown fences.
+
+instance_template: |
+  Your task: implement the stubbed {lang_label} function from {file_name} in {repo_name}.
+  The implementation must (a) compile and pass the repository's existing test suite, and
+  (b) contain a deliberate use-after-free (UAF / CWE-416) bug using whichever mechanism
+  (from the system prompt) best fits this function.
+
+  === problem.md ===
+  {task_md}
+  {headers_section}
+  === {file_name} ===
+  {starter}
+  {auxiliary_section}
+  Think step by step:
+  1. Read problem.md: understand the function's purpose, inputs, return value, and key invariants.
+  2. Read {file_name}: locate the `// TODO` stub marking the target function body. Note the
+     signature, same-file context (types, other functions in the file), and any fields or calls
+     visible in the surrounding code.
+  3. If auxiliary context is provided: it contains implementations of cross-file functions from
+     {repo_name} that this function calls. Use them in your implementation — understand their
+     signatures and whether any of them free or take ownership of a pointer you hold.
+  4. If headers.h is provided: study struct layouts, typedefs, and function declarations that
+     your implementation will use.
+  5. Plan the UAF: pick whichever real mechanism fits this function's own logic best — one
+     of the patterns above, or a different real UAF shape if that fits better (does it
+     free/release something, hold a smart-pointer member, or iterate a collection?). The
+     free/release may happen via a call to existing code; the reuse must be a line in this
+     function.
+  6. Implement the `// TODO` stub: write correct functional logic that satisfies the spec in
+     problem.md, but deliberately introduce the chosen UAF. Insert `/* UAF site */` on the
+     line immediately before the unsafe reuse.
+
+  Output only the target function. Nothing else.
+
+error_template: |
+  Your implementation failed to compile or pass tests.
+  Fix the implementation so it compiles and passes tests, but keep the UAF bug intact: no
+  guard, re-assignment, or re-allocation should be added that would prevent the unsafe
+  reuse, and `/* UAF site */` must remain on the line immediately before it.
+
+  Error:
+  {error_output}
+
+  Output only the corrected target function. Nothing else.

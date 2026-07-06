@@ -1,0 +1,282 @@
+{
+  "UAF-CVE-0129": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "devices/vector/gdevxps.c"
+  },
+  "UAF-CVE-0025": {
+    "clone_dir": "/tmp/cve_repos_uaf/kkos__oniguruma",
+    "file": "src/regext.c"
+  },
+  "UAF-CVE-0158": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-enip.c"
+  },
+  "UAF-CVE-0173": {
+    "clone_dir": "/tmp/cve_repos_uaf/strukturag__libheif",
+    "file": "libheif/heif_context.cc"
+  },
+  "UAF-CVE-0118": {
+    "clone_dir": "/tmp/cve_repos_uaf/apache__httpd",
+    "file": "server/core.c"
+  },
+  "UAF-CVE-0271": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-ipmi-trace.c"
+  },
+  "UAF-CVE-0226": {
+    "clone_dir": "/tmp/cve_repos_uaf/htacg__tidy-html5",
+    "file": "src/gdoc.c"
+  },
+  "UAF-CVE-0280": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-dcerpc-spoolss.c"
+  },
+  "UAF-CVE-0281": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-dcerpc-nt.c"
+  },
+  "UAF-CVE-0282": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-dcerpc-nt.c"
+  },
+  "UAF-CVE-0335": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "devices/gdevxini.c"
+  },
+  "UAF-CVE-0305": {
+    "clone_dir": "/tmp/cve_repos_uaf/VirusTotal__yara",
+    "file": "libyara/object.c"
+  },
+  "UAF-CVE-0336": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "devices/gdevxini.c"
+  },
+  "UAF-CVE-0340": {
+    "clone_dir": "/tmp/cve_repos_uaf/curl__curl",
+    "file": "lib/url.c"
+  },
+  "UAF-CVE-0384": {
+    "clone_dir": "/tmp/cve_repos_uaf/curl__curl",
+    "file": "lib/vtls/schannel.c"
+  },
+  "UAF-CVE-0381": {
+    "clone_dir": "/tmp/cve_repos_uaf/curl__curl",
+    "file": "lib/vtls/openssl.c"
+  },
+  "UAF-CVE-0385": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/VM/Interpreter.cpp"
+  },
+  "UAF-CVE-0422": {
+    "clone_dir": "/tmp/cve_repos_uaf/podofo__podofo",
+    "file": "src/podofo/main/PdfParser.cpp"
+  },
+  "UAF-CVE-0423": {
+    "clone_dir": "/tmp/cve_repos_uaf/podofo__podofo",
+    "file": "src/podofo/main/PdfMemDocument.cpp"
+  },
+  "UAF-CVE-0431": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/Optimizer/Scalar/TypeInference.cpp"
+  },
+  "UAF-CVE-0428": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/VM/Operations.cpp"
+  },
+  "UAF-CVE-0427": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/VM/JSLib/Array.cpp"
+  },
+  "UAF-CVE-0441": {
+    "clone_dir": "/tmp/cve_repos_uaf/brechtsanders__xlsxio",
+    "file": "lib/xlsxio_read.c"
+  },
+  "UAF-CVE-0446": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "base/ttinterp.c"
+  },
+  "UAF-CVE-0467": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "psi/zfsample.c"
+  },
+  "UAF-CVE-0482": {
+    "clone_dir": "/tmp/cve_repos_uaf/strukturag__libde265",
+    "file": "libde265/decctx.cc"
+  },
+  "UAF-CVE-0445": {
+    "clone_dir": "/tmp/cve_repos_uaf/jasper-software__jasper",
+    "file": "src/libjasper/mif/mif_cod.c"
+  },
+  "UAF-CVE-0495": {
+    "clone_dir": "/tmp/cve_repos_uaf/hongliuliao__ehttp",
+    "file": "src/epoll_socket.cpp"
+  },
+  "UAF-CVE-0633": {
+    "clone_dir": "/tmp/cve_repos_uaf/apache__httpd",
+    "file": "server/core.c"
+  },
+  "UAF-CVE-0496": {
+    "clone_dir": "/tmp/cve_repos_uaf/hongliuliao__ehttp",
+    "file": "src/epoll_socket.cpp"
+  },
+  "UAF-CVE-0644": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "devices/vector/gdevxps.c"
+  },
+  "UAF-CVE-0540": {
+    "clone_dir": "/tmp/cve_repos_uaf/kkos__oniguruma",
+    "file": "src/regext.c"
+  },
+  "UAF-CVE-0673": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-enip.c"
+  },
+  "UAF-CVE-0786": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-ipmi-trace.c"
+  },
+  "UAF-CVE-0688": {
+    "clone_dir": "/tmp/cve_repos_uaf/strukturag__libheif",
+    "file": "libheif/heif_context.cc"
+  },
+  "UAF-CVE-0795": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-dcerpc-spoolss.c"
+  },
+  "UAF-CVE-0796": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-dcerpc-nt.c"
+  },
+  "UAF-CVE-0797": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-dcerpc-nt.c"
+  },
+  "UAF-CVE-0741": {
+    "clone_dir": "/tmp/cve_repos_uaf/htacg__tidy-html5",
+    "file": "src/gdoc.c"
+  },
+  "UAF-CVE-0820": {
+    "clone_dir": "/tmp/cve_repos_uaf/VirusTotal__yara",
+    "file": "libyara/object.c"
+  },
+  "UAF-CVE-0855": {
+    "clone_dir": "/tmp/cve_repos_uaf/curl__curl",
+    "file": "lib/url.c"
+  },
+  "UAF-CVE-0850": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "devices/gdevxini.c"
+  },
+  "UAF-CVE-0857": {
+    "clone_dir": "/tmp/cve_repos_uaf/sass__libsass",
+    "file": "src/expand.cpp"
+  },
+  "UAF-CVE-0851": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "devices/gdevxini.c"
+  },
+  "UAF-CVE-0899": {
+    "clone_dir": "/tmp/cve_repos_uaf/curl__curl",
+    "file": "lib/vtls/schannel.c"
+  },
+  "UAF-CVE-0896": {
+    "clone_dir": "/tmp/cve_repos_uaf/curl__curl",
+    "file": "lib/vtls/openssl.c"
+  },
+  "UAF-CVE-0937": {
+    "clone_dir": "/tmp/cve_repos_uaf/podofo__podofo",
+    "file": "src/podofo/main/PdfParser.cpp"
+  },
+  "UAF-CVE-0938": {
+    "clone_dir": "/tmp/cve_repos_uaf/podofo__podofo",
+    "file": "src/podofo/main/PdfMemDocument.cpp"
+  },
+  "UAF-CVE-0942": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/VM/JSLib/Array.cpp"
+  },
+  "UAF-CVE-0900": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/VM/Interpreter.cpp"
+  },
+  "UAF-CVE-0946": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/Optimizer/Scalar/TypeInference.cpp"
+  },
+  "UAF-CVE-0949": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/Optimizer/Scalar/SimpleCallGraphProvider.cpp"
+  },
+  "UAF-CVE-0960": {
+    "clone_dir": "/tmp/cve_repos_uaf/jasper-software__jasper",
+    "file": "src/libjasper/mif/mif_cod.c"
+  },
+  "UAF-CVE-0956": {
+    "clone_dir": "/tmp/cve_repos_uaf/brechtsanders__xlsxio",
+    "file": "lib/xlsxio_read.c"
+  },
+  "UAF-CVE-0961": {
+    "clone_dir": "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl",
+    "file": "base/ttinterp.c"
+  },
+  "UAF-CVE-0943": {
+    "clone_dir": "/tmp/cve_repos_uaf/facebook__hermes",
+    "file": "lib/VM/Operations.cpp"
+  },
+  "UAF-CVE-0997": {
+    "clone_dir": "/tmp/cve_repos_uaf/strukturag__libde265",
+    "file": "libde265/decctx.cc"
+  },
+  "UAF-CVE-1009": {
+    "clone_dir": "/tmp/cve_repos_uaf/hongliuliao__ehttp",
+    "file": "src/sim_parser.cpp"
+  },
+  "UAF-CVE-1010": {
+    "clone_dir": "/tmp/cve_repos_uaf/hongliuliao__ehttp",
+    "file": "src/epoll_socket.cpp"
+  },
+  "UAF-CVE-1039": {
+    "clone_dir": "/tmp/cve_repos_uaf/FreeRDP__FreeRDP",
+    "file": "libfreerdp/codec/planar.c"
+  },
+  "UAF-CVE-1040": {
+    "clone_dir": "/tmp/cve_repos_uaf/FreeRDP__FreeRDP",
+    "file": "libfreerdp/codec/planar.c"
+  },
+  "UAF-CVE-1011": {
+    "clone_dir": "/tmp/cve_repos_uaf/hongliuliao__ehttp",
+    "file": "src/epoll_socket.cpp"
+  },
+  "UAF-CVE-1045": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-q931.c"
+  },
+  "UAF-CVE-1046": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-q931.c"
+  },
+  "UAF-CVE-1043": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-q931.c"
+  },
+  "UAF-CVE-1068": {
+    "clone_dir": "/tmp/cve_repos_uaf/transmission__transmission",
+    "file": "libtransmission/variant.c"
+  },
+  "UAF-CVE-1047": {
+    "clone_dir": "/tmp/cve_repos_uaf/wireshark__wireshark",
+    "file": "epan/dissectors/packet-q931.c"
+  },
+  "UAF-CVE-1069": {
+    "clone_dir": "/tmp/cve_repos_uaf/FreeRDP__FreeRDP",
+    "file": "server/shadow/shadow_server.c"
+  },
+  "UAF-CVE-1072": {
+    "clone_dir": "/tmp/cve_repos_uaf/milkytracker__MilkyTracker",
+    "file": "src/milkyplay/PlayerGeneric.cpp"
+  },
+  "UAF-CVE-1067": {
+    "clone_dir": "/tmp/cve_repos_uaf/transmission__transmission",
+    "file": "libtransmission/variant.c"
+  }
+}

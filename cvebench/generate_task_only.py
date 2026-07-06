@@ -195,7 +195,7 @@ def extract_function_only(src: str, func_name: str) -> str | None:
 # Source loading
 # ---------------------------------------------------------------------------
 
-def load_sources(row: dict, out_dir: Path, clone_dir: Path) -> tuple[str, str, str, str]:
+def load_sources(row: dict, out_dir: Path) -> tuple[str, str, str]:
     """Return (context_src, auxiliary_src, src_label).
 
     context_src — raw_primary.cc (tree-sitter: target function + same-file helpers)
@@ -313,7 +313,7 @@ def process_one(row: dict, client: OpenAI, samples_dir: Path, source_dir: Path,
         print(f"  SKIP — already done")
         return True
 
-    context_src, auxiliary, src_label = load_sources(row, src_dir, clone_dir)
+    context_src, auxiliary, src_label = load_sources(row, src_dir)
     if not context_src.strip():
         print(f"  SKIP — no source available")
         return False

@@ -20,6 +20,7 @@ OpenVul/results/
 defenses/texts/
 adaptive_attacker/results/
 adaptive_attacker/COT_SEEDS_EXPERIMENT/
+adaptive_attacker_uaf/results/
 /space/
 benchmark/
 _logs/
@@ -28,7 +29,9 @@ _logs/
 cvebench/__pycache__/
 cvebench/f3*.jsonl
 !cvebench/f3*.slim.jsonl
+cvebench/f12*.jsonl
 cvebench/results_testsuite.json
+cvebench/results_testsuite_uaf.json
 
 writing/
 scripts/oneoff/

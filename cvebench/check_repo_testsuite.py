@@ -205,15 +205,6 @@ def _parse_test_summary(output: str, returncode: int) -> tuple[str, str]:
     """Classify test run as pass / partial / fail and extract a short summary line."""
     combined = (output or "")
 
-
-def _extract_failures(output: str) -> list[str]:
-    """Extract just the failing test names from test output."""
-    lines = (output or "").splitlines()
-    failures = [l for l in lines if re.match(r'^(FAIL|FAILED|ERROR)[\s:]', l)]
-    # ctest failure format: "N - TestName (Failed)"
-    failures += [l for l in lines if re.search(r'\(Failed\)', l)]
-    return failures[:50]  # cap at 50
-
     # ctest summary line: e.g. "100% tests passed, 0 tests failed out of 5"
     m = re.search(r'(\d+)% tests passed.*?out of (\d+)', combined)
     if m:
@@ -247,7 +238,60 @@ def _extract_failures(output: str) -> list[str]:
     return "fail", f"exit {returncode}"
 
 
-def run_testsuite(repo_path: Path, test_timeout: int) -> dict:
+def _extract_failures(output: str) -> list[str]:
+    """Extract just the failing test names from test output."""
+    lines = (output or "").splitlines()
+    failures = [l for l in lines if re.match(r'^(FAIL|FAILED|ERROR)[\s:]', l)]
+    # ctest failure format: "N - TestName (Failed)"
+    failures += [l for l in lines if re.search(r'\(Failed\)', l)]
+    return failures[:50]  # cap at 50
+
+
+def _makefile_declares_target(mf_text: str, target: str) -> bool:
+    """True if `target` appears as one of the (possibly several) space-separated
+    target names on a rule line, e.g. 'test check: unittests ...' declares both
+    'test' and 'check'. Only matches unindented, non-comment lines (rule
+    headers, not recipes or comments like '# - check the output:')."""
+    for line in mf_text.splitlines():
+        if not line or line[0].isspace():
+            continue  # indented lines are recipe commands, not rule headers
+        if line.lstrip().startswith("#"):
+            continue  # comment line, even one containing ':'
+        if ":" not in line:
+            continue
+        lhs = line.split(":", 1)[0]
+        if target in lhs.split():
+            return True
+    return False
+
+
+def _candidate_makefile_dirs(repo_path: Path, file_paths: list[str]) -> list[Path]:
+    """Dirs to look for a Makefile with a test target, root-first: the repo
+    root is checked first since a project-wide `make check` there is the
+    canonical test entrypoint; only if root has no target do we fall back to
+    subdirectories derived from every sample's file_path in this repo group
+    (not just one), since samples can live under different top-level dirs
+    (e.g. ImageMagick's MagickCore/ vs coders/). Some projects (e.g. vim)
+    keep their real build/test Makefile in a subdirectory, not at the root."""
+    dirs: list[Path] = [repo_path]
+    seen = {repo_path}
+    top_subdirs: list[Path] = []
+    file_dirs: list[Path] = []
+    for fp in file_paths:
+        if not fp:
+            continue
+        rel = Path(fp)
+        if len(rel.parts) > 1:
+            top_subdirs.append(repo_path / rel.parts[0])
+        file_dirs.append(repo_path / rel.parent)
+    for d in top_subdirs + file_dirs:
+        if d not in seen:
+            seen.add(d)
+            dirs.append(d)
+    return dirs
+
+
+def run_testsuite(repo_path: Path, test_timeout: int, file_paths: list[str] | None = None) -> dict:
     """Try make test / make check / ctest. Returns result dict."""
     cmake_build = repo_path / "_cmake_build"
 
@@ -276,21 +320,23 @@ def run_testsuite(repo_path: Path, test_timeout: int) -> dict:
                 "verdict": "fail", "summary": "timeout", "failed_tests": []}
 
     # ── make check ───────────────────────────────────────────────────────────
-    if (repo_path / "Makefile").exists():
+    for mf_dir in _candidate_makefile_dirs(repo_path, file_paths or []):
+        makefile = mf_dir / "Makefile"
+        if not makefile.exists():
+            continue
+        mf_text = makefile.read_text(errors="replace")
         for target in ("check", "test", "tests"):
-            # Verify the target exists in the Makefile before running
-            mf_text = (repo_path / "Makefile").read_text(errors="replace")
-            if not re.search(rf'^{target}\s*:', mf_text, re.MULTILINE):
+            if not _makefile_declares_target(mf_text, target):
                 continue
-            r = run(["make", target, "-k", "--keep-going"])
+            r = run(["make", target, "-k", "--keep-going"], cwd=mf_dir)
             if r is None:
-                print(f"    make {target}: timeout")
+                print(f"    make {target} ({mf_dir}): timeout")
                 return {"suite_cmd": f"make {target}", "returncode": -1,
                         "verdict": "fail", "summary": "timeout", "failed_tests": []}
             combined = r.stdout + r.stderr
             verdict, summary = _parse_test_summary(combined, r.returncode)
-            print(f"    make {target}: {verdict}  ({summary})")
-            return {"suite_cmd": f"make {target}", "returncode": r.returncode,
+            print(f"    make {target} ({mf_dir}): {verdict}  ({summary})")
+            return {"suite_cmd": f"make {target} ({mf_dir})", "returncode": r.returncode,
                     "verdict": verdict, "summary": summary,
                     "failed_tests": _extract_failures(combined)}
 
@@ -395,8 +441,11 @@ def main():
         run_config(repo_path, file_path)
         build_ok, build_summary = run_full_build(repo_path, args.build_timeout)
 
-        # Test suite (once per repo)
-        suite = run_testsuite(repo_path, args.test_timeout)
+        # Test suite (once per repo) — check every sample's file_path, not just
+        # row 0, since a repo's CVE-touched files can span multiple top-level
+        # dirs (e.g. ImageMagick: MagickCore/ vs coders/).
+        all_file_paths = [r.get("file_path") or r.get("file", "") for r in repo_rows]
+        suite = run_testsuite(repo_path, args.test_timeout, file_paths=all_file_paths)
         verdict = suite["verdict"] if build_ok else "fail"
 
         # Apply result to all samples from this repo
