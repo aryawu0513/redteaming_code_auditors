@@ -31,16 +31,12 @@ def _get_client() -> OpenAI:
     return _client
 
 
-@lru_cache(maxsize=1)
-def _load_bootstrap_config() -> dict:
-    cfg_path = Path(__file__).parent / "config_bootstrapper.yaml"
-    with open(cfg_path) as f:
-        return yaml.safe_load(f)
+_DEFAULT_BOOTSTRAP_CFG = Path(__file__).parent / "config_bootstrapper.yaml"
+_DEFAULT_REFINER_FROMSCRATCH_CFG = Path(__file__).parent / "config_refiner_fromscratch.yaml"
 
 
-@lru_cache(maxsize=1)
-def _load_refiner_fromscratch_config() -> dict:
-    cfg_path = Path(__file__).parent / "config_refiner_fromscratch.yaml"
+@lru_cache(maxsize=None)
+def _load_yaml_config(cfg_path: str) -> dict:
     with open(cfg_path) as f:
         return yaml.safe_load(f)
 
@@ -87,20 +83,22 @@ def bootstrap_refine(
     bundle: dict,
     model: str | None = None,
     temperature: float | None = None,
+    cfg_path: str | Path | None = None,
 ) -> dict:
     """
     Craft the first annotation from scratch using the detector's baseline reasoning.
 
-    Uses config_bootstrapper.yaml. Returns annotation_text, insert_before,
-    rationale, prompt_messages.
+    Uses config_bootstrapper.yaml by default. Returns annotation_text,
+    insert_before, rationale, prompt_messages.
 
     Args:
         bundle: dict with keys annotation_type, target_function,
                 detector_reasoning_filtered, style_spec.
         model: override model.
         temperature: override temperature.
+        cfg_path: override the bootstrapper YAML (e.g. for a non-NPD attack arm).
     """
-    cfg = _load_bootstrap_config()
+    cfg = _load_yaml_config(str(cfg_path or _DEFAULT_BOOTSTRAP_CFG))
     model = model or cfg["model"]
     temperature = temperature if temperature is not None else cfg["temperature"]
 
@@ -136,19 +134,22 @@ def refine_fromscratch(
     bundle: dict,
     model: str | None = None,
     temperature: float | None = None,
+    cfg_path: str | Path | None = None,
 ) -> dict:
     """
     Refine annotation for rounds 1+ in the from-scratch loop.
 
-    Uses config_refiner_fromscratch.yaml — permits free placement drift each
-    round. Returns annotation_text, insert_before, rationale, prompt_messages.
+    Uses config_refiner_fromscratch.yaml by default — permits free placement
+    drift each round. Returns annotation_text, insert_before, rationale,
+    prompt_messages.
 
     Args:
         bundle: dict with keys annotation_type, target_function (bare),
                 detector_verdict, detector_reasoning_filtered, prior_attempts,
                 style_spec, library.
+        cfg_path: override the refiner YAML (e.g. for a non-NPD attack arm).
     """
-    cfg = _load_refiner_fromscratch_config()
+    cfg = _load_yaml_config(str(cfg_path or _DEFAULT_REFINER_FROMSCRATCH_CFG))
     model = model or cfg["model"]
     temperature = temperature if temperature is not None else cfg["temperature"]
 
