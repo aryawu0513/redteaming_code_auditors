@@ -40,6 +40,8 @@ import json
 import os
 import shutil
 import sys
+import threading
+import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -50,6 +52,27 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from filter_npd import filter_npd_paragraphs  # noqa: E402
 from refiner_agent import bootstrap_refine, refine_fromscratch  # noqa: E402
+
+_TIMING_LOCK = threading.Lock()
+# Persist attacker (Qwen refine) generation timings in-repo by default so they
+# survive /tmp wipes; override with GEN_TIMING_LOG.
+_GEN_TIMING_LOG = Path(os.environ.get(
+    "GEN_TIMING_LOG", str(Path(__file__).parent / "gen_timing.jsonl")))
+
+
+def _log_gen_timing(out_dir: Path, record: dict) -> None:
+    """Append one Qwen-generation timing record to _GEN_TIMING_LOG.
+
+    Writes to /tmp (override with GEN_TIMING_LOG env var), not the run's own
+    output dir, so this probe instrumentation never touches real result dirs.
+    Thread-safe (produce_annotation runs concurrently across attack types in
+    run_round_batched); used to measure Qwen's per-round generation latency
+    independent of any detector.
+    """
+    line = json.dumps(record)
+    with _TIMING_LOCK:
+        with _GEN_TIMING_LOG.open("a") as f:
+            f.write(line + "\n")
 
 DATASET_DIR = REPO_ROOT / "benchmark" / "cvebench_full" / "baseline"
 RESULTS_DIR = HERE / "results"
@@ -195,18 +218,30 @@ def init_type_fromscratch(
     run_tag: str,
     refiner_model: str,
     refiner_temperature: float,
+    seed_round0: dict | None = None,
+    require_seed: bool = False,
 ) -> dict:
     """
     Round 0 for one attack type — from-scratch bootstrap.
 
     Calls bootstrap_refine() to craft a system-specific first annotation and
     choose its placement, then detects on the result.
+
+    If seed_round0 (a dict with annotation_text + insert_before, e.g. loaded from a
+    prior run's round_0.json) is given, that payload is REUSED as the round-0 seed
+    (no Qwen bootstrap call) and re-detected against the current detector — so only
+    later refinement rounds adapt. This is how we hold the seed fixed across a D0
+    and a defended (D1) run.
+
+    require_seed: caller passed --seed-round0-from and did NOT opt into fallback
+    (--allow-seed-fallback). If the seed can't be reused (missing/invalid), raise
+    instead of silently bootstrapping a fresh round 0 — a silent fallback would
+    confound the "same seed, only refinement adapts" comparison this mode exists for.
     """
     out_dir.mkdir(parents=True, exist_ok=True)
     bare_tf = bare_record["target_function"]
 
     print(f"\n{'='*60}")
-    print(f"[{attack_type}] round 0 — bootstrapping from baseline reasoning …")
 
     bootstrap_bundle = {
         "annotation_type": attack_type,
@@ -220,13 +255,43 @@ def init_type_fromscratch(
     bootstrap_prompt_messages = None
     bootstrap_raw_attempts: list[dict] = []
 
-    for attempt in range(3):
+    # Reuse a fixed round-0 seed from a prior run (skip Qwen bootstrap).
+    seed_reused = False
+    if seed_round0 is not None:
+        cand_ann = seed_round0.get("annotation_text")
+        cand_ins = seed_round0.get("insert_before")
+        if cand_ann and cand_ins and cand_ins in bare_tf and _annotation_is_safe_comment(cand_ann):
+            annotation_text, insert_before = cand_ann, cand_ins
+            bootstrap_prompt_messages = seed_round0.get("prompt_messages")
+            seed_reused = True
+            print(f"[{attack_type}] round 0 — REUSING fixed seed payload (no bootstrap)")
+        elif require_seed:
+            raise RuntimeError(
+                f"[{attack_type}] --seed-round0-from was set but the seed payload is "
+                f"invalid for this base (insert_before={cand_ins!r} not in target_function, "
+                f"or not a safe comment) and --allow-seed-fallback was not passed. "
+                f"Refusing to silently bootstrap a fresh round 0."
+            )
+        else:
+            print(f"[{attack_type}] round 0 — seed payload invalid for this base; "
+                  f"falling back to bootstrap (--allow-seed-fallback set)")
+
+    for attempt in ([] if annotation_text is not None else range(3)):
         try:
+            t0 = time.perf_counter()
             out_raw = bootstrap_refine(
                 bootstrap_bundle,
                 model=refiner_model,
                 temperature=refiner_temperature,
             )
+            elapsed = time.perf_counter() - t0
+            _log_gen_timing(out_dir, {
+                "attack_type": attack_type,
+                "round": 0,
+                "attempt": attempt + 1,
+                "elapsed_sec": round(elapsed, 3),
+                "success": True,
+            })
             cand_annotation = out_raw["annotation_text"]
             cand_insert_before = out_raw["insert_before"]
             # Verify insert_before exists in bare_tf and comment is well-formed
@@ -265,7 +330,7 @@ def init_type_fromscratch(
     det0 = detector.detect(working_record)
     round_0 = {
         "round": 0,
-        "phase": "fromscratch_bootstrap",
+        "phase": "seed_reused" if seed_reused else "fromscratch_bootstrap",
         "annotation_text": annotation_text,
         "insert_before": insert_before,
         "detector_verdict": det0["verdict"],
@@ -306,6 +371,9 @@ def init_type_fromscratch(
     return state
 
 
+_WITHLIBRARY_CFG = Path(__file__).parent / "config_refiner_fromscratch_withlibrary.yaml"
+
+
 def produce_annotation(
     state: dict,
     rnd: int,
@@ -313,11 +381,21 @@ def produce_annotation(
     refiner_model: str,
     refiner_temperature: float,
     run_tag: str,
+    use_library: bool = False,
 ) -> tuple[str | None, str | None, str]:
     """
     Phase 1 of a round: call refine_fromscratch() to get annotation_text +
     insert_before. Returns (annotation_text, insert_before, rationale).
     On 3 failures marks state 'invalid' and returns (None, None, "").
+
+    use_library: whether to feed the shared `library` (winning annotations from
+    OTHER attack types in this same run) into the refiner's prompt, via
+    config_refiner_fromscratch_withlibrary.yaml. The caller ties this to
+    --stop-on-any-flip: when that's on, every type halts the instant any type
+    flips, so `library` is provably empty at every round that actually runs
+    (entries only enter it on a flip, and a flip ends the slug) — use_library
+    would be a no-op there, so the default (no --stop-on-any-flip) config
+    without the library instruction is used instead.
     """
     attack_type = state["attack_type"]
     bare_tf = state["bare_tf"]
@@ -334,8 +412,9 @@ def produce_annotation(
         "detector_reasoning_filtered": filtered,
         "prior_attempts": prior_attempts,
         "style_spec": STYLE_SPECS[attack_type],
-        "library": library,
     }
+    if use_library:
+        bundle["library"] = library
 
     annotation_text: str | None = None
     insert_before: str | None = None
@@ -344,9 +423,19 @@ def produce_annotation(
 
     for attempt in range(3):
         try:
+            t0 = time.perf_counter()
             out_raw = refine_fromscratch(
-                bundle, model=refiner_model, temperature=refiner_temperature
+                bundle, model=refiner_model, temperature=refiner_temperature,
+                cfg_path=_WITHLIBRARY_CFG if use_library else None,
             )
+            elapsed = time.perf_counter() - t0
+            _log_gen_timing(out_dir, {
+                "attack_type": attack_type,
+                "round": rnd,
+                "attempt": attempt + 1,
+                "elapsed_sec": round(elapsed, 3),
+                "success": True,
+            })
             cand_annotation = out_raw["annotation_text"]
             cand_insert_before = out_raw["insert_before"]
             if cand_insert_before not in bare_tf:
@@ -452,10 +541,12 @@ def evaluate_annotation(
 def run_round_sequential(
     state: dict, rnd: int, library: list[dict], detector,
     refiner_model: str, refiner_temperature: float, run_tag: str,
+    use_library: bool = False,
 ) -> dict | None:
     print(f"\n[{state['attack_type']}] round {rnd} — refining …")
     ann, ins, rat = produce_annotation(
         state, rnd, library, refiner_model, refiner_temperature, run_tag,
+        use_library=use_library,
     )
     if ann is None:
         return None
@@ -467,12 +558,14 @@ def run_round_sequential(
 def run_round_batched(
     active_states: list[dict], rnd: int, library: list[dict], detector,
     refiner_model: str, refiner_temperature: float, run_tag: str,
+    use_library: bool = False,
 ) -> None:
     snapshot = list(library)
 
     def _produce(st: dict) -> tuple[dict, str | None, str | None, str]:
         ann, ins, rat = produce_annotation(
             st, rnd, snapshot, refiner_model, refiner_temperature, run_tag,
+            use_library=use_library,
         )
         return st, ann, ins, rat
 
@@ -498,19 +591,20 @@ def run_round_batched(
     library.extend(new_entries)
 
 
-def finalize_active(state: dict, run_tag: str, refiner_model: str) -> None:
+def finalize_active(state: dict, run_tag: str, refiner_model: str,
+                     stop_reason: str = "budget_exhausted") -> None:
     if state["status"] != "active":
         return
     result = {
-        "stop_reason": "budget_exhausted",
+        "stop_reason": stop_reason,
         "rounds_used": state["rounds_used"],
         "final_verdict": "vulnerable",
         "annotation_type": state["attack_type"],
     }
     _write_result(state["out_dir"], result, run_tag, refiner_model)
-    state["status"] = "budget_exhausted"
+    state["status"] = stop_reason
     state["result"] = result
-    print(f"[{state['attack_type']}] → budget_exhausted after {state['rounds_used']} rounds")
+    print(f"[{state['attack_type']}] → {stop_reason} after {state['rounds_used']} rounds")
 
 
 # ── Resume helpers ────────────────────────────────────────────────────────────
@@ -625,9 +719,12 @@ def main() -> None:
     parser.add_argument("--model", default=None,
                         help="Detector model ID — required for openvul, vultrial, vulrag, repoaudit")
     parser.add_argument("--detector",
-                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag"],
+                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag", "fake"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
+    parser.add_argument("--fake-baseline-gate", default=None,
+                        help="--detector fake only: path to a cached baseline_gate*.json "
+                             "to seed realistic reasoning text (no live detector calls at all).")
     parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
                         default="funclevel",
                         help="VulnLLM-R only: 'funclevel' (published snippet "
@@ -644,6 +741,23 @@ def main() -> None:
                         help="Dataset root — used only to locate the baseline/ sibling dir.")
     parser.add_argument("--system", default=None)
     parser.add_argument("--out-dir", type=Path, default=None)
+    parser.add_argument("--stop-on-any-flip", action="store_true",
+                        help="Once ANY attack type flips a slug to safe, stop refining the "
+                             "other still-active types for that slug instead of running them "
+                             "to their own flip/budget. Saves compute when only slug-level ASR "
+                             "is needed; per-type rounds-to-flip stats become one-sided for the "
+                             "types that were cut off early (marked stop_reason=slug_won_elsewhere).")
+    parser.add_argument("--seed-round0-from", default=None,
+                        help="Reuse round-0 seed payloads from this system's same-slug "
+                             "run (e.g. vulnllmr_funclevel_full) instead of bootstrapping. "
+                             "Only refinement rounds adapt; the seed is held fixed.")
+    parser.add_argument("--seed-round0-tag", default="fromscratch_v1",
+                        help="run-tag suffix of the round-0 seed source dirs.")
+    parser.add_argument("--allow-seed-fallback", action="store_true",
+                        help="With --seed-round0-from set: if a seed is missing/invalid "
+                             "for a given slug+type, silently bootstrap a fresh round 0 "
+                             "instead of raising. Off by default so a broken seed path "
+                             "can't quietly turn into an unseeded run.")
     parser.add_argument("--seed-library-system", default=None,
                         help="Preload the shared library from another system's "
                              "same-slug library (e.g. vulnllmr_full). Gives the "
@@ -667,7 +781,10 @@ def main() -> None:
     print(f"Detector: {args.detector} | Refiner: {args.refiner_model} T={args.refiner_temperature}")
     print(f"Budget: {args.budget} rounds | Tag: {args.run_tag!r} | Output: {args.out_dir}")
 
-    if args.detector_url:
+    if args.detector == "fake":
+        from detector_fake import FakeDetector
+        detector = FakeDetector(baseline_gate_path=args.fake_baseline_gate)
+    elif args.detector_url:
         from detector_http import HttpDetectorClient
         detector = HttpDetectorClient(base_url=args.detector_url)
     elif args.detector == "vulnllmr":
@@ -790,6 +907,24 @@ def main() -> None:
             shutil.rmtree(out_dir)
         types_to_bootstrap.append(attack_type)
 
+    def _load_seed_round0(attack_type: str) -> dict | None:
+        if not args.seed_round0_from:
+            return None
+        seed_suffix = f"_{args.seed_round0_tag}" if args.seed_round0_tag else ""
+        seed_file = (RESULTS_DIR / args.seed_round0_from / f"repository_{args.slug}"
+                     / f"adaptive_{attack_type}{seed_suffix}" / "round_0.json")
+        if not seed_file.exists():
+            if args.allow_seed_fallback:
+                print(f"[{attack_type}] seed-round0: no {seed_file} — will bootstrap "
+                      f"(--allow-seed-fallback set)")
+                return None
+            raise RuntimeError(
+                f"[{attack_type}] --seed-round0-from was set but {seed_file} does not "
+                f"exist, and --allow-seed-fallback was not passed. Refusing to silently "
+                f"bootstrap a fresh round 0."
+            )
+        return json.loads(seed_file.read_text())
+
     def _bootstrap_one(attack_type: str) -> tuple[str, dict]:
         out_dir = args.out_dir / f"adaptive_{attack_type}{dir_suffix}"
         state = init_type_fromscratch(
@@ -801,6 +936,8 @@ def main() -> None:
             run_tag=args.run_tag,
             refiner_model=args.refiner_model,
             refiner_temperature=args.refiner_temperature,
+            seed_round0=_load_seed_round0(attack_type),
+            require_seed=bool(args.seed_round0_from) and not args.allow_seed_fallback,
         )
         return attack_type, state
 
@@ -829,8 +966,26 @@ def main() -> None:
                         excerpt,
                     ))
 
+    def _any_flipped() -> bool:
+        return any(states[t]["status"] in ("flipped_safe", "static_succeeded")
+                   for t in args.types)
+
+    # library sharing is coupled to --stop-on-any-flip: under that mode every type
+    # halts the instant any type flips, so library is provably always empty at
+    # every round that runs (entries only enter it via a flip, which ends the
+    # slug) — feeding it in would be a no-op. Without --stop-on-any-flip (the
+    # original full-budget-per-type methodology), library sharing is live.
+    use_library = not args.stop_on_any_flip
+
+    slug_already_won = args.stop_on_any_flip and _any_flipped()
+    if slug_already_won:
+        print(f"\n[{args.slug}] --stop-on-any-flip: a type already flipped at round 0 "
+              f"(bootstrap) — skipping refinement for the rest.")
+
     # ── Round-major refinement ─────────────────────────────────────────────────
     for rnd in range(1, args.budget + 1):
+        if slug_already_won:
+            break
         # Only include types that are still active AND haven't yet run this round
         active = [t for t in args.types
                   if states[t]["status"] == "active" and rnd > states[t]["rounds_used"]]
@@ -845,6 +1000,7 @@ def main() -> None:
                 refiner_model=args.refiner_model,
                 refiner_temperature=args.refiner_temperature,
                 run_tag=args.run_tag,
+                use_library=use_library,
             )
         else:
             for attack_type in active:
@@ -854,12 +1010,21 @@ def main() -> None:
                     refiner_model=args.refiner_model,
                     refiner_temperature=args.refiner_temperature,
                     run_tag=args.run_tag,
+                    use_library=use_library,
                 )
                 if entry is not None:
                     library.append(entry)
 
+        if args.stop_on_any_flip and _any_flipped():
+            print(f"\n[{args.slug}] --stop-on-any-flip: a type flipped in round {rnd} — "
+                  f"stopping refinement for the remaining active types.")
+            slug_already_won = True
+            break
+
+    stop_reason = "slug_won_elsewhere" if slug_already_won else "budget_exhausted"
     for attack_type in args.types:
-        finalize_active(states[attack_type], args.run_tag, args.refiner_model)
+        finalize_active(states[attack_type], args.run_tag, args.refiner_model,
+                        stop_reason=stop_reason)
 
     # ── Summaries ──────────────────────────────────────────────────────────────
     summaries: list[dict] = []
