@@ -13,6 +13,8 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
 DETECTOR_GPU="${DETECTOR_GPU:-0}"
 PORT="${PORT:-8009}"
+# Defense baked into every /detect call: D0 (none, default) or a registry key (D1).
+DEFENSE="${DEFENSE:-D0}"
 
 export CUDA_VISIBLE_DEVICES="$DETECTOR_GPU"
 export VLLM_WORKER_MULTIPROC_METHOD=spawn
@@ -21,9 +23,10 @@ export VLLM_WORKER_MULTIPROC_METHOD=spawn
 export MKL_THREADING_LAYER=GNU
 export MKL_SERVICE_FORCE_INTEL=1
 
-echo "Serving OpenVul detector on GPU $DETECTOR_GPU, port $PORT"
+echo "Serving OpenVul detector (defense=$DEFENSE) on GPU $DETECTOR_GPU, port $PORT"
 
 python "$REPO_ROOT/adaptive_attacker/detector_server.py" \
     --detector openvul \
+    --defense "$DEFENSE" \
     --port "$PORT" \
     --tp 1

@@ -719,12 +719,9 @@ def main() -> None:
     parser.add_argument("--model", default=None,
                         help="Detector model ID — required for openvul, vultrial, vulrag, repoaudit")
     parser.add_argument("--detector",
-                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag", "fake"],
+                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
-    parser.add_argument("--fake-baseline-gate", default=None,
-                        help="--detector fake only: path to a cached baseline_gate*.json "
-                             "to seed realistic reasoning text (no live detector calls at all).")
     parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
                         default="funclevel",
                         help="VulnLLM-R only: 'funclevel' (published snippet "
@@ -781,10 +778,7 @@ def main() -> None:
     print(f"Detector: {args.detector} | Refiner: {args.refiner_model} T={args.refiner_temperature}")
     print(f"Budget: {args.budget} rounds | Tag: {args.run_tag!r} | Output: {args.out_dir}")
 
-    if args.detector == "fake":
-        from detector_fake import FakeDetector
-        detector = FakeDetector(baseline_gate_path=args.fake_baseline_gate)
-    elif args.detector_url:
+    if args.detector_url:
         from detector_http import HttpDetectorClient
         detector = HttpDetectorClient(base_url=args.detector_url)
     elif args.detector == "vulnllmr":
