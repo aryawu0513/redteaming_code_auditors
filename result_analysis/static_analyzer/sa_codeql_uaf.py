@@ -1,12 +1,26 @@
 """
 CodeQL UseAfterFree.ql catch-rate on the 70 judge-confirmed CVE UAF samples.
-UAF counterpart of sa_codeql.py. Uses build-mode=none (no compiler needed —
-syntactic C/C++ analysis).
+UAF counterpart of sa_codeql.py.
 
-Per-slug: patches target file with vulnerable version -> builds DB -> runs
-query -> restores. Slugs sharing the same repo run SERIALLY to avoid
-concurrent file conflicts. The CodeQL DB is rebuilt for each slug (since the
-source file changes).
+Uses a REAL traced build (codeql's default C/C++ tracing, --command=<build>),
+not --build-mode=none. --build-mode=none was tried first and found to be
+unreliable for these repos: inspecting the extractor diagnostics for a live
+DB (facebook/hermes) showed 45% of files (252/559) failed extraction because
+the no-build heuristic can't resolve project-specific include paths/macros
+without a real compile. CodeQL's own docs flag build-mode=none as unreliable
+for compiled languages.
+
+Each repo clone under /tmp/cve_repos_uaf was already configured + fully
+built once by check_repo_testsuite.py (Makefile/_cmake_build + .o files
+already present). So per-sample here we only need a fast INCREMENTAL
+rebuild traced by `codeql database create --command=...` — patch the target
+file, bump its mtime into the future (so make/cmake reliably sees it as
+changed even under same-second timestamp resolution), and let the existing
+build system recompile just that translation unit under the CodeQL tracer.
+
+Per-slug: patches target file with vulnerable version -> traced incremental
+build -> runs query -> restores. Slugs sharing the same repo run SERIALLY
+to avoid concurrent file/build conflicts.
 
 Manifest (uaf_clone_manifest.json) is derived directly from
 cvebench/f3_uaf_ids.jsonl + the already-populated /tmp/cve_repos_uaf clone
@@ -21,8 +35,10 @@ Output:
 
 import argparse
 import json
+import os
 import subprocess
 import shutil
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -33,6 +49,9 @@ DB_ROOT     = Path("/tmp/cve_sa_codeql_uaf_dbs")
 
 CODEQL = "/mnt/ssd/aryawu/codeql-home/codeql/codeql"
 QUERY  = "/mnt/ssd/aryawu/.codeql/packages/codeql/cpp-queries/1.6.3/Critical/UseAfterFree.ql"
+CMAKE  = "/usr/bin/cmake"
+
+DB_TIMEOUT = 900
 
 
 def load_samples():
@@ -50,20 +69,52 @@ def load_samples():
     return samples
 
 
-def build_db(repo_path: Path, db_path: Path, slug: str) -> bool:
-    """Build CodeQL DB with build-mode=none. Returns True on success."""
+WRAPPER_DIR = DB_ROOT / "_build_wrappers"
+
+
+def get_build_command(repo_path: Path) -> str | None:
+    """Path to a wrapper script that runs an incremental build for an
+    already-configured, already-built repo. Wrapped in its own script (not
+    passed inline via --command) because CodeQL's --command value is
+    whitespace-tokenized rather than shell-parsed, so quoting a compound
+    command (e.g. `sh -c '...; exit 0'`) inline breaks. The trailing
+    `exit 0` matters: these large legacy C codebases routinely have a few
+    files that don't compile cleanly (pre-existing, unrelated to whichever
+    sample we're currently patching — confirmed on ghostpdl, where make
+    fails on 2 unrelated files every run) and CodeQL refuses to finalize
+    the database at all if the traced command exits non-zero. Forcing
+    exit 0 lets it finalize with whatever it managed to extract — and the
+    C++ extractor still parses files whose *compile* failed downstream
+    (verified: gdevxps.c/ttinterp.c both fail to `make` here but both still
+    show up as extracted artifacts in the resulting database)."""
+    cmake_build = repo_path / "_cmake_build"
+    if cmake_build.exists():
+        build_cmd = f'"{CMAKE}" --build "{cmake_build}" --parallel 4'
+    elif (repo_path / "Makefile").exists():
+        build_cmd = "make -j4 -k --keep-going"
+    else:
+        return None
+
+    WRAPPER_DIR.mkdir(parents=True, exist_ok=True)
+    wrapper = WRAPPER_DIR / f"{repo_path.name}.sh"
+    wrapper.write_text(f"#!/bin/bash\n{build_cmd}\nexit 0\n")
+    wrapper.chmod(0o755)
+    return f"bash {wrapper}"
+
+
+def build_db(repo_path: Path, db_path: Path, command: str) -> tuple[bool, str]:
+    """Build CodeQL DB by tracing a real (incremental) build command."""
     r = subprocess.run(
         [CODEQL, "database", "create", str(db_path),
          "--language=cpp",
          "--source-root", str(repo_path),
-         "--build-mode=none",
+         f"--command={command}",
          "--overwrite"],
-        capture_output=True, text=True, timeout=600
+        capture_output=True, text=True, timeout=DB_TIMEOUT
     )
     if r.returncode != 0:
-        print(f"    [db build failed] {r.stderr[-200:]}")
-        return False
-    return True
+        return False, r.stderr[-300:]
+    return True, ""
 
 
 def run_query(db_path: Path, sarif_path: Path) -> list[dict]:
@@ -90,16 +141,12 @@ def run_query(db_path: Path, sarif_path: Path) -> list[dict]:
     return hits
 
 
-def run_codeql_on_slug(sample: dict) -> dict:
+def run_codeql_on_slug(sample: dict, build_command: str) -> dict:
     slug      = sample["slug"]
     fn        = sample["function_name"]
     src       = sample["primary_file"]
     clone_dir = sample["clone_dir"]
     vuln_fp   = sample["vuln_file_path"]
-
-    if not clone_dir or not Path(clone_dir).exists():
-        return {"slug": slug, "hit_in_target_file": None,
-                "error": f"clone_dir missing: {clone_dir}"}
 
     repo_path   = Path(clone_dir)
     target_file = repo_path / vuln_fp
@@ -107,16 +154,23 @@ def run_codeql_on_slug(sample: dict) -> dict:
         return {"slug": slug, "hit_in_target_file": None,
                 "error": f"file not found: {vuln_fp}"}
 
-    db_path   = DB_ROOT / f"{slug}_db"
+    db_path    = DB_ROOT / f"{slug}_db"
     sarif_path = DB_ROOT / f"{slug}.sarif"
     DB_ROOT.mkdir(parents=True, exist_ok=True)
 
     original = target_file.read_text(errors="replace")
     try:
         target_file.write_text(src)
+        # Bump mtime into the future so make/cmake reliably treats the file
+        # as changed even if the write lands in the same second as the
+        # previous build (common under fast incremental rebuilds).
+        future = time.time() + 5
+        os.utime(target_file, (future, future))
 
-        if not build_db(repo_path, db_path, slug):
-            return {"slug": slug, "hit_in_target_file": None, "error": "db_build_failed"}
+        ok, err = build_db(repo_path, db_path, build_command)
+        if not ok:
+            return {"slug": slug, "hit_in_target_file": None,
+                    "error": f"db_build_failed: {err}"}
 
         hits = run_query(db_path, sarif_path)
 
@@ -164,19 +218,30 @@ def main():
     for clone_dir, repo_samples in sorted(by_repo.items()):
         todo = [s for s in repo_samples
                 if not (args.resume and s["slug"] in results)]
+        done += len(repo_samples) - len(todo)
         if not todo:
-            done += len(repo_samples)
+            continue
+
+        build_command = get_build_command(Path(clone_dir))
+        if build_command is None:
+            for s in todo:
+                done += 1
+                print(f"  [{done}/{total}] {s['slug']}  ({s['function_name']})")
+                print(f"    → ERR:no_build_system")
+                results[s["slug"]] = {"slug": s["slug"], "hit_in_target_file": None,
+                                       "error": "no_build_system"}
+                OUT_PATH.write_text(json.dumps(list(results.values()), indent=2))
             continue
 
         for s in todo:
             done += 1
             print(f"  [{done}/{total}] {s['slug']}  ({s['function_name']})")
-            r = run_codeql_on_slug(s)
+            r = run_codeql_on_slug(s, build_command)
             results[s["slug"]] = r
             status = ("HIT_FILE" if r.get("hit_in_target_file") else
                       "HIT_REPO" if r.get("hit_anywhere") else
                       "MISS"     if r.get("hit_in_target_file") is False else
-                      f"ERR:{r.get('error','')[:50]}")
+                      f"ERR:{r.get('error','')[:80]}")
             print(f"    → {status}  (total_hits={r.get('total_hits', '?')})")
             OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
             OUT_PATH.write_text(json.dumps(list(results.values()), indent=2))
@@ -187,10 +252,10 @@ def main():
     errors   = sum(1 for v in results.values() if v.get("error"))
 
     print(f"""
-=== CodeQL UseAfterFree.ql / build-mode=none (N={n}) ===
+=== CodeQL UseAfterFree.ql / traced build (N={n}) ===
   hit in target file              : {hit_file}/{n}  ({100*hit_file/n:.1f}%)
   hit anywhere in repo            : {hit_any}/{n}  ({100*hit_any/n:.1f}%)
-  errors / timeouts               : {errors}
+  errors / timeouts                : {errors}
 Results → {OUT_PATH}""")
 
 

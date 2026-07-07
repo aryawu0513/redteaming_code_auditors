@@ -1,0 +1,223 @@
+[
+  {
+    "slug": "UAF-CVE-0129",
+    "function_name": "xps_finish_image_path",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0335",
+    "function_name": "x_catch_free_colors",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0336",
+    "function_name": "gdev_x_open",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0446",
+    "function_name": "Ins_IP",
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": [
+      {
+        "uri": "base/ttinterp.c",
+        "line": 160
+      }
+    ]
+  },
+  {
+    "slug": "UAF-CVE-0467",
+    "function_name": "sampled_data_continue",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0644",
+    "function_name": "xps_finish_image_path",
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0850",
+    "function_name": "x_catch_free_colors",
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0851",
+    "function_name": "gdev_x_open",
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0961",
+    "function_name": "Ins_IP",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1039",
+    "function_name": "planar_decompress",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1040",
+    "function_name": "freerdp_bitmap_planar_context_reset",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1069",
+    "function_name": "shadow_server_start",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0305",
+    "function_name": "yr_object_copy",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0820",
+    "function_name": "yr_object_copy",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0118",
+    "function_name": "ap_limit_section",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0633",
+    "function_name": "ap_limit_section",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0441",
+    "function_name": "xlsxioread_sheetlist_open",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0956",
+    "function_name": "xlsxioread_sheetlist_open",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0340",
+    "function_name": "Curl_close",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0381",
+    "function_name": "ossl_connect_step1",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0384",
+    "function_name": "set_ssl_ciphers",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0855",
+    "function_name": "Curl_close",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0896",
+    "function_name": "ossl_connect_step1",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0899",
+    "function_name": "set_ssl_ciphers",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0385",
+    "function_name": "transientObjectPutErrorMessage",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0427",
+    "function_name": "swap",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0428",
+    "function_name": "addOp_RJS",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  }
+]

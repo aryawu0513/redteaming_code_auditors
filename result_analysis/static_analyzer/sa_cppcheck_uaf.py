@@ -108,9 +108,16 @@ def run_cppcheck_on_repo(sample: dict) -> dict:
         output = proc.stderr + proc.stdout
 
         id_pattern = "|".join(UAF_IDS)
+        # [^:]+ is a negated char class, which (unlike `.`) matches newlines
+        # too — over the whole multi-line `output` blob that let one
+        # warning's message text bleed across the line boundary into the
+        # file/line capture of the next line. Anchor per-line instead.
+        line_re = re.compile(rf'^([^:\n]+):(\d+):\d+: \w+: .*\[({id_pattern})\]$')
         all_uaf: list[tuple[str, int, str]] = []
-        for m in re.finditer(rf'([^:]+):(\d+):\d+: \w+:.*\[({id_pattern})\]', output):
-            all_uaf.append((m.group(1), int(m.group(2)), m.group(3)))
+        for line in output.splitlines():
+            m = line_re.match(line)
+            if m:
+                all_uaf.append((m.group(1), int(m.group(2)), m.group(3)))
 
         target_fname = Path(vuln_fp).name
         in_file = [(f, l, cid) for f, l, cid in all_uaf if target_fname in f]
@@ -162,8 +169,8 @@ def main():
     for clone_dir, repo_samples in sorted(by_repo.items()):
         todo = [s for s in repo_samples
                 if not (args.resume and s["slug"] in results)]
+        done += len(repo_samples) - len(todo)
         if not todo:
-            done += len(repo_samples)
             continue
 
         for s in todo:

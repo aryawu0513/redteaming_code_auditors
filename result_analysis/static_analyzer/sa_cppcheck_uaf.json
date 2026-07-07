@@ -1,0 +1,1055 @@
+[
+  {
+    "slug": "UAF-CVE-0129",
+    "function_name": "xps_finish_image_path",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      443,
+      475
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 9
+  },
+  {
+    "slug": "UAF-CVE-0335",
+    "function_name": "x_catch_free_colors",
+    "hit_in_function": true,
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "func_range": [
+      27,
+      50
+    ],
+    "warnings_in_func": [
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        40,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        40,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        41,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        41,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        42,
+        "deallocuse"
+      ]
+    ],
+    "warnings_in_file": [
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        40,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        40,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        41,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        41,
+        "deallocuse"
+      ],
+      [
+        "/tmp/cve_repos_uaf/ArtifexSoftware__ghostpdl/devices/gdevxini.c",
+        42,
+        "deallocuse"
+      ]
+    ],
+    "total_uaf_warnings": 9
+  },
+  {
+    "slug": "UAF-CVE-0336",
+    "function_name": "gdev_x_open",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      46,
+      103
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 4
+  },
+  {
+    "slug": "UAF-CVE-0446",
+    "function_name": "Ins_IP",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      101,
+      179
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 9
+  },
+  {
+    "slug": "UAF-CVE-0467",
+    "function_name": "sampled_data_continue",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      58,
+      78
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 9
+  },
+  {
+    "slug": "UAF-CVE-0644",
+    "function_name": "xps_finish_image_path",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      443,
+      479
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 9
+  },
+  {
+    "slug": "UAF-CVE-0850",
+    "function_name": "x_catch_free_colors",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      27,
+      41
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 4
+  },
+  {
+    "slug": "UAF-CVE-0851",
+    "function_name": "gdev_x_open",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      46,
+      109
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 4
+  },
+  {
+    "slug": "UAF-CVE-0961",
+    "function_name": "Ins_IP",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      101,
+      161
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 9
+  },
+  {
+    "slug": "UAF-CVE-1039",
+    "hit_in_function": null,
+    "error": "timeout"
+  },
+  {
+    "slug": "UAF-CVE-1040",
+    "hit_in_function": null,
+    "error": "timeout"
+  },
+  {
+    "slug": "UAF-CVE-1069",
+    "hit_in_function": null,
+    "error": "timeout"
+  },
+  {
+    "slug": "UAF-CVE-0305",
+    "function_name": "yr_object_copy",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      254,
+      391
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0820",
+    "function_name": "yr_object_copy",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      254,
+      372
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0118",
+    "function_name": "ap_limit_section",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      111,
+      188
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0633",
+    "function_name": "ap_limit_section",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      111,
+      162
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0441",
+    "function_name": "xlsxioread_sheetlist_open",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      409,
+      450
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0956",
+    "function_name": "xlsxioread_sheetlist_open",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      409,
+      442
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0340",
+    "function_name": "Curl_close",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      174,
+      206
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0381",
+    "function_name": "ossl_connect_step1",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      894,
+      943
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0384",
+    "function_name": "set_ssl_ciphers",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      222,
+      271
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0855",
+    "function_name": "Curl_close",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      174,
+      194
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0896",
+    "function_name": "ossl_connect_step1",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      894,
+      931
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0899",
+    "function_name": "set_ssl_ciphers",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      222,
+      274
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0385",
+    "function_name": "transientObjectPutErrorMessage",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      78,
+      99
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0427",
+    "function_name": "swap",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      86,
+      129
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0428",
+    "function_name": "addOp_RJS",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      446,
+      493
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0431",
+    "function_name": "inferBinaryInst",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      53,
+      98
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0900",
+    "function_name": "transientObjectPutErrorMessage",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      78,
+      92
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0942",
+    "function_name": "swap",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      86,
+      118
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0943",
+    "function_name": "addOp_RJS",
+    "hit_in_function": true,
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "func_range": [
+      446,
+      487
+    ],
+    "warnings_in_func": [
+      [
+        "/tmp/cve_repos_uaf/facebook__hermes/lib/VM/Operations.cpp",
+        474,
+        "deallocuse"
+      ]
+    ],
+    "warnings_in_file": [
+      [
+        "/tmp/cve_repos_uaf/facebook__hermes/lib/VM/Operations.cpp",
+        474,
+        "deallocuse"
+      ]
+    ],
+    "total_uaf_warnings": 1
+  },
+  {
+    "slug": "UAF-CVE-0946",
+    "function_name": "inferBinaryInst",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      53,
+      108
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0949",
+    "function_name": "identifyCallsites",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      9,
+      44
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0495",
+    "function_name": "read_func",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      35,
+      40
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0496",
+    "function_name": "handle_readable_event",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      37,
+      45
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1009",
+    "function_name": "parse_request",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      25,
+      56
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1010",
+    "function_name": "read_func",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      35,
+      49
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1011",
+    "function_name": "handle_readable_event",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      37,
+      45
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0226",
+    "function_name": "CleanNode",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      62,
+      93
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0741",
+    "function_name": "CleanNode",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      62,
+      110
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0445",
+    "function_name": "mif_process_cmpt",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      40,
+      60
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0960",
+    "function_name": "mif_process_cmpt",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      40,
+      60
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0025",
+    "function_name": "onig_new_deluxe",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      4,
+      51
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0540",
+    "function_name": "onig_new_deluxe",
+    "hit_in_function": true,
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "func_range": [
+      4,
+      37
+    ],
+    "warnings_in_func": [
+      [
+        "/tmp/cve_repos_uaf/kkos__oniguruma/src/regext.c",
+        31,
+        "deallocuse"
+      ]
+    ],
+    "warnings_in_file": [
+      [
+        "/tmp/cve_repos_uaf/kkos__oniguruma/src/regext.c",
+        31,
+        "deallocuse"
+      ]
+    ],
+    "total_uaf_warnings": 1
+  },
+  {
+    "slug": "UAF-CVE-1072",
+    "function_name": "PlayerGeneric",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      33,
+      88
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0422",
+    "function_name": "readObjectsInternal",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      653,
+      660
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 19
+  },
+  {
+    "slug": "UAF-CVE-0423",
+    "function_name": "initFromParser",
+    "hit_in_function": true,
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "func_range": [
+      49,
+      76
+    ],
+    "warnings_in_func": [
+      [
+        "/tmp/cve_repos_uaf/podofo__podofo/src/podofo/main/PdfMemDocument.cpp",
+        75,
+        "deallocuse"
+      ]
+    ],
+    "warnings_in_file": [
+      [
+        "/tmp/cve_repos_uaf/podofo__podofo/src/podofo/main/PdfMemDocument.cpp",
+        75,
+        "deallocuse"
+      ]
+    ],
+    "total_uaf_warnings": 20
+  },
+  {
+    "slug": "UAF-CVE-0937",
+    "function_name": "readObjectsInternal",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": true,
+    "func_range": [
+      653,
+      707
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 19
+  },
+  {
+    "slug": "UAF-CVE-0938",
+    "function_name": "initFromParser",
+    "hit_in_function": true,
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "func_range": [
+      49,
+      65
+    ],
+    "warnings_in_func": [
+      [
+        "/tmp/cve_repos_uaf/podofo__podofo/src/podofo/main/PdfMemDocument.cpp",
+        60,
+        "deallocuse"
+      ]
+    ],
+    "warnings_in_file": [
+      [
+        "/tmp/cve_repos_uaf/podofo__podofo/src/podofo/main/PdfMemDocument.cpp",
+        60,
+        "deallocuse"
+      ]
+    ],
+    "total_uaf_warnings": 20
+  },
+  {
+    "slug": "UAF-CVE-0857",
+    "function_name": "operator",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      30,
+      52
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0482",
+    "function_name": "read_sps_NAL",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      33,
+      59
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0997",
+    "function_name": "read_sps_NAL",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      33,
+      64
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0173",
+    "function_name": "interpret_heif_file",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      95,
+      104
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0688",
+    "function_name": "interpret_heif_file",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      95,
+      104
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1067",
+    "function_name": "nodeConstruct",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      106,
+      142
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1068",
+    "function_name": "nodeDestruct",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      61,
+      68
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0158",
+    "function_name": "enip_open_cip_connection",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      263,
+      301
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0271",
+    "function_name": "dissect_ipmi_trace",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      176,
+      245
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0280",
+    "function_name": "dissect_SYSTEM_TIME_ptr",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      117,
+      142
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0281",
+    "function_name": "cb_wstr_postprocess",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      32,
+      74
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0282",
+    "function_name": "cb_str_postprocess",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      36,
+      79
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0673",
+    "function_name": "enip_open_cip_connection",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      263,
+      317
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0786",
+    "function_name": "dissect_ipmi_trace",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      176,
+      242
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0795",
+    "function_name": "dissect_SYSTEM_TIME_ptr",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      117,
+      127
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0796",
+    "function_name": "cb_wstr_postprocess",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      32,
+      73
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-0797",
+    "function_name": "cb_str_postprocess",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      36,
+      73
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1043",
+    "function_name": "dissect_q931_number_ie",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      400,
+      444
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1045",
+    "function_name": "dissect_q931_ie_cs0",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      2819,
+      2826
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1046",
+    "function_name": "dissect_q931_ie_cs7",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      2819,
+      2832
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  },
+  {
+    "slug": "UAF-CVE-1047",
+    "function_name": "dissect_q931_IEs",
+    "hit_in_function": false,
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "func_range": [
+      371,
+      421
+    ],
+    "warnings_in_func": [],
+    "warnings_in_file": [],
+    "total_uaf_warnings": 0
+  }
+]

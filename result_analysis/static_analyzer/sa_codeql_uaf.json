@@ -1,0 +1,493 @@
+[
+  {
+    "slug": "UAF-CVE-0129",
+    "function_name": "xps_finish_image_path",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0335",
+    "function_name": "x_catch_free_colors",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0336",
+    "function_name": "gdev_x_open",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0446",
+    "function_name": "Ins_IP",
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": [
+      {
+        "uri": "base/ttinterp.c",
+        "line": 160
+      }
+    ]
+  },
+  {
+    "slug": "UAF-CVE-0467",
+    "function_name": "sampled_data_continue",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0644",
+    "function_name": "xps_finish_image_path",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0850",
+    "function_name": "x_catch_free_colors",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0851",
+    "function_name": "gdev_x_open",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0961",
+    "function_name": "Ins_IP",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1039",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: pers/FreeRDP__FreeRDP.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1039_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1040",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: pers/FreeRDP__FreeRDP.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1040_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1069",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: pers/FreeRDP__FreeRDP.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1069_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0305",
+    "function_name": "yr_object_copy",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0820",
+    "function_name": "yr_object_copy",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0118",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: rappers/apache__httpd.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0118_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0633",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: rappers/apache__httpd.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0633_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0441",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: brechtsanders__xlsxio.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0441_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0956",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: brechtsanders__xlsxio.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0956_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0340",
+    "function_name": "Curl_close",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0381",
+    "function_name": "ossl_connect_step1",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0384",
+    "function_name": "set_ssl_ciphers",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0855",
+    "function_name": "Curl_close",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0896",
+    "function_name": "ossl_connect_step1",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0899",
+    "function_name": "set_ssl_ciphers",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0385",
+    "function_name": "transientObjectPutErrorMessage",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0427",
+    "function_name": "swap",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0428",
+    "function_name": "addOp_RJS",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0431",
+    "function_name": "inferBinaryInst",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0900",
+    "function_name": "transientObjectPutErrorMessage",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0942",
+    "function_name": "swap",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0943",
+    "function_name": "addOp_RJS",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0946",
+    "function_name": "inferBinaryInst",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0949",
+    "function_name": "identifyCallsites",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0495",
+    "function_name": "read_func",
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": [
+      {
+        "uri": "src/epoll_socket.cpp",
+        "line": 39
+      }
+    ]
+  },
+  {
+    "slug": "UAF-CVE-0496",
+    "function_name": "handle_readable_event",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1009",
+    "function_name": "parse_request",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1010",
+    "function_name": "read_func",
+    "hit_in_target_file": true,
+    "hit_anywhere": true,
+    "total_hits": 1,
+    "hits_in_file": [
+      {
+        "uri": "src/epoll_socket.cpp",
+        "line": 47
+      }
+    ]
+  },
+  {
+    "slug": "UAF-CVE-1011",
+    "function_name": "handle_readable_event",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0226",
+    "function_name": "CleanNode",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0741",
+    "function_name": "CleanNode",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0445",
+    "function_name": "mif_process_cmpt",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0960",
+    "function_name": "mif_process_cmpt",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0025",
+    "function_name": "onig_new_deluxe",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0540",
+    "function_name": "onig_new_deluxe",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1072",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: tracker__MilkyTracker.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1072_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0422",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: appers/podofo__podofo.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0422_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0423",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: appers/podofo__podofo.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0423_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0937",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: appers/podofo__podofo.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0937_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0938",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: appers/podofo__podofo.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0938_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0857",
+    "function_name": "operator",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0482",
+    "function_name": "read_sps_NAL",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0997",
+    "function_name": "read_sps_NAL",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0173",
+    "function_name": "interpret_heif_file",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-0688",
+    "function_name": "interpret_heif_file",
+    "hit_in_target_file": false,
+    "hit_anywhere": false,
+    "total_hits": 0,
+    "hits_in_file": []
+  },
+  {
+    "slug": "UAF-CVE-1067",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: mission__transmission.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1067_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1068",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: mission__transmission.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1068_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0158",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0158_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0271",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0271_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0280",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0280_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0281",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0281_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0282",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0282_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0673",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0673_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0786",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0786_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0795",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0795_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0796",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0796_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-0797",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-0797_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1043",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1043_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1045",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1045_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1046",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1046_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  },
+  {
+    "slug": "UAF-CVE-1047",
+    "hit_in_target_file": null,
+    "error": "db_build_failed: /wireshark__wireshark.sh]\nFinalizing database at /tmp/cve_sa_codeql_uaf_dbs/UAF-CVE-1047_db.\nCodeQL detected code written in C/C++ but could not process any of it. For more information, review our troubleshooting guide at https://gh.io/troubleshooting-code-scanning/no-source-code-seen-during-build.\n"
+  }
+]
