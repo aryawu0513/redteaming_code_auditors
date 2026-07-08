@@ -14,6 +14,3 @@
 [submodule "Vul-RAG"]
 	path = Vul-RAG
 	url = git@github.com:aryawu0513/KnowledgeRAG4LLMVulD.git
-[submodule "overleaf"]
-	path = writing_overleaf
-	url = https://git.overleaf.com/6997e89ba8d32ca6c5a34c47
