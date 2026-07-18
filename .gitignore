@@ -18,6 +18,7 @@ VulTrial/agentverse/tasks/
 OpenVul/datasets/
 OpenVul/results/
 defenses/texts/
+defenses/screening_results/
 adaptive_attacker/results/
 adaptive_attacker/COT_SEEDS_EXPERIMENT/
 adaptive_attacker_uaf/results/
