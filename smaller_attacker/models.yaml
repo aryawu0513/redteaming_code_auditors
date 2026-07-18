@@ -1,0 +1,21 @@
+# Registry of candidate small-attacker models for the ablation study.
+# Each entry: model id passed to --model/--refiner-model (the served-model-name,
+# not necessarily the HF id — see serve/*.sh), family, vLLM port, GPU.
+#
+# GPU 3 is off-limits (reserved by someone else) — GPUs 0/1/2 are free.
+#
+# tag is used everywhere downstream as the directory/name key
+# (smaller_attacker/results/<tag>/...).
+
+models:
+  - tag: gemma4-26b-a4b
+    hf_id: gemma4-26b-a4b-it   # served-model-name; underlying weights at /mnt/ssd/arjun/models/gemma_4_26b_a4b_it
+    family: Gemma
+    port: 8100
+    gpu: 0
+
+  - tag: gemma4-12b
+    hf_id: gemma4-12b-it   # served-model-name; underlying weights at /mnt/ssd/arjun/models/gemma4_12b_it
+    family: Gemma
+    port: 8101
+    gpu: 1
