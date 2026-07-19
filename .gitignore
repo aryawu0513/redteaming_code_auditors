@@ -19,6 +19,10 @@ OpenVul/datasets/
 OpenVul/results/
 defenses/texts/
 defenses/screening_results/
+defenses/screening_cache/
+defenses/robustness_portfolio/
+defenses/recovery_D0/
+defenses/recovery/
 adaptive_attacker/results/
 adaptive_attacker/COT_SEEDS_EXPERIMENT/
 adaptive_attacker_uaf/results/
