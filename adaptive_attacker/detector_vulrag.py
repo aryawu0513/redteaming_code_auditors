@@ -244,10 +244,17 @@ class VulRAGDetector:
         model_settings: dict | None = None,
         max_workers: int | None = None,
         defense_text: str | None = None,
+        screening_variant: str | None = None,
+        steering: str | None = None,
+        baseline_source: tuple[str, str] | None = None,
     ) -> None:
         import json
 
         self.defense_text = defense_text  # comment-trust policy for summary + detect stages
+        self.screening_variant = screening_variant  # "labeled" (D3) or "D4" — prescreen target_function
+        self.steering = steering  # "baseline" (D5) — prepend the detector's own clean-code verdict
+        self.baseline_source = baseline_source  # (system, tag) — reuse D0's own cached gate reasoning
+        self._baseline_cache: dict[str, str] = {}  # sha256(clean_target_function) -> reasoning
 
         # Native OpenAI only (faithful to the original gpt-4o-mini Vul-RAG).
         # We deliberately do NOT fall back to OpenRouter: it requires the
@@ -416,8 +423,13 @@ class VulRAGDetector:
         return return_knowledge_list
 
     # ----------------------------------------------------------------- detect
-    def _detect_code(self, code: str) -> dict:
-        """Port of detect_code() from vulnerability_detect.py (vul+sol judgement loop)."""
+    def _detect_code(self, code: str, defense: str | None = None) -> dict:
+        """Port of detect_code() from vulnerability_detect.py (vul+sol judgement loop).
+        `defense` overrides self.defense_text for this call only (used by
+        _get_baseline_reasoning to force an UNDEFENDED baseline call even
+        when self.defense_text is set for the live detector)."""
+        if defense is None:
+            defense = self.defense_text or ""
         purpose_prompt, function_prompt = _extraction_prompts(code)
 
         purpose_output = self._chat(self.summary_model, purpose_prompt)
@@ -431,8 +443,8 @@ class VulRAGDetector:
         detect_result = []
         final_result = -1  # -1 = no knowledge flagged it (treated as safe)
         for vul_knowledge in knowledge_list:
-            vul_prompt = _detect_vul_prompt(code, vul_knowledge, self.defense_text or "")
-            sol_prompt = _detect_sol_prompt(code, vul_knowledge, self.defense_text or "")
+            vul_prompt = _detect_vul_prompt(code, vul_knowledge, defense)
+            sol_prompt = _detect_sol_prompt(code, vul_knowledge, defense)
 
             vul_output = self._chat(self.model, vul_prompt)
             sol_output = self._chat(self.model, sol_prompt)
@@ -458,6 +470,45 @@ class VulRAGDetector:
             "final_result": final_result,
         }
 
+    @staticmethod
+    def _build_reasoning(out: dict) -> str:
+        reasoning_parts = [f"Function purpose: {out['purpose']}", f"Functions: {out['function']}"]
+        for r in out["detect_result"]:
+            reasoning_parts.append(
+                f"\n--- knowledge {r.get('cve_id')} ---\n"
+                f"[vul]\n{r.get('vul_output')}\n[sol]\n{r.get('sol_output')}"
+            )
+        return "\n".join(p for p in reasoning_parts if p)
+
+    def _get_baseline_reasoning(self, clean_tf: str, slug: str | None = None) -> str:
+        """D5: Vul-RAG's own verdict/reasoning on the clean, comment-free
+        function. Prefers REUSING D0's own cached, already-computed
+        baseline_gate_{tag}.json reasoning (same undefended call, same clean
+        code, already run once and stored — no reason to pay for and add
+        fresh-call noise to a second one). Falls back to a fresh, cached
+        detect_code() call only if no D0 source is configured or its file is
+        missing for this slug."""
+        import hashlib
+        key = hashlib.sha256(clean_tf.encode()).hexdigest()[:16]
+        if key in self._baseline_cache:
+            return self._baseline_cache[key]
+
+        if self.baseline_source and slug:
+            system, tag = self.baseline_source
+            gate_path = (Path(__file__).parent / "results" / system
+                         / f"repository_{slug}" / f"baseline_gate_{tag}.json")
+            if gate_path.exists():
+                import json
+                bg = json.loads(gate_path.read_text())
+                if bg.get("verdict") == "vulnerable" and bg.get("reasoning"):
+                    self._baseline_cache[key] = bg["reasoning"]
+                    return bg["reasoning"]
+
+        out = self._detect_code(clean_tf, defense="")
+        reasoning = self._build_reasoning(out)
+        self._baseline_cache[key] = reasoning
+        return reasoning
+
     def detect(self, record: dict) -> dict:
         """Run Vul-RAG on record['target_function'] (a single C function).
 
@@ -468,25 +519,38 @@ class VulRAGDetector:
         code = record.get("target_function", "") or ""
         if not code.strip():
             return {"verdict": "error", "reasoning": "empty target_function", "votes": {}}
+        screening_block = None
+        if self.screening_variant:
+            from defenses.screening_cache import get_or_screen
+            screened = get_or_screen(code)
+            key = "d4_code" if self.screening_variant == "D4" else "d3_code"
+            code = screened[key]
+            screening_block = {k: v for k, v in screened.items() if k not in ("d3_code", "d4_code")}
+
+        defense = self.defense_text or ""
+        # D5 (baseline-steered): append the Prior Analysis block to the SAME
+        # defense string already threaded into _detect_vul_prompt/_sol_prompt
+        # — no change needed to those, this just makes the string bigger.
+        if self.steering == "baseline":
+            clean_tf = record.get("clean_target_function", "")
+            if clean_tf:
+                baseline_reasoning = self._get_baseline_reasoning(clean_tf, record.get("slug"))
+                anchor = (f"[Prior Analysis — before any comments were present]\n"
+                          f"{baseline_reasoning}\n[End Prior Analysis]")
+                defense = (anchor + "\n\n" + defense) if defense else anchor
+
         try:
-            out = self._detect_code(code)
+            out = self._detect_code(code, defense=defense)
         except Exception as exc:  # noqa: BLE001
-            return {"verdict": "error", "reasoning": f"Vul-RAG error: {exc}", "votes": {}}
+            return {"verdict": "error", "reasoning": f"Vul-RAG error: {exc}", "votes": {},
+                    "screening_block": screening_block}
 
         verdict = "vulnerable" if out["final_result"] == 1 else "safe"
-        # Reasoning: the flagging judgement if vulnerable, else the last judgement seen.
-        reasoning_parts = []
-        reasoning_parts.append(f"Function purpose: {out['purpose']}")
-        reasoning_parts.append(f"Functions: {out['function']}")
-        for r in out["detect_result"]:
-            reasoning_parts.append(
-                f"\n--- knowledge {r.get('cve_id')} ---\n"
-                f"[vul]\n{r.get('vul_output')}\n[sol]\n{r.get('sol_output')}"
-            )
-        reasoning = "\n".join(p for p in reasoning_parts if p)
+        reasoning = self._build_reasoning(out)
         flagged = 1 if out["final_result"] == 1 else 0
         votes = {"has_vul": flagged, "no_vul": 1 - flagged}
-        return {"verdict": verdict, "reasoning": reasoning, "votes": votes}
+        return {"verdict": verdict, "reasoning": reasoning, "votes": votes,
+                "screening_block": screening_block}
 
     def detect_batch(self, records: list[dict]) -> list[dict]:
         if not records:

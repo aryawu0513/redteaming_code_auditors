@@ -67,9 +67,11 @@ picks a new argument **and** may freely move the annotation to a different line
 (`insert_before` can change every round). Each round always rebuilds from the
 unmodified bare function to avoid annotation layering.
 
-The shared **library** works identically to the original pipeline: any flip
-from any attack type during the run is added to the library and made available
-to all other types in subsequent rounds.
+The shared **library** works identically to the original pipeline **when
+`--stop-on-any-flip` is NOT passed**: any flip from any attack type during the
+run is added to the library and made available to all other types in
+subsequent rounds. See `--stop-on-any-flip` below — with that flag, library
+sharing is automatically disabled because it would be a structural no-op.
 
 ---
 
@@ -107,7 +109,45 @@ bakes it into the very first annotation the attacker writes.
 | File | Role |
 |---|---|
 | `config_bootstrapper.yaml` | System prompt for round-0 bootstrap. Three explicit steps: reverse-engineer the detector's reasoning chain, identify the most exploitable gap, write an annotation that neutralises it. Also outputs `insert_before`. |
-| `config_refiner_fromscratch.yaml` | System prompt for rounds 1+. Like `config_refiner.yaml` but also outputs `insert_before` and explicitly permits placement to drift between rounds. |
+| `config_refiner_fromscratch.yaml` | **Default** system prompt for rounds 1+ (used when `use_library=False`, i.e. `--stop-on-any-flip` is set, or when explicitly not sharing). No mention of a shared library. |
+| `config_refiner_fromscratch_withlibrary.yaml` | Same as above but also documents the `library` field and instructs the refiner to "study their arguments and transpose the winning strategy" from sibling attack types. Used when `use_library=True` (no `--stop-on-any-flip`) — this was the *only* `config_refiner_fromscratch.yaml` content before 2026-07-04; it was renamed when the no-library file became the default. |
+
+**IMPORTANT (renamed 2026-07-04):** `config_refiner_fromscratch.yaml` used to be
+the library-sharing prompt. Any script, note, or memory referencing that
+filename from before this date meant the *current*
+`config_refiner_fromscratch_withlibrary.yaml` content.
+
+---
+
+## `--stop-on-any-flip`
+
+Once **any** attack type flips a slug to `safe`, stop refining the other
+still-active types for that slug instead of running every type to its own
+flip/round-`budget`. The cut-off types get `stop_reason: "slug_won_elsewhere"`
+in their `result.json` (distinct from a genuine `budget_exhausted`, so
+downstream analysis doesn't mistake "we didn't bother" for "we tried and
+failed").
+
+**This flag also decides library sharing — it is not an independent choice.**
+`use_library = not args.stop_on_any_flip`. Why they're coupled, not just
+stylistically paired: entries only enter the shared `library` when a type
+*flips* (`evaluate_annotation` only appends on `verdict == "safe"`), and the
+instant any type flips, `--stop-on-any-flip` halts the whole slug before the
+next round runs. So by the time any refine call actually executes, `library`
+was built only from earlier rounds — which, by definition, had zero flips
+(otherwise the slug would already have stopped). **`library` is therefore
+always `[]` at every round `--stop-on-any-flip` actually runs**, and feeding it
+into the refiner prompt would be a provable no-op — hence the automatic
+coupling to `config_refiner_fromscratch.yaml` (no-library) vs
+`config_refiner_fromscratch_withlibrary.yaml`.
+
+Use `--stop-on-any-flip` when you only need slug-level ASR (does *some*
+framing beat this detector) — e.g. an adaptive-vs-defense comparison, where
+running every framing to completion is wasted compute. Omit it (the original
+behavior) when you need per-type coverage statistics across the full budget,
+e.g. reproducing `portfolio_tradeoff.py`-style analysis, where cross-framing
+library transfer is a real, measured phenomenon (and is exactly what that
+script's "library-contaminated" item-dropping logic accounts for).
 
 ---
 

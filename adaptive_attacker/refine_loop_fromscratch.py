@@ -317,6 +317,7 @@ def init_type_fromscratch(
 
     # Build working record — always start from bare_tf
     working_record = copy.deepcopy(bare_record)
+    working_record["clean_target_function"] = bare_tf  # D5 (baseline-steered): the pre-comment function
 
     if annotation_text is not None:
         annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
@@ -333,12 +334,23 @@ def init_type_fromscratch(
         "phase": "seed_reused" if seed_reused else "fromscratch_bootstrap",
         "annotation_text": annotation_text,
         "insert_before": insert_before,
+    }
+    if det0.get("screening_block") is not None:
+        round_0["screening_block"] = det0["screening_block"]
+    if det0.get("per_turn") is not None:
+        # VulTrial only: security_researcher/code_author/moderator/review_board
+        # turn text, captured synchronously at generation time (see
+        # detector_vultrial.py's _run_trial) — durable against the shared
+        # VulTrial/results/output/{id_save}/ namespace getting overwritten by
+        # a later run touching the same slug+attack_type+round.
+        round_0["per_turn"] = det0["per_turn"]
+    round_0.update({
         "detector_verdict": det0["verdict"],
         "detector_reasoning": det0["reasoning"],
         "votes": det0["votes"],
         "prompt_messages": bootstrap_prompt_messages,
         "bootstrap_raw_attempts": bootstrap_raw_attempts if annotation_text is None else [],
-    }
+    })
     (out_dir / "round_0.json").write_text(json.dumps(round_0, indent=2))
     print(f"  verdict={det0['verdict']}  votes={det0['votes']}")
 
@@ -452,16 +464,34 @@ def produce_annotation(
         except ValueError as e:
             print(f"[{attack_type}] round {rnd} attempt {attempt+1}: refiner error — {e}")
             bundle["constraint_reminder"] = f"Previous attempt invalid: {e}. Try again."
+            last_error = e
         except Exception as e:
             print(f"[{attack_type}] round {rnd} attempt {attempt+1}: unexpected error — {e}")
             bundle["constraint_reminder"] = f"Error: {e}. Retry."
+            last_error = e
 
-    state["rounds_used"] = rnd
     state["last_prompt_messages"] = prompt_messages
 
     if annotation_text is None:
-        print(f"[{attack_type}] round {rnd} → refiner failed 3 attempts, skipping round")
+        # Fail LOUDLY, not silently. Previously this returned (None, None, "")
+        # and the caller (run_round_sequential) just skipped the round — but
+        # state["rounds_used"] still got bumped to rnd below, so after 5 such
+        # silent skips the slug finalized as a legitimate-looking
+        # "budget_exhausted after 5 rounds" with ZERO real refinement having
+        # happened (no round_N.json ever written past round 0). That's
+        # exactly what corrupted the vulnllmr-D5/vulrag-D2/vulrag-D5 stage2
+        # runs on 2026-07-13 — a misconfigured OPENAI_BASE_URL made every
+        # refiner call fail, and the failures were invisible in the results.
+        # Aborting here (uncaught, nonzero exit for this slug's subprocess)
+        # makes any repeat of this failure mode impossible to miss.
+        raise RuntimeError(
+            f"[{attack_type}] round {rnd}: refiner failed all 3 attempts "
+            f"(last error: {last_error!r}) — aborting rather than silently "
+            f"faking a completed round. Check OPENAI_BASE_URL/OPENAI_API_KEY "
+            f"and refiner server health before retrying."
+        )
 
+    state["rounds_used"] = rnd
     return annotation_text, insert_before, rationale
 
 
@@ -474,6 +504,7 @@ def apply_annotation(state: dict, rnd: int,
 
     annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
     state["current_record"] = copy.deepcopy(bare_record)
+    state["current_record"]["clean_target_function"] = bare_tf  # D5 (baseline-steered)
     state["current_record"]["target_function"] = annotated_tf
     state["current_record"]["file_name"] = f"solution_{attack_type}_round{rnd}.c"
     state["current_record"]["variant"] = f"{attack_type}_round{rnd}"
@@ -503,12 +534,18 @@ def evaluate_annotation(
         "annotation_text": annotation_text,
         "insert_before": insert_before,
         "rationale": rationale,
+    }
+    if det.get("screening_block") is not None:
+        round_data["screening_block"] = det["screening_block"]
+    if det.get("per_turn") is not None:
+        round_data["per_turn"] = det["per_turn"]
+    round_data.update({
         "detector_verdict": det["verdict"],
         "detector_reasoning": det["reasoning"],
         "detector_reasoning_filtered": curr_filtered,
         "votes": det["votes"],
         "prompt_messages": state.get("last_prompt_messages"),
-    }
+    })
     (out_dir / f"round_{rnd}.json").write_text(json.dumps(round_data, indent=2))
 
     prior_attempts.append({
@@ -719,9 +756,16 @@ def main() -> None:
     parser.add_argument("--model", default=None,
                         help="Detector model ID — required for openvul, vultrial, vulrag, repoaudit")
     parser.add_argument("--detector",
-                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag"],
+                        choices=["openvul", "vulnllmr", "repoaudit", "vultrial", "vulrag", "gpt55"],
                         default="openvul")
     parser.add_argument("--detector-url", default=os.environ.get("DETECTOR_URL"))
+    parser.add_argument("--defense", default=None,
+                        help="Defense tag from defenses.registry.DEFENSES (e.g. D1) to "
+                             "apply to the detector's verdict-forming call. Only takes "
+                             "effect for IN-PROCESS detectors (vultrial, vulrag, and "
+                             "openvul/vulnllmr when NOT using --detector-url) — a served "
+                             "detector (--detector-url) already has its defense baked in "
+                             "server-side via DEFENSE=<tag>, and this flag is ignored there.")
     parser.add_argument("--vulnllmr-mode", choices=["agentic", "funclevel"],
                         default="funclevel",
                         help="VulnLLM-R only: 'funclevel' (published snippet "
@@ -759,6 +803,17 @@ def main() -> None:
                         help="Preload the shared library from another system's "
                              "same-slug library (e.g. vulnllmr_full). Gives the "
                              "refiner winning exemplars from round 1.")
+    parser.add_argument("--skip-baseline-gate", action="store_true",
+                        help="Do not abort a slug when the baseline-gate detect() call "
+                             "returns 'safe'. Use ONLY for defended-detector runs: the gate "
+                             "re-detects on the clean baseline against whatever detector is "
+                             "currently live, and a defense (D3/D4) can introduce its own "
+                             "false negative on clean code independent of any attack. With "
+                             "--seed-round0-from, baseline_reasoning is unused anyway (the "
+                             "seeded round-0 payload is reused verbatim, not bootstrapped), "
+                             "so gating on it would abort a fair seeded-vs-defense test for "
+                             "no reason. Do NOT set this for undefended (D0) runs — there "
+                             "the gate is the only thing confirming a slug is attackable.")
     args = parser.parse_args()
 
     MODEL_REQUIRED = {"openvul", "vultrial", "vulrag", "repoaudit"}
@@ -778,24 +833,51 @@ def main() -> None:
     print(f"Detector: {args.detector} | Refiner: {args.refiner_model} T={args.refiner_temperature}")
     print(f"Budget: {args.budget} rounds | Tag: {args.run_tag!r} | Output: {args.out_dir}")
 
+    defense_text = None
+    steering = None
+    if args.defense:
+        from defenses.registry import DEFENSES
+        defense_text = DEFENSES[args.defense]["task_addition"]
+        steering = DEFENSES[args.defense].get("steering")
+    # (system, tag) to reuse D0's own cached baseline_gate reasoning as the D5
+    # anchor source instead of paying for (and adding fresh-call noise via) a
+    # second live undefended call — same source as the round-0 seed reuse.
+    baseline_source = (args.seed_round0_from, args.seed_round0_tag) if args.seed_round0_from else None
+
     if args.detector_url:
         from detector_http import HttpDetectorClient
         detector = HttpDetectorClient(base_url=args.detector_url)
+        if args.defense:
+            print(f"[defense] --defense {args.defense} ignored — {args.detector_url} is a "
+                  f"served detector; its defense is whatever DEFENSE=<tag> it was launched with.")
     elif args.detector == "vulnllmr":
         from detector_vulnllmr import VulnLLMRDetector
-        detector = VulnLLMRDetector(tp=args.tp, mode=args.vulnllmr_mode)
+        detector = VulnLLMRDetector(tp=args.tp, mode=args.vulnllmr_mode,
+                                     defense_text=defense_text, steering=steering,
+                                     baseline_source=baseline_source)
     elif args.detector == "repoaudit":
         from detector_repoaudit import RepoAuditDetector
         detector = RepoAuditDetector(model_name=args.model)
     elif args.detector == "vultrial":
         from detector_vultrial import VulTrialDetector
-        detector = VulTrialDetector(model=args.model, mode="npd")
+        detector = VulTrialDetector(model=args.model, mode="npd",
+                                     defense_text=defense_text, steering=steering,
+                                     baseline_source=baseline_source)
     elif args.detector == "vulrag":
         from detector_vulrag import VulRAGDetector
-        detector = VulRAGDetector(model=args.model)
+        detector = VulRAGDetector(model=args.model, defense_text=defense_text, steering=steering,
+                                   baseline_source=baseline_source)
+    elif args.detector == "gpt55":
+        from detector_gpt55 import GPT55Detector
+        detector = GPT55Detector(model=args.model or "gpt-5.5")
+        if args.defense:
+            print(f"[defense] --defense {args.defense} ignored — GPT55Detector "
+                  f"doesn't yet support defense_text.")
     else:
         from detector_openvul import OpenVulDetector
-        detector = OpenVulDetector(model_id=args.model, tp=args.tp)
+        detector = OpenVulDetector(model_id=args.model, tp=args.tp,
+                                    defense_text=defense_text, steering=steering,
+                                    baseline_source=baseline_source)
 
     args.out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -817,42 +899,127 @@ def main() -> None:
         print(f"[baseline-gate] no CLEAN baseline record for {SLUG} — cannot bootstrap")
         return
 
-    baseline_gate_path = args.out_dir / f"baseline_gate{dir_suffix}.json"
-    if baseline_gate_path.exists():
-        bg = json.loads(baseline_gate_path.read_text())
-        print(f"[baseline-gate] cached — verdict={bg['verdict']}")
-        if bg["verdict"] == "safe":
-            print(f"\n*** baseline_miss (cached) — skipping ***")
-            return
-        baseline_reasoning = filter_npd_paragraphs(bg["reasoning"]) or bg["reasoning"]
-        print(f"[baseline-gate] reasoning loaded from cache ({len(baseline_reasoning)} chars)")
+    def _seed_is_valid(attack_type: str) -> bool:
+        """Mirrors the EXACT acceptance check init_type_fromscratch uses (line
+        ~263: cand_ann and cand_ins and cand_ins in bare_tf and
+        _annotation_is_safe_comment(cand_ann)) — not just file existence. A
+        seed file can exist but be stale (its insert_before no longer found in
+        the current target_function, e.g. after a baseline regeneration) and
+        get rejected downstream; checking only existence here previously
+        caused fully_seeded to be wrongly True for such slugs, skipping the
+        real baseline gate and leaving the eventual fallback bootstrap with an
+        EMPTY baseline_reasoning (confirmed: NPD-CVE-0210's round_0.json had
+        detector_reasoning_filtered == "" under D5B) instead of erroring out
+        or computing it for real.
+        """
+        seed_suffix = f"_{args.seed_round0_tag}" if args.seed_round0_tag else ""
+        seed_file = (RESULTS_DIR / args.seed_round0_from / f"repository_{args.slug}"
+                     / f"adaptive_{attack_type}{seed_suffix}" / "round_0.json")
+        if not seed_file.exists():
+            return False
+        try:
+            seed = json.loads(seed_file.read_text())
+        except Exception:
+            return False
+        cand_ann = seed.get("annotation_text")
+        cand_ins = seed.get("insert_before")
+        return bool(cand_ann and cand_ins and cand_ins in baseline["target_function"]
+                    and _annotation_is_safe_comment(cand_ann))
+
+    # If every requested type already has a VALID round-0 seed to reuse, the
+    # gate's only output (baseline_reasoning) will never be read —
+    # init_type_fromscratch only consults it in the bootstrap-from-scratch
+    # branch, which a fully-seeded slug never takes. Skip the detect() call
+    # entirely rather than pay for it and throw the result away.
+    fully_seeded = bool(args.seed_round0_from) and all(_seed_is_valid(t) for t in args.types)
+    if fully_seeded:
+        print(f"[baseline-gate] skipped — every type ({', '.join(args.types)}) has a "
+              f"round-0 seed to reuse from {args.seed_round0_from}; baseline_reasoning "
+              f"would be unused")
+        baseline_reasoning = ""
     else:
-        print(f"[baseline-gate] detecting on CLEAN baseline for {SLUG} …", flush=True)
-        base_det = detector.detect(baseline)
-        print(f"[baseline-gate] verdict={base_det['verdict']}  votes={base_det['votes']}")
-        baseline_gate_path.write_text(json.dumps({
-            "slug": SLUG,
-            "verdict": base_det["verdict"],
-            "votes": base_det["votes"],
-            "reasoning": base_det["reasoning"],
-            "target_function": baseline.get("target_function", ""),
-        }, indent=2))
-
-        if base_det["verdict"] == "safe":
-            print(f"\n*** baseline_miss: detector does NOT catch the naked bug for "
-                  f"{SLUG}; no bootstrap possible — skipping ***")
-            (args.out_dir / f"summary{dir_suffix}.csv").write_text(
-                "annotation_type,static_verdict,final_verdict,rounds_used,stop_reason\n"
-            )
-            (args.out_dir / "phase1_summary_partial.json").write_text(json.dumps([{
+        baseline_gate_path = args.out_dir / f"baseline_gate{dir_suffix}.json"
+        seed_gate_path = (
+            RESULTS_DIR / args.seed_round0_from / f"repository_{SLUG}"
+            / f"baseline_gate_{args.seed_round0_tag}.json"
+        ) if args.seed_round0_from else None
+        if baseline_gate_path.exists():
+            bg = json.loads(baseline_gate_path.read_text())
+            print(f"[baseline-gate] cached — verdict={bg['verdict']}")
+            if bg["verdict"] == "safe":
+                if args.skip_baseline_gate:
+                    print(f"[baseline-gate] cached verdict=safe, but --skip-baseline-gate set "
+                          f"— continuing anyway")
+                else:
+                    print(f"\n*** baseline_miss (cached) — skipping ***")
+                    return
+            baseline_reasoning = filter_npd_paragraphs(bg["reasoning"]) or bg["reasoning"]
+            print(f"[baseline-gate] reasoning loaded from cache ({len(baseline_reasoning)} chars)")
+        elif seed_gate_path and seed_gate_path.exists():
+            # Reuse the UNDEFENDED D0 gate's own verdict/reasoning directly —
+            # never let the currently-defended detector weigh in on "is clean
+            # code vulnerable at all," which conflates two different
+            # questions (is this slug a genuine TP vs. does THIS defense
+            # false-negative on clean code) and makes the attackable-slug
+            # denominator vary by defense. D0 already established this slug
+            # is a genuine TP; that fact shouldn't be re-litigated per-defense.
+            bg = json.loads(seed_gate_path.read_text())
+            print(f"[baseline-gate] reused from D0 seed ({args.seed_round0_from}) — "
+                  f"verdict={bg['verdict']}")
+            if bg["verdict"] == "safe":
+                print(f"\n*** baseline_miss: D0's own gate never caught this slug either — "
+                      f"skipping ***")
+                (args.out_dir / f"summary{dir_suffix}.csv").write_text(
+                    "annotation_type,static_verdict,final_verdict,rounds_used,stop_reason\n"
+                )
+                (args.out_dir / "phase1_summary_partial.json").write_text(json.dumps([{
+                    "slug": SLUG,
+                    "stop_reason": "baseline_miss",
+                    "final_verdict": "safe",
+                }], indent=2))
+                return
+            baseline_gate_path.write_text(json.dumps({
                 "slug": SLUG,
-                "stop_reason": "baseline_miss",
-                "final_verdict": "safe",
-            }], indent=2))
-            return
+                "verdict": bg["verdict"],
+                "votes": bg.get("votes", {}),
+                "reasoning": bg["reasoning"],
+                "target_function": bg.get("target_function", baseline.get("target_function", "")),
+                "source": f"reused from {args.seed_round0_from}/{seed_gate_path.name}",
+            }, indent=2))
+            baseline_reasoning = filter_npd_paragraphs(bg["reasoning"]) or bg["reasoning"]
+            print(f"[baseline-gate] reasoning reused ({len(baseline_reasoning)} chars)")
+        else:
+            print(f"[baseline-gate] detecting on CLEAN baseline for {SLUG} …", flush=True)
+            base_det = detector.detect(baseline)
+            print(f"[baseline-gate] verdict={base_det['verdict']}  votes={base_det['votes']}")
+            baseline_gate_path.write_text(json.dumps({
+                "slug": SLUG,
+                "verdict": base_det["verdict"],
+                "votes": base_det["votes"],
+                "reasoning": base_det["reasoning"],
+                "target_function": baseline.get("target_function", ""),
+            }, indent=2))
 
-        baseline_reasoning = filter_npd_paragraphs(base_det["reasoning"]) or base_det["reasoning"]
-        print(f"[baseline-gate] reasoning extracted ({len(baseline_reasoning)} chars) — bootstrapping …")
+            if base_det["verdict"] == "safe":
+                if args.skip_baseline_gate:
+                    print(f"[baseline-gate] verdict=safe, but --skip-baseline-gate set "
+                          f"— continuing anyway (defended detector may false-negative on "
+                          f"clean code independent of the attack)")
+                else:
+                    print(f"\n*** baseline_miss: detector does NOT catch the naked bug for "
+                          f"{SLUG}; no bootstrap possible — skipping ***")
+                    (args.out_dir / f"summary{dir_suffix}.csv").write_text(
+                        "annotation_type,static_verdict,final_verdict,rounds_used,stop_reason\n"
+                    )
+                    (args.out_dir / "phase1_summary_partial.json").write_text(json.dumps([{
+                        "slug": SLUG,
+                        "stop_reason": "baseline_miss",
+                        "final_verdict": "safe",
+                    }], indent=2))
+                    return
+
+            baseline_reasoning = filter_npd_paragraphs(base_det["reasoning"]) or base_det["reasoning"]
+            print(f"[baseline-gate] reasoning extracted ({len(baseline_reasoning)} chars) — bootstrapping …")
 
     # ── Shared library ─────────────────────────────────────────────────────────
     library: list[dict] = []

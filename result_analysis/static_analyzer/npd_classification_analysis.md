@@ -113,6 +113,33 @@ explicit null assignments, while the remaining 122 require interprocedural
 summaries, field-sensitive heap reasoning, output-parameter modeling, or
 treatment of unmodeled custom allocators.
 
+## Source Locality: Visibility Within `context.cc`
+
+The `source_locality` axis (also in `npd_classification.json`) asks a
+different question from `source_kind`: is the null source *textually
+present* in the tree-sitter-extracted `context.cc` (target function +
+same-file helpers, i.e. `primary_file`), or does resolving it require
+`auxiliary.cc` (cross-file helpers, i.e. `auxiliary_file`)?
+
+| source_locality | N | % | Definition |
+|---|---|---|---|
+| in_function | 21 | 16.4% | Null assigned inside the target function body |
+| cross_function | 58 | 45.3% | Null comes from outside the function but still within the same file (`context.cc`) |
+| cross_file | 49 | 38.3% | Null source not visible in `context.cc` at all — only resolvable via `auxiliary.cc` |
+
+Collapsing to the practical question — "is the null source visible in the
+file an auditor/LLM is shown as `context.cc`, without needing the auxiliary
+file?":
+
+- **Locally visible in `context.cc`** (in_function + cross_function): **79/128 (61.7%)**
+- **Not locally visible, requires `auxiliary.cc`** (cross_file): **49/128 (38.3%)**
+
+So even though most bugs are hard from a *pure static-analysis* standpoint
+(61.7% LOW detectability per the table above), the majority (61.7%) are
+still same-file — the null source is somewhere in `context.cc`, just not
+necessarily in the target function itself. Only about a third of samples
+(38.3%) genuinely require cross-file reasoning to find the null source.
+
 ## Empirical SA Recall
 
 **Detection criterion**: a null-deref warning whose reported line falls within

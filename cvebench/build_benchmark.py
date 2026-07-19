@@ -55,8 +55,83 @@ def npd_site_match(a: str, g: str) -> bool:
     return a == g or a in g or g in a
 
 
+def _is_definition_at(code: str, paren_open: int) -> bool:
+    """
+    Given the index of the '(' that opens a candidate function's parameter
+    list, determine whether this occurrence is a definition (parameter list
+    followed by '{', modulo whitespace/comments) rather than a bare
+    declaration/prototype (parameter list followed by ';').
+    """
+    depth = 1
+    i = paren_open + 1
+    n = len(code)
+    in_string = in_char = False
+    while i < n and depth > 0:
+        c = code[i]
+        if in_string:
+            if c == '\\':
+                i += 1
+            elif c == '"':
+                in_string = False
+        elif in_char:
+            if c == '\\':
+                i += 1
+            elif c == "'":
+                in_char = False
+        elif c == '"':
+            in_string = True
+        elif c == "'":
+            in_char = True
+        elif c == '(':
+            depth += 1
+        elif c == ')':
+            depth -= 1
+        i += 1
+    if depth != 0:
+        return False
+
+    # Skip whitespace/comments after the closing ')' to find the first
+    # significant character (also tolerates trailing qualifiers like
+    # 'const'/'noexcept' and C++ initializer lists starting with ':').
+    while i < n:
+        c = code[i]
+        if c.isspace():
+            i += 1
+        elif c == '/' and i + 1 < n and code[i + 1] == '/':
+            nl = code.find('\n', i)
+            i = n if nl == -1 else nl + 1
+        elif c == '/' and i + 1 < n and code[i + 1] == '*':
+            end = code.find('*/', i + 2)
+            i = n if end == -1 else end + 2
+        elif code[i:i + 5] == 'const' and not code[i + 5:i + 6].isalnum():
+            i += 5
+        elif code[i:i + 8] == 'noexcept' and not code[i + 8:i + 9].isalnum():
+            i += 8
+        elif c == ':':
+            # C++ constructor initializer list — still a definition.
+            return True
+        elif c == '#':
+            # Preprocessor line (e.g. #else/#endif splitting an #ifdef'd
+            # signature from its body) — skip to end of line.
+            nl = code.find('\n', i)
+            i = n if nl == -1 else nl + 1
+        else:
+            break
+    return i < n and code[i] == '{'
+
+
 def split_file(code: str, func_name: str) -> tuple[str, str, str]:
-    """Split code into (before, target_function, after) where target_function is just that function."""
+    """
+    Split code into (before, target_function, after) where target_function is
+    just that function.
+
+    Candidates for func_name+'(' are tried in file order; the first one that
+    is actually a definition (parameter list followed by '{', not ';') wins.
+    Without this check, a function with a forward declaration earlier in the
+    file would match the declaration, and the brace-walk below would then
+    silently attach to whatever unrelated function's body happens to be the
+    next '{...}' block in the file.
+    """
     pattern = re.compile(
         r'^\s*'
         r'(?:(?:static|inline|explicit|virtual|override|extern)\s+)*'
@@ -65,7 +140,17 @@ def split_file(code: str, func_name: str) -> tuple[str, str, str]:
         + re.escape(func_name) + r'\s*\(',
         re.MULTILINE,
     )
-    m = pattern.search(code)
+    m = None
+    first_match = None
+    for cand in pattern.finditer(code):
+        if first_match is None:
+            first_match = cand
+        # cand.end() - 1 is the index of the '(' just consumed by the regex.
+        if _is_definition_at(code, cand.end() - 1):
+            m = cand
+            break
+    if m is None:
+        m = first_match  # fall back to old (possibly-declaration) behavior
     if not m:
         return code.rstrip(), "", ""
 

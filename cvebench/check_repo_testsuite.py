@@ -178,9 +178,8 @@ def run_full_build(repo_path: Path, build_timeout: int) -> tuple[bool, str]:
         if r.returncode == 0:
             print(f"    full build: cmake OK")
             return True, "cmake --build OK"
-        # Don't give up — may still have built enough for tests
-        print(f"    full build: cmake partial (rc={r.returncode})")
-        return True, f"cmake --build partial rc={r.returncode}"
+        print(f"    full build: cmake FAILED (rc={r.returncode})")
+        return False, f"cmake --build failed rc={r.returncode}"
 
     # Makefile build
     if (repo_path / "Makefile").exists():
@@ -190,9 +189,8 @@ def run_full_build(repo_path: Path, build_timeout: int) -> tuple[bool, str]:
         if r.returncode == 0:
             print(f"    full build: make OK")
             return True, "make OK"
-        # Partial build is common and often enough for tests
-        print(f"    full build: make partial (rc={r.returncode})")
-        return True, f"make partial rc={r.returncode}"
+        print(f"    full build: make FAILED (rc={r.returncode})")
+        return False, f"make failed rc={r.returncode}"
 
     return False, "no build system found (no Makefile, no _cmake_build)"
 
@@ -232,9 +230,13 @@ def _parse_test_summary(output: str, returncode: int) -> tuple[str, str]:
     if m and returncode == 0:
         return "pass", m.group(0)
 
-    # Fall back to exit code
+    # No parseable pass/fail evidence at all. A clean exit here just means
+    # the test runner found nothing to run (e.g. no CTestTestfile.cmake
+    # registered) — NOT that anything passed. Report this distinctly so
+    # callers can fall back to the build result instead of silently
+    # treating "ran nothing" as "passed".
     if returncode == 0:
-        return "pass", "exit 0"
+        return "no_tests", "exit 0, no parseable test results"
     return "fail", f"exit {returncode}"
 
 
@@ -351,18 +353,19 @@ def run_testsuite(repo_path: Path, test_timeout: int, file_paths: list[str] | No
 
 def write_sample_result(sample_dir: Path, build_ok: bool, build_summary: str,
                         suite: dict) -> None:
-    verdict = suite["verdict"]   # pass / partial / fail / none
+    verdict = suite["verdict"]   # pass / partial / fail / no_tests / none
+    # Same normalization as the caller: no test evidence falls back to the
+    # build result; real test evidence (pass/partial/fail) is trusted as-is
+    # even if the overall build had unrelated failures elsewhere.
+    if verdict in ("no_tests", "none"):
+        verdict = "pass" if build_ok else "fail"
 
     # Remove old sentinels
     for name in ("repo_testsuite_pass", "repo_testsuite_partial",
                  "repo_testsuite_fail", "repo_testsuite_none"):
         (sample_dir / name).unlink(missing_ok=True)
 
-    if not build_ok:
-        (sample_dir / "repo_testsuite_fail").touch()
-        verdict = "fail"
-    else:
-        (sample_dir / f"repo_testsuite_{verdict}").touch()
+    (sample_dir / f"repo_testsuite_{verdict}").touch()
 
     result = {
         "build_ok":     build_ok,
@@ -446,7 +449,15 @@ def main():
         # dirs (e.g. ImageMagick: MagickCore/ vs coders/).
         all_file_paths = [r.get("file_path") or r.get("file", "") for r in repo_rows]
         suite = run_testsuite(repo_path, args.test_timeout, file_paths=all_file_paths)
-        verdict = suite["verdict"] if build_ok else "fail"
+        # Only exclude when the build failed AND there's no test evidence to
+        # redeem it ("no_tests"/"none" — nothing registered or nothing ran).
+        # A failed build whose tests genuinely ran and passed is trusted
+        # ("don't give up" case); a successful build with no tests to run
+        # is accepted on the build result alone.
+        if suite["verdict"] in ("no_tests", "none"):
+            verdict = "pass" if build_ok else "fail"
+        else:
+            verdict = suite["verdict"]
 
         # Apply result to all samples from this repo
         for row in repo_rows:

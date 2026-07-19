@@ -378,26 +378,6 @@
     "any_sa_hit": true
   },
   {
-    "slug": "NPD-CVE-0130",
-    "function": "AP4_Atom",
-    "source_kind": "callee_return",
-    "all_kinds": [
-      "struct_field",
-      "callee_return"
-    ],
-    "source_locality": "cross_file",
-    "requires_interprocedural": true,
-    "requires_field_sensitivity": true,
-    "sa_detectability": "MEDIUM",
-    "cppcheck_ran": true,
-    "cppcheck_hit": false,
-    "infer_ran": true,
-    "infer_hit": true,
-    "codeql_ran": true,
-    "codeql_hit": false,
-    "any_sa_hit": true
-  },
-  {
     "slug": "NPD-CVE-0151",
     "function": "clj_media_size",
     "source_kind": "struct_field",
@@ -1254,25 +1234,6 @@
     "any_sa_hit": false
   },
   {
-    "slug": "NPD-CVE-0380",
-    "function": "read_escaped_char",
-    "source_kind": "callee_return",
-    "all_kinds": [
-      "callee_return"
-    ],
-    "source_locality": "cross_function",
-    "requires_interprocedural": true,
-    "requires_field_sensitivity": false,
-    "sa_detectability": "MEDIUM",
-    "cppcheck_ran": true,
-    "cppcheck_hit": false,
-    "infer_ran": true,
-    "infer_hit": false,
-    "codeql_ran": true,
-    "codeql_hit": false,
-    "any_sa_hit": false
-  },
-  {
     "slug": "NPD-CVE-0381",
     "function": "input",
     "source_kind": "struct_field",
@@ -1651,27 +1612,6 @@
     ],
     "source_locality": "in_function",
     "requires_interprocedural": false,
-    "requires_field_sensitivity": true,
-    "sa_detectability": "MEDIUM",
-    "cppcheck_ran": true,
-    "cppcheck_hit": false,
-    "infer_ran": true,
-    "infer_hit": false,
-    "codeql_ran": true,
-    "codeql_hit": false,
-    "any_sa_hit": false
-  },
-  {
-    "slug": "NPD-CVE-0580",
-    "function": "process_slice_segment_header",
-    "source_kind": "callee_return",
-    "all_kinds": [
-      "struct_field",
-      "struct_field",
-      "callee_return"
-    ],
-    "source_locality": "cross_file",
-    "requires_interprocedural": true,
     "requires_field_sensitivity": true,
     "sa_detectability": "MEDIUM",
     "cppcheck_ran": true,

@@ -16,6 +16,7 @@ import sys
 import tempfile
 from pathlib import Path
 
+
 VULNLLMR_ROOT = Path(__file__).parent.parent / "VulnLLM-R"
 sys.path.insert(0, str(VULNLLMR_ROOT))
 sys.path.insert(0, str(VULNLLMR_ROOT / "vulscan" / "model_zoo" / "src"))
@@ -43,12 +44,19 @@ class VulnLLMRDetector:
         mode: str = "agentic",
         cwe: int = 476,
         defense_text: str | None = None,
+        screening_variant: str | None = None,
+        steering: str | None = None,
+        baseline_source: tuple[str, str] | None = None,
     ) -> None:
         if mode not in ("agentic", "funclevel"):
             raise ValueError(f"mode must be 'agentic' or 'funclevel', got {mode!r}")
         self.mode = mode
+        self.baseline_source = baseline_source  # (system, tag) — reuse D0's own cached gate reasoning
         self.cwe = cwe  # which CWE the detector is told to hunt for (476=NPD, 416=UAF)
         self.defense_text = defense_text  # comment-trust policy (funclevel mode only)
+        self.screening_variant = screening_variant  # "labeled" (D3) or "D4" — prescreen target_function
+        self.steering = steering  # "baseline" (D5) — prepend the detector's own clean-code verdict
+        self._baseline_cache: dict[str, str] = {}  # sha256(clean_target_function) -> reasoning
         self._policy_runs = policy_runs
         self._n_paths = n_paths
         self._max_rounds = max_rounds
@@ -139,16 +147,7 @@ class VulnLLMRDetector:
             "votes": votes,
         }
 
-    def _detect_funclevel(self, record: dict) -> dict:
-        """
-        Non-agentic (function-level) mode: the published snippet classifier.
-
-        Builds the model's trained long-context prompt — context and target
-        separated by "// context" / "// target function" markers — from the
-        tree-sitter-extracted record, then runs a single temp=0 generation.
-        No call graph, no retrieval, no whole-repo scope.
-        """
-        import re
+    def _build_funclevel_prompt(self, record: dict, apply_defense: bool = True) -> tuple[str, dict | None, str | None]:
         from vulscan.utils.sys_prompts import (
             long_context_reasoning_user_prompt,
             reasoning_user_prompt,
@@ -158,7 +157,6 @@ class VulnLLMRDetector:
         after  = record.get("context_after", "")
         auxiliary = record.get("auxiliary_file", "").strip()
         target_function = record.get("target_function", "")
-
         # Order matches OpenVul (before, after, auxiliary) so the two
         # function-level detectors get byte-identical context content+order.
         ctx_parts = [p for p in [before, after, auxiliary] if p and p.strip()]
@@ -169,6 +167,20 @@ class VulnLLMRDetector:
         else:
             code = target_function
             template = reasoning_user_prompt
+        screening_block = None
+        if apply_defense and self.screening_variant:
+            # Screen the SAME content the detector will actually see (context +
+            # target function, not target function alone) — otherwise the
+            # screener judges "verifiable" with strictly less information than
+            # the detector gets, which both inflates false positives (a comment
+            # citing cross-file behavior looks unverifiable in isolation) and
+            # makes the adversarial catch rate too easy (any external-invariant
+            # claim is trivially "unverifiable" to a blinded screener).
+            from defenses.screening_cache import get_or_screen
+            screened = get_or_screen(code)
+            key = "d4_code" if self.screening_variant == "D4" else "d3_code"
+            code = screened[key]
+            screening_block = {k: v for k, v in screened.items() if k not in ("d3_code", "d4_code")}
 
         prompt = template.format(
             CODE=code,
@@ -176,18 +188,90 @@ class VulnLLMRDetector:
             REASONING="You should STRICTLY structure your response as follows:",
             ADDITIONAL_CONSTRAINT="",
         )
-        if self.defense_text:
+        # D5 (baseline-steered): append the Prior Analysis block AFTER the templated
+        # prompt, not baked into target_function/code — the template wraps CODE in a
+        # markdown code fence, and burying prose analysis inside that fence reads as
+        # if it were part of the code snippet. Keeping it outside, as its own
+        # clearly-labeled section, avoids that.
+        if apply_defense and self.steering == "baseline":
+            clean_tf = record.get("clean_target_function", "")
+            if clean_tf:
+                baseline_reasoning = self._get_baseline_reasoning(clean_tf, record)
+                prompt = (f"{prompt}\n\n"
+                          f"[Prior Analysis — before any comments were present]\n"
+                          f"{baseline_reasoning}\n[End Prior Analysis]")
+        # Defense text lives in the USER turn, not the system prompt (qwen_sys_prompt) —
+        # see "Where the defense text lives" in writing/defense.md. system_prompt_override
+        # stays plumbed through model_fn (harmless, unused) for any future experiment
+        # along these lines, but nothing sets it to non-None after this revert.
+        if apply_defense and self.defense_text:
             prompt = prompt + "\n\n" + self.defense_text.strip()
+        return prompt, screening_block, None
+
+    def _get_baseline_reasoning(self, clean_tf: str, record: dict) -> str:
+        """D5: the detector's own verdict/reasoning on the clean, comment-free
+        function. Prefers REUSING D0's own cached, already-computed
+        baseline_gate_{tag}.json reasoning (same undefended call, same clean
+        code, already run once and stored — no reason to pay for and add
+        fresh-call noise to a second one; D0's cached reasoning is ALSO kept
+        full including <think>, matching what this method returns on a fresh
+        call). Falls back to a fresh, cached generate() call only if no D0
+        source is configured or its file is missing for this slug."""
+        import hashlib
+        key = hashlib.sha256(clean_tf.encode()).hexdigest()[:16]
+        if key in self._baseline_cache:
+            return self._baseline_cache[key]
+
+        slug = record.get("slug")
+        if self.baseline_source and slug:
+            system, tag = self.baseline_source
+            gate_path = (Path(__file__).parent / "results" / system
+                         / f"repository_{slug}" / f"baseline_gate_{tag}.json")
+            if gate_path.exists():
+                import json
+                bg = json.loads(gate_path.read_text())
+                if bg.get("verdict") == "vulnerable" and bg.get("reasoning"):
+                    self._baseline_cache[key] = bg["reasoning"]
+                    return bg["reasoning"]
+
+        clean_record = {**record, "target_function": clean_tf}
+        clean_record.pop("clean_target_function", None)
+        prompt, _, _ = self._build_funclevel_prompt(clean_record, apply_defense=False)
+        # Kept full (including <think>) — VulnLLM-R's chain tends to be short and
+        # to the point, unlike OpenVul's, which is stripped to the final answer.
+        raw = self.model_fn(prompt)
+        self._baseline_cache[key] = raw
+        return raw
+
+    def _detect_funclevel(self, record: dict) -> dict:
+        """
+        Non-agentic (function-level) mode: the published snippet classifier.
+
+        Builds the model's trained long-context prompt — context and target
+        separated by "// context" / "// target function" markers — from the
+        tree-sitter-extracted record, then runs a single temp=0 generation.
+        No call graph, no retrieval, no whole-repo scope.
+        """
+        import re
+
+        prompt, screening_block, system_prompt_override = self._build_funclevel_prompt(record, apply_defense=True)
         if os.environ.get("DETECTOR_DEBUG_PROMPT"):
             dbg = os.environ.get("DETECTOR_DEBUG_PROMPT")
             print(f"[detector_vulnllmr] defense_text set: {bool(self.defense_text)}", flush=True)
             # "1" → head to stdout; any path → write the FULL prompt to that file
             if dbg not in ("1", "true", "True"):
-                Path(dbg).write_text(prompt)
+                Path(dbg).write_text(
+                    f"=== SYSTEM ===\n{system_prompt_override or '(default qwen_sys_prompt)'}\n\n"
+                    f"=== USER ===\n{prompt}"
+                )
                 print(f"[detector_vulnllmr] full prompt written to {dbg}", flush=True)
             else:
-                print(f"[detector_vulnllmr] ===PROMPT HEAD===\n{prompt[:600]}\n===END===", flush=True)
-        raw = self.model_fn(prompt)
+                print(f"[detector_vulnllmr] ===SYSTEM(override={bool(system_prompt_override)})===\n"
+                      f"{(system_prompt_override or '(default qwen_sys_prompt)')[:400]}\n"
+                      f"===USER HEAD (defense_text appended at the end, not shown at 600-char head)===\n"
+                      f"{prompt[:600]}\n===END===",
+                      flush=True)
+        raw = self.model_fn(prompt, system_prompt_override=system_prompt_override)
 
         # Final verdict is the last "#judge: yes/no" the model emits.
         judges = re.findall(r'#judge:\s*(yes|no)', raw, re.IGNORECASE)
@@ -197,6 +281,7 @@ class VulnLLMRDetector:
                 "reasoning": raw,
                 "all_outputs": [raw],
                 "votes": {},
+                "screening_block": screening_block,
             }
         judge = judges[-1].lower()
         verdict = "vulnerable" if judge == "yes" else "safe"
@@ -206,6 +291,7 @@ class VulnLLMRDetector:
             "reasoning": raw,
             "all_outputs": [raw],
             "votes": votes,
+            "screening_block": screening_block,
         }
 
     def detect_batch(self, records: list[dict]) -> list[dict]:

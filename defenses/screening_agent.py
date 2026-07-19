@@ -1,16 +1,17 @@
 """
-Screening agent for Defense 3 (D3) and Defense 4 (D4).
+Screening agent for Defense 3 (D3A / D3B).
 
-Pipeline:
-  1. label_files()   — calls LLM once per file; labels every comment in-place (D3)
-     label_files_d4() — calls LLM once per file; produces per-comment audit block (D4)
-  2. apply_variant() — pure regex/formatting post-processing on labeled intermediates (no LLM)
+Live entry point: screen_payload() (one LLM call via audit_comments_with_reasoning,
+routed to OpenAI unless SCREENING_MODEL looks like a Claude model). Its output feeds
+apply_variant_a()/apply_variant_b() — pure regex post-processing, no LLM:
+  D3A: keep [UNVERIFIABLE] tag as warning flag
+  D3B: delete UNVERIFIABLE comments entirely
 """
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-SCREENING_MODEL = os.environ.get('SCREENING_MODEL', 'claude-haiku-4-5-20251001')
+SCREENING_MODEL = os.environ.get('SCREENING_MODEL', 'gpt-5-mini')
 
 SCREENING_AGENT_PROMPT = """\
 You are a comment auditor for source code security analysis.
@@ -67,24 +68,6 @@ def _fix_structural_markers(code: str) -> str:
     return code
 
 
-def label_comments(code: str) -> str:
-    """Call screening LLM to label all comments. Returns labeled source."""
-    import anthropic
-    client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
-    user_msg = (
-        SCREENING_AGENT_PROMPT
-        + f"\n\nSource code:\n```\n{code}\n```\n\n"
-        "Return ONLY the full source code with labeled comments. No explanation."
-    )
-    response = client.messages.create(
-        model=SCREENING_MODEL,
-        max_tokens=8192,
-        messages=[{"role": "user", "content": user_msg}],
-    )
-    labeled = _extract_code_block(response.content[0].text.strip())
-    return labeled
-
-
 def apply_variant_a(labeled_code: str) -> str:
     """Keep [UNVERIFIABLE] and [ADVERSARIAL] tags as flags; strip VERIFIABLE and INTENDED tags."""
     code = re.sub(r'/\*\s*\[VERIFIABLE\]\s*(.*?)\s*\*/', r'/* \1 */', labeled_code, flags=re.DOTALL)
@@ -113,7 +96,7 @@ AUDIT_SEPARATOR = "\n\n<<<D4_AUDIT>>>\n"
 
 
 def extract_from_prepend_labeled(code: str) -> str:
-    """Extract separator format from a D4_labeled entry.
+    """Extract separator format from a D4_prepend_labeled entry.
 
     Input format: "/*\\n" + audit_block + "\\n*/\\n\\n" + original_code
     Output format: original_code + AUDIT_SEPARATOR + audit_block
@@ -136,7 +119,7 @@ def apply_variant(labeled_code: str, variant: str, lang: str = 'c') -> str:
         return apply_variant_a(labeled_code)
     elif variant == 'B':
         return apply_variant_b(labeled_code)
-    elif variant == 'D4':
+    elif variant in ('D4_append', 'D4_prepend'):
         if AUDIT_SEPARATOR not in labeled_code:
             return labeled_code  # fallback: no separator found
         original, audit = labeled_code.split(AUDIT_SEPARATOR, 1)
@@ -145,7 +128,10 @@ def apply_variant(labeled_code: str, variant: str, lang: str = 'c') -> str:
             wrapped = '\n'.join(lines)
         else:
             wrapped = '/*\n' + audit + '\n*/'
-        return wrapped + '\n\n' + original
+        if variant == 'D4_append':
+            return original + '\n\n' + wrapped
+        else:
+            return wrapped + '\n\n' + original
     raise ValueError(f"Unknown variant: {variant!r}")
 
 
@@ -204,19 +190,107 @@ Output ONLY the audit block. Do not include any other text before or after it.
 
 
 def audit_comments_with_reasoning(code: str) -> str:
-    """Call screening LLM to produce per-comment reasoning audit. Returns audit block text."""
-    import anthropic
-    client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
-    user_msg = (
-        AUDIT_AGENT_PROMPT
-        + f"\n\nSource code:\n```\n{code}\n```"
-    )
-    response = client.messages.create(
+    """Call screening LLM to produce per-comment reasoning audit. Returns audit block text.
+
+    Uses the real OpenAI API (hardcoded base_url) regardless of SCREENING_MODEL,
+    UNLESS the model id looks like a Claude model, in which case it falls back to
+    the Anthropic client. Hardcoding the OpenAI base_url is deliberate: detector
+    server processes for the adaptive-attack scripts run with OPENAI_BASE_URL
+    pointed at the local Qwen refiner (http://localhost:8007/v1) — without this,
+    screening calls would silently get routed there instead of to OpenAI.
+    """
+    user_msg = AUDIT_AGENT_PROMPT + f"\n\nSource code:\n```\n{code}\n```"
+    if SCREENING_MODEL.startswith("claude"):
+        import anthropic
+        client = anthropic.Anthropic(api_key=os.environ['ANTHROPIC_API_KEY'])
+        response = client.messages.create(
+            model=SCREENING_MODEL,
+            max_tokens=8192,
+            messages=[{"role": "user", "content": user_msg}],
+        )
+        return response.content[0].text.strip()
+
+    from openai import OpenAI
+    client = OpenAI(api_key=os.environ['OPENAI_API_KEY'], base_url="https://api.openai.com/v1")
+    response = client.chat.completions.create(
         model=SCREENING_MODEL,
-        max_tokens=8192,
         messages=[{"role": "user", "content": user_msg}],
     )
-    return response.content[0].text.strip()
+    return response.choices[0].message.content.strip()
+
+
+_AUDIT_ENTRY_RE = re.compile(
+    r'Comment:\s*"(?P<comment>.*?)"\s*\n'
+    r'Reasoning:\s*(?P<reasoning>.*?)\s*\n'
+    r'Label:\s*(?P<label>VERIFIABLE|INTENDED|UNVERIFIABLE|ADVERSARIAL)',
+    re.DOTALL,
+)
+
+def parse_audit_block(audit_text: str) -> list[dict]:
+    """Parse the [Comment Audit] block into [{comment, reasoning, label}, ...]."""
+    return [
+        {"comment": m.group("comment"), "reasoning": m.group("reasoning").strip(),
+         "label": m.group("label")}
+        for m in _AUDIT_ENTRY_RE.finditer(audit_text)
+    ]
+
+
+def apply_labels_from_audit(code: str, entries: list[dict]) -> tuple[str, int, int]:
+    """
+    D3 derivation: burn just the [LABEL] tag into each comment in place, discarding
+    the reasoning — a mechanical projection of the D4 audit, no extra LLM call.
+
+    For each entry, find the exact comment delimiter (// ..., /* ... */, # ...)
+    wrapping that comment's text in `code` and prepend "[LABEL] " inside it.
+    Comments the LLM paraphrased (no exact match) are left untagged.
+
+    Returns (labeled_code, n_matched, n_total) so callers can log D3 coverage.
+    """
+    n_matched = 0
+    for e in entries:
+        text, label = e["comment"], e["label"]
+        if not text:
+            continue
+        for pattern, build in (
+            (re.escape(text).join((r'//\s*', r'\s*$')), lambda t=text: f'// [{label}] {t}'),
+            (re.escape(text).join((r'/\*\s*', r'\s*\*/')), lambda t=text: f'/* [{label}] {t} */'),
+            (re.escape(text).join((r'#\s*', r'\s*$')), lambda t=text: f'# [{label}] {t}'),
+        ):
+            m = re.search(pattern, code, flags=re.MULTILINE)
+            if m:
+                code = code[:m.start()] + build() + code[m.end():]
+                n_matched += 1
+                break
+    return code, n_matched, len(entries)
+
+
+def screen_payload(code: str) -> dict:
+    """
+    The single entry point live callers (detector wrappers) use: one screening
+    LLM call producing the D4 structured audit, plus a mechanically-derived D3
+    projection (inline labels, reasoning discarded) — no second LLM call.
+
+    Returns:
+      {
+        "audit_block": raw [Comment Audit] text,
+        "entries": [{comment, reasoning, label}, ...],
+        "d4_code": code with the audit block prepended (matches D4's
+                   "read the audit block FIRST" instruction),
+        "d3_code": code with inline [LABEL] tags burned into each comment,
+        "d3_coverage": (n_matched, n_total),
+      }
+    """
+    audit_block = audit_comments_with_reasoning(code)
+    entries = parse_audit_block(audit_block)
+    d3_code, n_matched, n_total = apply_labels_from_audit(code, entries)
+    d4_code = f"{audit_block}\n\n{code}"
+    return {
+        "audit_block": audit_block,
+        "entries": entries,
+        "d4_code": d4_code,
+        "d3_code": d3_code,
+        "d3_coverage": (n_matched, n_total),
+    }
 
 
 def label_files_d4(file_map: dict[str, str],
@@ -241,32 +315,6 @@ def label_files_d4(file_map: dict[str, str],
             except Exception as e:
                 print(f"[screening] ERROR on {key}: {e}")
                 results[key] = (file_map[key], True)
-    return results
-
-
-def label_files(file_map: dict[str, str],
-                max_workers: int = 8) -> dict[str, tuple[str, bool]]:
-    """
-    Call LLM to label comments in all files in parallel.
-    file_map: {key: code}
-    Returns {key: (labeled_code, unchanged)}
-    """
-    def _label_one(key, code):
-        labeled   = _fix_structural_markers(label_comments(code))
-        unchanged = verify_no_code_changes(code, labeled)
-        return key, labeled, unchanged
-
-    results = {}
-    with ThreadPoolExecutor(max_workers=max_workers) as ex:
-        futures = {ex.submit(_label_one, k, v): k for k, v in file_map.items()}
-        for fut in as_completed(futures):
-            key = futures[fut]
-            try:
-                _, labeled, unchanged = fut.result()
-                results[key] = (labeled, unchanged)
-            except Exception as e:
-                print(f"[screening] ERROR on {key}: {e}")
-                results[key] = (file_map[key], True)  # fall back to original
     return results
 
 

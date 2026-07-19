@@ -242,8 +242,13 @@ def _parse_test_summary(output: str, returncode: int) -> tuple[str, str]:
     if m and returncode == 0:
         return "pass", m.group(0)
 
+    # No parseable pass/fail evidence at all. A clean exit here just means
+    # the test runner found nothing to run (e.g. no CTestTestfile.cmake
+    # registered) — NOT that anything passed. Report this distinctly so
+    # callers can fall back to the build result instead of silently
+    # treating "ran nothing" as "passed".
     if returncode == 0:
-        return "pass", "exit 0"
+        return "no_tests", "exit 0, no parseable test results"
     return "fail", f"exit {returncode}"
 
 
@@ -257,15 +262,14 @@ def run_build(repo_path: Path, build_timeout: int) -> tuple[bool, str, str]:
         if r is None:
             return False, "cmake build timeout", ""
         err = _trim_output(r.stdout + r.stderr) if r.returncode != 0 else ""
-        # Tolerate partial build — same as stage 1
-        return True, f"cmake rc={r.returncode}", err
+        return r.returncode == 0, f"cmake rc={r.returncode}", err
 
     if (repo_path / "Makefile").exists():
         r = _run(["make", "-j4", "-k", "--keep-going"], cwd=repo_path, timeout=build_timeout)
         if r is None:
             return False, "make timeout", ""
         err = _trim_output(r.stdout + r.stderr) if r.returncode != 0 else ""
-        return True, f"make rc={r.returncode}", err
+        return r.returncode == 0, f"make rc={r.returncode}", err
 
     return False, "no build system", ""
 
@@ -355,11 +359,21 @@ def process_one(pid: str, meta: dict, repo_path: Path,
     src_file.write_text(patched, errors="replace")
     try:
         build_ok, build_summary, build_error = run_build(repo_path, build_timeout)
-        if not build_ok:
-            suite = {"suite_cmd": None, "returncode": None,
-                     "verdict": "fail", "summary": "build failed", "error_output": build_error}
-        else:
-            suite = run_testsuite(repo_path, test_timeout)
+        # Always attempt the test suite, even after a build failure — an
+        # unrelated target can fail while the code we actually patched still
+        # built and is exercised by tests elsewhere ("don't give up" case).
+        # Only fall back to the build result when the test suite gives us
+        # no real evidence either way (no tests registered / no test target
+        # found) — a failed build with nothing to redeem it is excluded, but
+        # a failed build whose tests genuinely ran and passed is trusted.
+        suite = run_testsuite(repo_path, test_timeout)
+        if suite["verdict"] in ("no_tests", "none"):
+            if build_ok:
+                suite["verdict"] = "pass"
+            else:
+                suite["verdict"] = "fail"
+                suite["summary"] = f"build failed, no tests to fall back on ({build_summary})"
+                suite["error_output"] = build_error
 
         result = {
             "pid":           pid,

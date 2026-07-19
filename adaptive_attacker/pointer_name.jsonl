@@ -1,0 +1,125 @@
+{"slug": "NPD-CVE-0006", "var": "elem", "insert_before": "Uint32 vlen = elem->getLength();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0025", "var": "Then", "insert_before": "int _dummy = Then->u.base.node_type;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0026", "var": "then_node", "insert_before": "r = compile_length_tree(then_node, reg);", "source": "hand_coded"}
+{"slug": "NPD-CVE-0027", "var": "child", "insert_before": "if (child->string[0] == '\\0' || (case_sensitive ? strcmp(name, child->string) == 0 : case_insensitive_strcmp((const unsigned char*)name, (const unsigned char*)child->string) == 0))", "source": "auto_regex"}
+{"slug": "NPD-CVE-0047", "var": "parent", "insert_before": "if (parent->child == node) parent->child = next;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0053", "var": "crypt_password", "insert_before": "if (*crypt_password == '\\0') {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0054", "var": "ptr", "insert_before": "ptr->GetTag();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0073", "var": "upsample", "insert_before": "(*upsample->upmethod) (cinfo, input_buf, *in_row_group_ctr, output_buf);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0074", "var": "cinfo", "insert_before": "if (comp_info[0].v_samp_factor != cinfo->max_v_samp_factor)", "source": "auto_regex"}
+{"slug": "NPD-CVE-0075", "var": "upsample", "insert_before": "upsample->spare_row[0] = upsample->spare_row[0];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0076", "var": "upsample", "insert_before": "upsample->spare_full = FALSE;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0077", "var": "upsample", "insert_before": "upsample->Cr_r_tab = (int *)", "source": "auto_regex"}
+{"slug": "NPD-CVE-0078", "var": "main_ptr", "insert_before": "(*main_ptr->process_data) (cinfo, NULL, &row_ctr, num_lines);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0079", "var": "dummy_row", "insert_before": "*dummy_row = 0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0089", "var": "last_cmd", "insert_before": "size_t border_off = last_cmd->command_offset() + last_cmd->size();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0112", "var": "cinfo", "insert_before": "(*cinfo->upsample->upsample) (cinfo, input_buf, in_row_group_ctr,", "source": "auto_regex"}
+{"slug": "NPD-CVE-0113", "var": "cquantize", "insert_before": "int row_index = cquantize->row_index;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0119", "var": "inspector", "insert_before": "inspector.AddField(\"profile\", profile_name);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0120", "var": "stts", "insert_before": "result = stts->GetDts(index+1, dts, &duration);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0151", "var": "data", "insert_before": "xres = hwres.data[0];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0186", "var": "srt_info", "insert_before": "srt_info->src_tid = src_tid;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0187", "var": "gp_tcapsrt_info", "insert_before": "gp_tcapsrt_info->ope = TC_BEGIN;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0188", "var": "pinfo", "insert_before": "(void)pinfo->fd->num;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0189", "var": "srt_info", "insert_before": "srt_info->ope = TC_END;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0190", "var": "tcap_private", "insert_before": "tcap_private->oid = oid_str;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0192", "var": "tcap_priv", "insert_before": "tcap_priv->oid = oid_str;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0193", "var": "pinfo", "insert_before": "col_set_str(pinfo->cinfo, COL_INFO, \"TCAP Abort\");", "source": "auto_regex"}
+{"slug": "NPD-CVE-0194", "var": "tcap_priv", "insert_before": "tcap_priv->oid = oid_str;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0195", "var": "conv", "insert_before": "conversation_set_dissector(conv, rpcap_tcp_handle);", "source": "hand_coded"}
+{"slug": "NPD-CVE-0198", "var": "file", "insert_before": "guint8 digest_type = file->digest_type;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0209", "var": "subsecTag", "insert_before": "if (*subsecTag) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0210", "var": "exifPtr", "insert_before": "(*exifPtr)[to] = value;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0211", "var": "comp", "insert_before": "(void)comp->tag();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0235", "var": "cur_drc", "insert_before": "cur_drc->present = 0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0236", "var": "aufile", "insert_before": "aufile->total_samples = 0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0238", "var": "info", "insert_before": "if (info->register_invocation) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0239", "var": "dbus_info", "insert_before": "g_dbus_method_invocation_return_error(dbus_info->register_invocation, g_error_new_literal(G_DBUS_ERROR, G_DBUS_ERROR_FAILED, \"Handler %s bus name vanished\", handler->subtype));", "source": "auto_regex"}
+{"slug": "NPD-CVE-0240", "var": "handler", "insert_before": "if (!handler->_is_dbus_handler) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0241", "var": "dbus_info", "insert_before": "dbus_info->watcher_id = strlen(handler->subtype) + 1;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0261", "var": "buf", "insert_before": "buf[0]=0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0262", "var": "_of", "insert_before": "_of->links[0].offset=0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0292", "var": "local_mr", "insert_before": "uint64_t align = local_mr->align;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0295", "var": "sys_mem", "insert_before": "sys_mem->enabled = true;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0297", "var": "fcp_conv_data", "insert_before": "if (fcp_conv_data->luns == NULL) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0303", "var": "u3v_conv_info", "insert_before": "u3v_conv_info->sbrm_addr = 0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0304", "var": "audio_conv", "insert_before": "audio_conv->ver_major = major;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0305", "var": "usb_conv_info", "insert_before": "((video_conv_info_t *)usb_conv_info->class_data)->entities = NULL;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0348", "var": "row", "insert_before": "val = row[j];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0350", "var": "box", "insert_before": "box->ops = &boxinfo->ops;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0351", "var": "boxinfo", "insert_before": "fprintf(out, \"type=%c%s%c (0x%08x); length=%d\\n\", '\"', boxinfo->name,", "source": "auto_regex"}
+{"slug": "NPD-CVE-0352", "var": "box", "insert_before": "cdef = &box->data.cdef;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0353", "var": "bpcc", "insert_before": "if (jp2_getuint8(in, &bpcc->bpcs[i])) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0354", "var": "pclr", "insert_before": "if (jp2_putuint8(out, pclr->bpc[i]) < 0) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0355", "var": "pclr", "insert_before": "if (jp2_getuint8(in, &pclr->bpc[i])) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0356", "var": "ops", "insert_before": "if (ops->putdata) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0357", "var": "ent", "insert_before": "if (jp2_getuint16(in, &ent->cmptno) ||", "source": "auto_regex"}
+{"slug": "NPD-CVE-0358", "var": "box", "insert_before": "box->ops = &boxinfo->ops;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0360", "var": "box", "insert_before": "if (box->type != JP2_BOX_JP) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0377", "var": "current_buf", "insert_before": "return current_buf->yy_bs_lineno;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0378", "var": "buffer", "insert_before": "return buffer->yy_bs_column;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0379", "var": "ptr_yy_globals", "insert_before": "memset(*ptr_yy_globals, 0x00, sizeof(struct yyguts_t));", "source": "auto_regex"}
+{"slug": "NPD-CVE-0381", "var": "yyg", "insert_before": "*c_buf_p = yyg->yy_hold_char;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0382", "var": "yyg", "insert_before": "memset(yyg->yy_buffer_stack, 0, num_to_alloc * sizeof(struct yy_buffer_state*));", "source": "auto_regex"}
+{"slug": "NPD-CVE-0384", "var": "img", "insert_before": "img->width = rctx->width;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0385", "var": "data_buf", "insert_before": "data_buf[0] = 0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0386", "var": "rctx", "insert_before": "row[sx * rctx->bytes_per_pixel] = clr->r;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0394", "var": "low_prev", "insert_before": "*low_prev = prev;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0395", "var": "ip", "insert_before": "guint32 dest = ip->ip_dst.s_addr;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0396", "var": "rinfo", "insert_before": "ros_tree = proto_item_add_subtree(ti, *rinfo->ett_proto);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0397", "var": "pinfo", "insert_before": "col_set_str(pinfo->cinfo, COL_PROTOCOL, protocol->name);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0434", "var": "pExpr", "insert_before": "if( bIntToNull && pExpr->op==TK_INTEGER ){", "source": "auto_regex"}
+{"slug": "NPD-CVE-0469", "var": "pIop", "insert_before": "uint32_t profileSize = pIop->value().count();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0472", "var": "data", "insert_before": "v = RAS_RED((jas_matrix_getv(data[0], x))) |", "source": "auto_regex"}
+{"slug": "NPD-CVE-0485", "var": "p", "insert_before": "long val = (*p)->value().toLong();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0486", "var": "line_str", "insert_before": "if (line_str[0] == '<') {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0488", "var": "sels", "insert_before": "Complex_Selector_Obj cs = sels->at(0);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0510", "var": "p", "insert_before": "p->pstate();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0511", "var": "cond", "insert_before": "cond->pstate();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0513", "var": "cond", "insert_before": "cond->pstate();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0514", "var": "rhs", "insert_before": "rhs->pstate();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0583", "var": "line_context", "insert_before": "sprintf(buf, \"include dir[%u] %s\\n\", (unsigned)(i + index_base), line_context->lc_include_directories[i]);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0584", "var": "tstr", "insert_before": "char dummy = tstr[0];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0585", "var": "line_context", "insert_before": "if (line_context->lc_version_number !=", "source": "auto_regex"}
+{"slug": "NPD-CVE-0587", "var": "r", "insert_before": "Dwarf_Addr addr = r->lr_address;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0588", "var": "d", "insert_before": "if (d->de_printf_callback.dp_fptr) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0633", "var": "pkt_info", "insert_before": "pkt_info->register_format = mb_conv->register_format;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0639", "var": "q", "insert_before": "if (q->flags) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0653", "var": "a", "insert_before": "mrb_int len = ARY_LEN(a);", "source": "hand_coded"}
+{"slug": "NPD-CVE-0670", "var": "p", "insert_before": "*p = 0;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0672", "var": "b", "insert_before": "if (b->c->tt == MRB_TT_SCLASS) return b->c;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0678", "var": "pLoader", "insert_before": "pLoader->units_per_em();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0684", "var": "newitem", "insert_before": "newitem->prev = child->prev;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0685", "var": "schunk", "insert_before": "int32_t ndim = schunk->ndim;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0686", "var": "meta_buf", "insert_before": "int32_t ndim = meta_buf[0];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0687", "var": "b2nd_val", "insert_before": "int32_t ndim = ((const int32_t *)b2nd_val)[0];", "source": "hand_coded"}
+{"slug": "NPD-CVE-0688", "var": "cparams", "insert_before": "blosc2_schunk *schunk = cparams->schunk;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0691", "var": "b2nd_ptr", "insert_before": "int32_t ndim = b2nd_ptr[0];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0692", "var": "ip", "insert_before": "uint32_t ndim = *(uint32_t *)ip;", "source": "hand_coded"}
+{"slug": "NPD-CVE-0694", "var": "schunk", "insert_before": "int32_t ndim = schunk->ndim;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0715", "var": "brush_ptr", "insert_before": "brush_ptr->sx;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0735", "var": "conventions", "insert_before": "if (strcmp(conventions, \"SOFA\") != 0) return MYSOFA_INVALID_ATTRIBUTES;", "source": "hand_coded"}
+{"slug": "NPD-CVE-0736", "var": "curr", "insert_before": "while (curr->name != NULL) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0737", "var": "curr", "insert_before": "while (strcmp(curr->name, name) != 0) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0738", "var": "src_pos", "insert_before": "float x = src_pos[i * 3];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0765", "var": "linux_set", "insert_before": "memset(linux_set, 0, setsize);", "source": "hand_coded"}
+{"slug": "NPD-CVE-0766", "var": "level0", "insert_before": "hwloc_obj_t machine = level0[0];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0767", "var": "topo", "insert_before": "pid_t p = topo->pid;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0768", "var": "root_obj", "insert_before": "if (root_obj->complete_cpuset)", "source": "auto_regex"}
+{"slug": "NPD-CVE-0769", "var": "plinux_set", "insert_before": "CPU_ZERO_S(setsize, plinux_set);", "source": "hand_coded"}
+{"slug": "NPD-CVE-0775", "var": "ri", "insert_before": "env.set(\"REQUEST_METHOD\", ri->request_method);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0776", "var": "r", "insert_before": "left_to_read = r->content_length;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0777", "var": "handler", "insert_before": "RGWOp *op = handler->get_op(s);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0778", "var": "env", "insert_before": "env.set(\"SCRIPT_URI\", std::string(uri));", "source": "auto_regex"}
+{"slug": "NPD-CVE-0784", "var": "ttl_ptr", "insert_before": "guint32 ttl = (ttl_ptr[0] << 24) | (ttl_ptr[1] << 16) | (ttl_ptr[2] << 8) | ttl_ptr[3];", "source": "auto_regex"}
+{"slug": "NPD-CVE-0785", "var": "pi", "insert_before": "return pi->finfo->length;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0820", "var": "pUser", "insert_before": "for (CClient* pClient : pUser->GetClients()) {", "source": "auto_regex"}
+{"slug": "NPD-CVE-0821", "var": "pChan", "insert_before": "pChan->GetName();", "source": "auto_regex"}
+{"slug": "NPD-CVE-0822", "var": "p", "insert_before": "const char *p = UpnpString_get_String(path);", "source": "auto_regex"}
+{"slug": "NPD-CVE-0823", "var": "uri", "insert_before": "const char *path = uri->path;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0825", "var": "ssl", "insert_before": "SSL_set_fd(ssl, sockfd);", "source": "hand_coded"}
+{"slug": "NPD-CVE-0826", "var": "cl", "insert_before": "cl->screen = NULL;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0827", "var": "screen", "insert_before": "cl = screen->clientHead;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0828", "var": "prev", "insert_before": "prev->_next = next;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0829", "var": "prev", "insert_before": "prev->_next = newspan;", "source": "auto_regex"}
+{"slug": "NPD-CVE-0830", "var": "next", "insert_before": "next->_prev = newspan;", "source": "auto_regex"}

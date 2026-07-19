@@ -88,19 +88,50 @@ def main() -> None:
                              "Used by vulnllmr and openvul.")
     parser.add_argument("--defense", default="D0",
                         help="Defense baked into the served model's prompt: "
-                             "D0 (none) or a registry key (D1). Applied to every "
-                             "/detect call for the life of the server.")
+                             "D0 (none) or a registry key (D1, D3, D4). Applied to "
+                             "every /detect call for the life of the server. D3/D4 "
+                             "additionally prescreen target_function live via the "
+                             "screening agent (see defenses/screening_cache.py).")
+    parser.add_argument("--baseline-source-system", default=None,
+                        help="D5 only: system dir under adaptive_attacker/results/ "
+                             "whose baseline_gate_{tag}.json to reuse as the D5 Prior "
+                             "Analysis anchor, instead of paying for a fresh undefended "
+                             "call per unique clean function. Defaults to the standard "
+                             "D0 collection dir for --detector (openvul_full / "
+                             "vulnllmr_funclevel_full) — only pass this to override, "
+                             "e.g. for a non-standard dataset. Harmless (unused) for any "
+                             "defense other than D5 — no downside to leaving it defaulted.")
+    parser.add_argument("--baseline-source-tag", default="fromscratch_v1",
+                        help="Run-tag suffix of --baseline-source-system's gate files.")
     args = parser.parse_args()
+
+    # Auto-derive the D0 source rather than requiring it be passed every time —
+    # it's a no-op for every defense except D5, so there's no cost to always
+    # having a correct default.
+    _DEFAULT_BASELINE_SOURCE_SYSTEM = {
+        "openvul": "openvul_full",
+        "vulnllmr": "vulnllmr_funclevel_full" if args.vulnllmr_mode == "funclevel" else None,
+        "vulrag": "vulrag_full",
+        "vultrial": "vultrial_full",
+    }
+    baseline_source_system = (args.baseline_source_system
+                               or _DEFAULT_BASELINE_SOURCE_SYSTEM.get(args.detector))
+    baseline_source = (baseline_source_system, args.baseline_source_tag) if baseline_source_system else None
 
     # Resolve defense text from the registry once, at load time.
     defense_text = None
+    screening_variant = None
+    steering = None
     if args.defense and args.defense.upper() not in ("D0", "NONE"):
         sys.path.insert(0, str(HERE.parent))
         from defenses.registry import DEFENSES
         if args.defense not in DEFENSES:
             parser.error(f"unknown defense {args.defense!r}; known: D0, {list(DEFENSES)}")
         defense_text = DEFENSES[args.defense]["task_addition"]
-    print(f"[server] defense={args.defense} ({'ON' if defense_text else 'OFF'})", flush=True)
+        screening_variant = DEFENSES[args.defense].get("screening_variant")
+        steering = DEFENSES[args.defense].get("steering")
+    print(f"[server] defense={args.defense} ({'ON' if defense_text else 'OFF'}) "
+          f"screening={screening_variant or 'OFF'} steering={steering or 'OFF'}", flush=True)
 
     global DETECTOR, DEFENSE_NAME
     DEFENSE_NAME = "D0" if defense_text is None else args.defense
@@ -108,14 +139,16 @@ def main() -> None:
         from detector_openvul import OpenVulDetector
         cwe_to_mode = {476: "npd", 416: "uaf"}
         kwargs = {"tp": args.tp, "mode": cwe_to_mode.get(args.cwe, "generic"),
-                  "defense_text": defense_text}
+                  "defense_text": defense_text, "screening_variant": screening_variant,
+                  "steering": steering, "baseline_source": baseline_source}
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = OpenVulDetector(**kwargs)
     elif args.detector == "vulnllmr":
         from detector_vulnllmr import VulnLLMRDetector
         kwargs = {"tp": args.tp, "mode": args.vulnllmr_mode, "cwe": args.cwe,
-                  "defense_text": defense_text}
+                  "defense_text": defense_text, "screening_variant": screening_variant,
+                  "steering": steering, "baseline_source": baseline_source}
         if args.model:
             kwargs["model_id"] = args.model
         DETECTOR = VulnLLMRDetector(**kwargs)
@@ -127,13 +160,15 @@ def main() -> None:
         DETECTOR = RepoAuditDetector(**kwargs)
     elif args.detector == "vulrag":
         from detector_vulrag import VulRAGDetector
-        kwargs = {"defense_text": defense_text}
+        kwargs = {"defense_text": defense_text, "screening_variant": screening_variant,
+                  "steering": steering, "baseline_source": baseline_source}
         if args.model:
             kwargs["model"] = args.model
         DETECTOR = VulRAGDetector(**kwargs)
     else:
         from detector_vultrial import VulTrialDetector
-        kwargs = {"defense_text": defense_text}
+        kwargs = {"defense_text": defense_text, "screening_variant": screening_variant,
+                  "steering": steering, "baseline_source": baseline_source}
         if args.model:
             kwargs["model"] = args.model
         DETECTOR = VulTrialDetector(**kwargs)
