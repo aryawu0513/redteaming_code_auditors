@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # launch_screening_agent.sh
 #
-# Runs the D3B hard-cut full-scale proxy check (defenses/d3_proxy_check.py
+# Runs the D4 hard-cut full-scale sanitization evaluation
+# (defenses/d4_sanitization_eval.py
 # --full-scale) for all four detector systems in parallel: OpenVul, VulnLLM-R
 # (both screened WITH context_before/context_after/auxiliary_file, matching
 # what those two detectors actually see), VulTrial and VulRAG (screened with
@@ -19,7 +20,7 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-SCRIPT="$REPO_ROOT/defenses/d3_proxy_check.py"
+SCRIPT="$REPO_ROOT/defenses/d4_sanitization_eval.py"
 LOG_DIR="$REPO_ROOT/defenses/screening_results"
 
 : "${OPENAI_API_KEY:?Set OPENAI_API_KEY to a REAL OpenAI key.}"

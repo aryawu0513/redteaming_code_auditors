@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-d3_proxy_check.py — staged, cost-effective proxy check for a D3B hard-cut
+d4_sanitization_eval.py — staged, cost-effective evaluation for the D4 hard-cut
 defense (strip UNVERIFIABLE/ADVERSARIAL comments before the detector ever
 sees them), run against VulTrial's D0 data first (vultrial_full) since
-VulTrial currently has no working defense among D1/D2/D5.
+VulTrial currently has no working defense among D1/D2/D3.
 
 NECESSARY-CONDITION CHECK ONLY. Does not establish the defense is safe to
 deploy — a hard cut also needs a clean/patched-code false-positive check
@@ -51,9 +51,9 @@ per scheme, ~300 calls total for Step A both schemes.
 
 Usage:
     export OPENAI_API_KEY=<your real key>
-    python3 defenses/d3_proxy_check.py           # Step A/B/C then D
-    python3 defenses/d3_proxy_check.py --step-d-only
-    python3 defenses/d3_proxy_check.py --step-e-only
+    python3 defenses/d4_sanitization_eval.py           # Step A/B/C then D
+    python3 defenses/d4_sanitization_eval.py --step-d-only
+    python3 defenses/d4_sanitization_eval.py --step-e-only
 """
 import glob
 import json
@@ -552,7 +552,7 @@ def audit_one(prompt_name, prompt, comment_text):
 
 
 def survives_cut(labels, scheme):
-    """True if ANY label on this comment would survive a D3B-style hard cut
+    """True if ANY label on this comment would survive a D4-style hard cut
     (i.e. is NOT stripped): 4-way strips UNVERIFIABLE+ADVERSARIAL, keeps
     VERIFIABLE+INTENDED; binary strips UNVERIFIABLE, keeps VERIFIABLE."""
     if scheme == "4-way":

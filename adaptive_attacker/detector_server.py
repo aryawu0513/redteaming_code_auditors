@@ -93,20 +93,20 @@ def main() -> None:
                              "additionally prescreen target_function live via the "
                              "screening agent (see defenses/screening_cache.py).")
     parser.add_argument("--baseline-source-system", default=None,
-                        help="D5 only: system dir under adaptive_attacker/results/ "
-                             "whose baseline_gate_{tag}.json to reuse as the D5 Prior "
+                        help="D3 only: system dir under adaptive_attacker/results/ "
+                             "whose baseline_gate_{tag}.json to reuse as the D3 Prior "
                              "Analysis anchor, instead of paying for a fresh undefended "
                              "call per unique clean function. Defaults to the standard "
                              "D0 collection dir for --detector (openvul_full / "
                              "vulnllmr_funclevel_full) — only pass this to override, "
                              "e.g. for a non-standard dataset. Harmless (unused) for any "
-                             "defense other than D5 — no downside to leaving it defaulted.")
+                             "defense other than D3 — no downside to leaving it defaulted.")
     parser.add_argument("--baseline-source-tag", default="fromscratch_v1",
                         help="Run-tag suffix of --baseline-source-system's gate files.")
     args = parser.parse_args()
 
     # Auto-derive the D0 source rather than requiring it be passed every time —
-    # it's a no-op for every defense except D5, so there's no cost to always
+    # it's a no-op for every defense except D3, so there's no cost to always
     # having a correct default.
     _DEFAULT_BASELINE_SOURCE_SYSTEM = {
         "openvul": "openvul_full",

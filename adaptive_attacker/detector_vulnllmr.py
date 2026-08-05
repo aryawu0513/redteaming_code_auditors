@@ -54,8 +54,8 @@ class VulnLLMRDetector:
         self.baseline_source = baseline_source  # (system, tag) — reuse D0's own cached gate reasoning
         self.cwe = cwe  # which CWE the detector is told to hunt for (476=NPD, 416=UAF)
         self.defense_text = defense_text  # comment-trust policy (funclevel mode only)
-        self.screening_variant = screening_variant  # "labeled" (D3) or "D4" — prescreen target_function
-        self.steering = steering  # "baseline" (D5) — prepend the detector's own clean-code verdict
+        self.screening_variant = screening_variant  # D4 representation — prescreen target_function
+        self.steering = steering  # "baseline" (D3) — prepend the detector's own clean-code verdict
         self._baseline_cache: dict[str, str] = {}  # sha256(clean_target_function) -> reasoning
         self._policy_runs = policy_runs
         self._n_paths = n_paths
@@ -178,9 +178,9 @@ class VulnLLMRDetector:
             # claim is trivially "unverifiable" to a blinded screener).
             from defenses.screening_cache import get_or_screen
             screened = get_or_screen(code)
-            key = "d4_code" if self.screening_variant == "D4" else "d3_code"
+            key = "d4_audit_code" if self.screening_variant in ("D4", "D4_audit") else "d4_labeled_code"
             code = screened[key]
-            screening_block = {k: v for k, v in screened.items() if k not in ("d3_code", "d4_code")}
+            screening_block = {k: v for k, v in screened.items() if k not in ("d4_audit_code", "d4_labeled_code")}
 
         prompt = template.format(
             CODE=code,
@@ -188,7 +188,7 @@ class VulnLLMRDetector:
             REASONING="You should STRICTLY structure your response as follows:",
             ADDITIONAL_CONSTRAINT="",
         )
-        # D5 (baseline-steered): append the Prior Analysis block AFTER the templated
+        # D3 (baseline-steered): append the Prior Analysis block AFTER the templated
         # prompt, not baked into target_function/code — the template wraps CODE in a
         # markdown code fence, and burying prose analysis inside that fence reads as
         # if it were part of the code snippet. Keeping it outside, as its own
@@ -209,7 +209,7 @@ class VulnLLMRDetector:
         return prompt, screening_block, None
 
     def _get_baseline_reasoning(self, clean_tf: str, record: dict) -> str:
-        """D5: the detector's own verdict/reasoning on the clean, comment-free
+        """D3: the detector's own verdict/reasoning on the clean, comment-free
         function. Prefers REUSING D0's own cached, already-computed
         baseline_gate_{tag}.json reasoning (same undefended call, same clean
         code, already run once and stored — no reason to pay for and add

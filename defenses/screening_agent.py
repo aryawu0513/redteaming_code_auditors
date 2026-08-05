@@ -1,11 +1,11 @@
 """
-Screening agent for Defense 3 (D3A / D3B).
+Screening agent for Defense 4 (D4).
 
 Live entry point: screen_payload() (one LLM call via audit_comments_with_reasoning,
 routed to OpenAI unless SCREENING_MODEL looks like a Claude model). Its output feeds
 apply_variant_a()/apply_variant_b() — pure regex post-processing, no LLM:
-  D3A: keep [UNVERIFIABLE] tag as warning flag
-  D3B: delete UNVERIFIABLE comments entirely
+  D4 labeled: keep [UNVERIFIABLE] tags as warning flags
+  D4 hard cut: delete UNVERIFIABLE comments entirely
 """
 import os
 import re
@@ -235,16 +235,17 @@ def parse_audit_block(audit_text: str) -> list[dict]:
     ]
 
 
-def apply_labels_from_audit(code: str, entries: list[dict]) -> tuple[str, int, int]:
+def apply_d4_labels_from_audit(code: str, entries: list[dict]) -> tuple[str, int, int]:
     """
-    D3 derivation: burn just the [LABEL] tag into each comment in place, discarding
-    the reasoning — a mechanical projection of the D4 audit, no extra LLM call.
+    D4 labeled representation: burn just the [LABEL] tag into each comment in
+    place, discarding the reasoning — a mechanical projection of the D4 audit,
+    with no extra LLM call.
 
     For each entry, find the exact comment delimiter (// ..., /* ... */, # ...)
     wrapping that comment's text in `code` and prepend "[LABEL] " inside it.
     Comments the LLM paraphrased (no exact match) are left untagged.
 
-    Returns (labeled_code, n_matched, n_total) so callers can log D3 coverage.
+    Returns (labeled_code, n_matched, n_total) so callers can log D4 coverage.
     """
     n_matched = 0
     for e in entries:
@@ -267,29 +268,30 @@ def apply_labels_from_audit(code: str, entries: list[dict]) -> tuple[str, int, i
 def screen_payload(code: str) -> dict:
     """
     The single entry point live callers (detector wrappers) use: one screening
-    LLM call producing the D4 structured audit, plus a mechanically-derived D3
-    projection (inline labels, reasoning discarded) — no second LLM call.
+    LLM call producing the D4 structured audit, plus a mechanically-derived D4
+    labeled representation (inline labels, reasoning discarded) — no second LLM
+    call.
 
     Returns:
       {
         "audit_block": raw [Comment Audit] text,
         "entries": [{comment, reasoning, label}, ...],
-        "d4_code": code with the audit block prepended (matches D4's
+        "d4_audit_code": code with the audit block prepended (matches D4's
                    "read the audit block FIRST" instruction),
-        "d3_code": code with inline [LABEL] tags burned into each comment,
-        "d3_coverage": (n_matched, n_total),
+        "d4_labeled_code": code with inline [LABEL] tags burned into each comment,
+        "d4_label_coverage": (n_matched, n_total),
       }
     """
     audit_block = audit_comments_with_reasoning(code)
     entries = parse_audit_block(audit_block)
-    d3_code, n_matched, n_total = apply_labels_from_audit(code, entries)
-    d4_code = f"{audit_block}\n\n{code}"
+    d4_labeled_code, n_matched, n_total = apply_d4_labels_from_audit(code, entries)
+    d4_audit_code = f"{audit_block}\n\n{code}"
     return {
         "audit_block": audit_block,
         "entries": entries,
-        "d4_code": d4_code,
-        "d3_code": d3_code,
-        "d3_coverage": (n_matched, n_total),
+        "d4_audit_code": d4_audit_code,
+        "d4_labeled_code": d4_labeled_code,
+        "d4_label_coverage": (n_matched, n_total),
     }
 
 

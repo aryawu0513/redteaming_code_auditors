@@ -55,8 +55,8 @@ class OpenVulDetector:
 
         self.default_mode = mode  # which CWE prompt line detect()/detect_batch() use by default
         self.defense_text = defense_text  # comment-trust policy appended to the system prompt
-        self.screening_variant = screening_variant  # "labeled" (D3) or "D4" — prescreen target_function
-        self.steering = steering  # "baseline" (D5) — prepend the detector's own clean-code verdict
+        self.screening_variant = screening_variant  # D4 representation — prescreen target_function
+        self.steering = steering  # "baseline" (D3) — prepend the detector's own clean-code verdict
         self.baseline_source = baseline_source  # (system, tag) — reuse D0's own cached gate reasoning
         self._baseline_cache: dict[str, str] = {}  # sha256(clean_target_function) -> reasoning
 
@@ -98,7 +98,7 @@ class OpenVulDetector:
             combined = (f"// context\n{context_str}\n{marker}\n{target_function}"
                         if context_str else target_function)
             screened = get_or_screen(combined)
-            key = "d4_code" if self.screening_variant == "D4" else "d3_code"
+            key = "d4_audit_code" if self.screening_variant in ("D4", "D4_audit") else "d4_labeled_code"
             labeled = screened[key]
             if context_str:
                 idx = labeled.find(marker)
@@ -110,9 +110,9 @@ class OpenVulDetector:
                     record = {**record, "target_function": labeled}
             else:
                 record = {**record, "target_function": labeled}
-            screening_block = {k: v for k, v in screened.items() if k not in ("d3_code", "d4_code")}
+            screening_block = {k: v for k, v in screened.items() if k not in ("d4_audit_code", "d4_labeled_code")}
         user_prompt = build_user_prompt(record, mode)
-        # D5 (baseline-steered): append the Prior Analysis block AFTER the templated
+        # D3 (baseline-steered): append the Prior Analysis block AFTER the templated
         # prompt, not baked into target_function — target_function gets wrapped in a
         # ```Code fence by build_user_prompt, and burying prose analysis inside that
         # fence reads as if it were part of the code snippet. Keeping it outside the
@@ -152,7 +152,7 @@ class OpenVulDetector:
         return prompt, screening_block
 
     def _get_baseline_reasoning(self, clean_tf: str, record: dict, mode: str) -> str:
-        """D5: the detector's own verdict/reasoning on the clean, comment-free
+        """D3: the detector's own verdict/reasoning on the clean, comment-free
         function. Prefers REUSING D0's own cached, already-computed
         baseline_gate_{tag}.json reasoning (same undefended call, same clean
         code, already run once and stored — no reason to pay for and add
@@ -221,7 +221,7 @@ class OpenVulDetector:
               "reasoning":   str  (first output, includes <think> chain),
               "all_outputs": list[str],
               "votes":       {"has_vul": int, "no_vul": int},
-              "screening_block": dict | None (D3/D4 only),
+              "screening_block": dict | None (D4 only),
             }
         """
         prompt_str, screening_block = self._build_prompt(record, mode or self.default_mode)

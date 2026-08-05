@@ -34,8 +34,8 @@ class VulTrialDetector:
         self.model = model
         self.mode = mode
         self.defense_text = defense_text  # comment-trust policy appended to agent prompts
-        self.screening_variant = screening_variant  # "labeled" (D3) or "D4" — prescreen target_function
-        self.steering = steering  # "baseline" (D5) — prepend the detector's own clean-code verdict
+        self.screening_variant = screening_variant  # D4 representation — prescreen target_function
+        self.steering = steering  # "baseline" (D3) — prepend the detector's own clean-code verdict
         self.baseline_source = baseline_source  # (system, tag) — verify+reuse D0's own cached gate reasoning
         self._baseline_cache: dict[str, str] = {}  # sha256(clean_target_function) -> reasoning
         self.thread_safe = True  # OpenAI API calls; no shared engine state
@@ -91,7 +91,7 @@ class VulTrialDetector:
             # Capture per-turn text NOW, immediately after this trial writes
             # it — VulTrial's id_save has no run-tag/defense component, so
             # results/output/{id_save}/{0-3}.txt is a shared, overwrite-mode
-            # namespace: the next D1/D2/D5 portfolio run touching the same
+            # namespace: the next D1/D2/D3 portfolio run touching the same
             # slug+attack_type+round silently clobbers it. Reading it here,
             # synchronously, before returning control to the caller, and
             # persisting it into OUR OWN scoped round_N.json (see
@@ -145,7 +145,7 @@ class VulTrialDetector:
                         "moderator": 2, "review_board": 3}
 
     def _get_baseline_per_role(self, clean_tf: str, record: dict) -> dict[str, str]:
-        """D5: EACH defended role's OWN verdict/reasoning on the clean,
+        """D3: EACH defended role's OWN verdict/reasoning on the clean,
         comment-free function. Three sources, in order:
 
         1. **Persisted, safely-scoped cache** — self.baseline_source's own
@@ -223,11 +223,11 @@ class VulTrialDetector:
         return out
 
     def _build_per_role_anchor(self, clean_tf: str, record: dict) -> dict[str, str]:
-        """Same ordering as OpenVul/VulnLLM-R's D5 (detector_openvul.py
+        """Same ordering as OpenVul/VulnLLM-R's D3 (detector_openvul.py
         _build_prompt): [Prior Analysis block] THEN [defense_text], so
         defense_text's own "Below the code, after it, you are given a
         [Prior Analysis] block..." wording reads naturally. defense_text
-        (D5B_COT, from registry.py) is used VERBATIM — same wording as the
+        (D3_COT, from registry.py) is used VERBATIM — same wording as the
         other two detectors, no VulTrial-specific additions."""
         base = self._get_baseline_per_role(clean_tf, record)
         out = {}
@@ -245,11 +245,11 @@ class VulTrialDetector:
         if self.screening_variant:
             from defenses.screening_cache import get_or_screen
             screened = get_or_screen(tf)
-            key = "d4_code" if self.screening_variant == "D4" else "d3_code"
+            key = "d4_audit_code" if self.screening_variant in ("D4", "D4_audit") else "d4_labeled_code"
             tf = screened[key]
-            screening_block = {k: v for k, v in screened.items() if k not in ("d3_code", "d4_code")}
+            screening_block = {k: v for k, v in screened.items() if k not in ("d4_audit_code", "d4_labeled_code")}
 
-        # D5 (baseline-steered): build a PER-ROLE Prior Analysis anchor — each
+        # D3 (baseline-steered): build a PER-ROLE Prior Analysis anchor — each
         # of security_researcher/moderator/review_board sees only ITS OWN
         # prior turn from the undefended baseline trial, not one shared block
         # (VulTrial/run.py's _build_prompts now accepts a per-role dict).

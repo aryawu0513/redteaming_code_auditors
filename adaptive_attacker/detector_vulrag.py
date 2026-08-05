@@ -251,8 +251,8 @@ class VulRAGDetector:
         import json
 
         self.defense_text = defense_text  # comment-trust policy for summary + detect stages
-        self.screening_variant = screening_variant  # "labeled" (D3) or "D4" — prescreen target_function
-        self.steering = steering  # "baseline" (D5) — prepend the detector's own clean-code verdict
+        self.screening_variant = screening_variant  # D4 representation — prescreen target_function
+        self.steering = steering  # "baseline" (D3) — prepend the detector's own clean-code verdict
         self.baseline_source = baseline_source  # (system, tag) — reuse D0's own cached gate reasoning
         self._baseline_cache: dict[str, str] = {}  # sha256(clean_target_function) -> reasoning
 
@@ -481,7 +481,7 @@ class VulRAGDetector:
         return "\n".join(p for p in reasoning_parts if p)
 
     def _get_baseline_reasoning(self, clean_tf: str, slug: str | None = None) -> str:
-        """D5: Vul-RAG's own verdict/reasoning on the clean, comment-free
+        """D3: Vul-RAG's own verdict/reasoning on the clean, comment-free
         function. Prefers REUSING D0's own cached, already-computed
         baseline_gate_{tag}.json reasoning (same undefended call, same clean
         code, already run once and stored — no reason to pay for and add
@@ -523,12 +523,12 @@ class VulRAGDetector:
         if self.screening_variant:
             from defenses.screening_cache import get_or_screen
             screened = get_or_screen(code)
-            key = "d4_code" if self.screening_variant == "D4" else "d3_code"
+            key = "d4_audit_code" if self.screening_variant in ("D4", "D4_audit") else "d4_labeled_code"
             code = screened[key]
-            screening_block = {k: v for k, v in screened.items() if k not in ("d3_code", "d4_code")}
+            screening_block = {k: v for k, v in screened.items() if k not in ("d4_audit_code", "d4_labeled_code")}
 
         defense = self.defense_text or ""
-        # D5 (baseline-steered): append the Prior Analysis block to the SAME
+        # D3 (baseline-steered): append the Prior Analysis block to the SAME
         # defense string already threaded into _detect_vul_prompt/_sol_prompt
         # — no change needed to those, this just makes the string bigger.
         if self.steering == "baseline":

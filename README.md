@@ -121,23 +121,16 @@ bash scripts/setup_benchmark.sh
 
 Reads `automatic/texts/*.json` and writes `buggy/` + `context_aware/` to all four systems: `RepoAudit/benchmark/`, `VulnLLM-R/datasets/`, `VulTrial/datasets/`, and `OpenVul/datasets/`.
 
-**Step 3 — Screen benchmark for defenses** (LLM, run once)
+**Step 3 — Evaluate D4 comment sanitization** (LLM, run once)
 
 ```bash
-bash scripts/screen_defenses.sh
+bash defenses/launch_screening_agent.sh
 ```
 
-Labels every comment in every benchmark file via Claude Haiku. Saves D3-labeled and D4-labeled source to `defenses/texts/` (shared between both systems). Also generates D5 honest docstrings.
+Runs D4's external binary comment auditor on the saved attack payloads and
+records the hard-cut sanitization result in `defenses/screening_results/`.
 
-**Step 4 — Apply defense labels to both systems** (no LLM, fast)
-
-```bash
-bash scripts/setup_defenses.sh
-```
-
-Reads `defenses/texts/{D3,D4}_labeled/` and writes `RepoAudit/benchmark-defense/` and `VulnLLM-R/datasets-defense/`.
-
-**Step 5 — Run experiments**
+**Step 4 — Run experiments**
 
 ```bash
 # RepoAudit (needs ANTHROPIC_API_KEY):
@@ -203,23 +196,16 @@ python automatic/gen_attacks.py --bug-type npd --language python
 | ID | Description |
 |----|-------------|
 | **D1** | Prompt instruction: treat all comments as untrusted |
-| **D2** | Prompt instruction: label each comment VERIFIABLE / INTENDED / UNVERIFIABLE / ADVERSARIAL before reasoning |
-| **D3** | Screening agent (Claude Haiku) pre-labels every comment in-place; audit model sees tags |
-| **D4** | Screening agent produces a per-comment audit block prepended before the source |
-| **D5** | Annotator agent adds honest Google-style docstrings documenting the null-return path |
+| **D2** | In-band code-only baseline before considering comments |
+| **D3** | Separate detector call produces a fixed, comment-free prior analysis |
+| **D4** | External comment screening removes claims unverifiable from visible code |
 
-Defense registry: `defenses/registry.py`
+Defense registry: `defenses/registry.py` (D1--D3). D4 is implemented by
+`defenses/screening_agent.py` and evaluated by `defenses/d4_sanitization_eval.py`.
 
 ```bash
-# One-time preprocessing (LLM):
-bash scripts/screen_defenses.sh    # D3/D4 label caches + D5 docstrings
-
-# Apply labeled caches to both systems (no LLM):
-bash scripts/setup_defenses.sh     # writes benchmark-defense/ and datasets-defense/
-
-# Run auditor under a defense:
-python defenses/apply_repoaudit.py --defense D3 -- bash run_npd_c_attacks.sh
-python defenses/apply_vulnllm.py --defense D3 --run-script run_npd_c_attacks.sh
+# Evaluate D4 sanitization on the saved attack payloads:
+OPENAI_API_KEY=... bash defenses/launch_screening_agent.sh
 ```
 
 ---

@@ -8,7 +8,7 @@ CAVEAT: adaptive_attacker/gen_timing.jsonl is a single, unscoped, growing
 log with no per-run identifier or timestamp field — every refine_loop_
 fromscratch.py invocation across the whole project appends to it. By the
 time this script was written, the file had accumulated entries from all
-the later informal-type-extension and D1/D2/D5 defense work done this
+the later informal-type-extension and D1/D2/D3 defense work done this
 session, not just the original D0 attack-effectiveness run the table
 describes (which used longer, more context-heavy prompts as prior_attempts
 accumulated, and the informal-type/defense runs add their own overhead on

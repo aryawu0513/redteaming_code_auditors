@@ -317,7 +317,7 @@ def init_type_fromscratch(
 
     # Build working record — always start from bare_tf
     working_record = copy.deepcopy(bare_record)
-    working_record["clean_target_function"] = bare_tf  # D5 (baseline-steered): the pre-comment function
+    working_record["clean_target_function"] = bare_tf  # D3 (baseline-steered): the pre-comment function
 
     if annotation_text is not None:
         annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
@@ -479,7 +479,7 @@ def produce_annotation(
         # silent skips the slug finalized as a legitimate-looking
         # "budget_exhausted after 5 rounds" with ZERO real refinement having
         # happened (no round_N.json ever written past round 0). That's
-        # exactly what corrupted the vulnllmr-D5/vulrag-D2/vulrag-D5 stage2
+        # exactly what corrupted the vulnllmr-D3/vulrag-D2/vulrag-D3 stage2
         # runs on 2026-07-13 — a misconfigured OPENAI_BASE_URL made every
         # refiner call fail, and the failures were invisible in the results.
         # Aborting here (uncaught, nonzero exit for this slug's subprocess)
@@ -504,7 +504,7 @@ def apply_annotation(state: dict, rnd: int,
 
     annotated_tf = insert_annotation(bare_tf, annotation_text, insert_before)
     state["current_record"] = copy.deepcopy(bare_record)
-    state["current_record"]["clean_target_function"] = bare_tf  # D5 (baseline-steered)
+    state["current_record"]["clean_target_function"] = bare_tf  # D3 (baseline-steered)
     state["current_record"]["target_function"] = annotated_tf
     state["current_record"]["file_name"] = f"solution_{attack_type}_round{rnd}.c"
     state["current_record"]["variant"] = f"{attack_type}_round{rnd}"
@@ -839,7 +839,7 @@ def main() -> None:
         from defenses.registry import DEFENSES
         defense_text = DEFENSES[args.defense]["task_addition"]
         steering = DEFENSES[args.defense].get("steering")
-    # (system, tag) to reuse D0's own cached baseline_gate reasoning as the D5
+    # (system, tag) to reuse D0's own cached baseline_gate reasoning as the D3
     # anchor source instead of paying for (and adding fresh-call noise via) a
     # second live undefended call — same source as the round-0 seed reuse.
     baseline_source = (args.seed_round0_from, args.seed_round0_tag) if args.seed_round0_from else None
@@ -909,7 +909,7 @@ def main() -> None:
         caused fully_seeded to be wrongly True for such slugs, skipping the
         real baseline gate and leaving the eventual fallback bootstrap with an
         EMPTY baseline_reasoning (confirmed: NPD-CVE-0210's round_0.json had
-        detector_reasoning_filtered == "" under D5B) instead of erroring out
+        detector_reasoning_filtered == "" under D3) instead of erroring out
         or computing it for real.
         """
         seed_suffix = f"_{args.seed_round0_tag}" if args.seed_round0_tag else ""

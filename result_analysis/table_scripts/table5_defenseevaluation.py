@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 table5_defenseevaluation.py — computes Table 5 (\\label{tab:defenses} in
-writing_overleaf/main.tex): D0/D1/D2/D3(=our D5)/D4(=our D3B) round-0 and
+writing_overleaf/main.tex): D0/D1/D2/D3 (code-only baseline)/D4 (comment
+sanitization) round-0 and
 end-to-end ASR, combined across all 10 attack types.
 
 D0: union over all 10 types directly from the undefended run
@@ -12,8 +13,8 @@ D1/D2/D3: portfolio (5-type) flip set from the seeded run, UNION'd with the
     and scripts/oneoff/compute_d1_unflipped_slugs.py for how those pieces
     are produced. This script only consumes their output; it does not
     itself launch any adaptive attacker calls.
-D4 (our D3B, screening hard-cut): reported separately, taken from
-    defenses/d3_proxy_check.py --full-scale's saved JSON output in
+D4 (screening hard-cut): reported separately, taken from
+    defenses/d4_sanitization_eval.py --full-scale's saved JSON output in
     defenses/screening_results/ (adversarial MISS rate, i.e. 100% - catch
     rate) — not recomputed here.
 
@@ -131,18 +132,20 @@ def main():
         d0_end = d0_flips(base, gt, "end")
         print(f"{name:<10} {'D0':<4} {n:>4}  {100*len(d0_r0)/n:>11.1f}%  {100*len(d0_end)/n:>14.1f}%")
 
-        for defense in ["D1", "D2", "D5"]:
-            pf_r0 = portfolio_flips(base, defense, gt, "round0")
-            pf_end = portfolio_flips(base, defense, gt, "end")
+        for defense in ["D1", "D2", "D3"]:
+            # The already-generated D3 runs predate the taxonomy cleanup and
+            # remain stored under the historical D5 directory/tag name.
+            storage_defense = "D5" if defense == "D3" else defense
+            pf_r0 = portfolio_flips(base, storage_defense, gt, "round0")
+            pf_end = portfolio_flips(base, storage_defense, gt, "end")
             unflipped = gt - pf_end
-            inf_stage2 = informal_stage2_flips(base, defense, unflipped) & gt
-            inf_r0 = informal_round0_flips(base, defense) & gt
+            inf_stage2 = informal_stage2_flips(base, storage_defense, unflipped) & gt
+            inf_r0 = informal_round0_flips(base, storage_defense) & gt
 
             combined_r0 = pf_r0 | inf_r0
             combined_end = pf_end | inf_stage2
 
-            label = "D3" if defense == "D5" else defense  # paper naming: our D5 = paper's D3
-            print(f"{name:<10} {label:<4} {n:>4}  {100*len(combined_r0)/n:>11.1f}%  {100*len(combined_end)/n:>14.1f}%")
+            print(f"{name:<10} {defense:<4} {n:>4}  {100*len(combined_r0)/n:>11.1f}%  {100*len(combined_end)/n:>14.1f}%")
         print()
 
 
